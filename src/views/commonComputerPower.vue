@@ -15,6 +15,7 @@
     :yTicks="chartYTicks"
     @bubble-click="(e) => emit('bubble-click', e)"
     @visible-change="onVisibleChange"
+    @filter-change="onFilterChange"
   />
 </template>
 
@@ -55,10 +56,16 @@ const { data, avgRangeList, forbidden, fetchData } = useCommonComputerPower();
 const { date: currentMonth } = storeToRefs(useCurrentDate());
 
 const visibleTiers = ref([false, true, true, true]);
+const backendFilters = ref({});
 
 function onVisibleChange(filterFn, tiers) {
   if (tiers) visibleTiers.value = tiers;
   emit("visible-change", filterFn);
+}
+
+function onFilterChange(filters) {
+  backendFilters.value = { ...(filters ?? {}) };
+  fetchData(currentMonth.value, backendFilters.value);
 }
 
 const avgX = computed(() => {
@@ -80,7 +87,7 @@ const { chartXRange, chartYRange, chartYTicks } = useBubbleAxisRange(
 );
 
 onMounted(() => {
-  fetchData(currentMonth.value);
+  fetchData(currentMonth.value, backendFilters.value);
 });
 
 defineExpose({ data: mappedData });

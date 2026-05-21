@@ -186,6 +186,7 @@ export function useCommonComputerPower() {
   const error = ref(null);
   const forbidden = ref(false);
   const rawData = ref(null);
+  const currentFilters = ref({});
 
   function resetState() {
     data.value = [];
@@ -193,15 +194,17 @@ export function useCommonComputerPower() {
     rawData.value = null;
   }
 
-  async function fetchData(month) {
+  async function fetchData(month, filters = currentFilters.value) {
     loading.value = true;
     error.value = null;
     forbidden.value = false;
+    currentFilters.value = filters ?? {};
     const cloudServerName = keepEnglishOnly(selectedPool.value);
+    const params = { cloudServerName, month, ...currentFilters.value };
 
     try {
       // TODO: 替换为真实接口
-      const efficiencyRes = await mockFetchEfficiency({ cloudServerName, month });
+      const efficiencyRes = await mockFetchEfficiency(params);
       const parsed = parseEfficiencyResponse(efficiencyRes);
       if (!parsed) {
         resetState();
@@ -211,7 +214,7 @@ export function useCommonComputerPower() {
       const { list: efficiencyList } = parsed;
 
       // TODO: 替换为真实接口
-      const operateRes = await mockFetchOperate({ cloudServerName, month });
+      const operateRes = await mockFetchOperate(params);
       const { forbidden: isForbidden, map: operateMap, avgRangeList: resAvgRangeList } = buildOperateMap(operateRes);
       forbidden.value = isForbidden;
       avgRangeList.value = resAvgRangeList;
@@ -228,7 +231,7 @@ export function useCommonComputerPower() {
   }
 
   const { date: currentMonth } = storeToRefs(useCurrentDate());
-  watch([selectedPool, currentMonth], ([, month]) => fetchData(month));
+  watch([selectedPool, currentMonth], ([, month]) => fetchData(month, currentFilters.value));
 
   return {
     data,
