@@ -90,6 +90,10 @@ function getResourceFamily(resourceType) {
   return match ? match[0] : resourceType;
 }
 
+function getResourceSeries(resourceType) {
+  return getResourceFamily(resourceType);
+}
+
 function getResourceGeneration(resourceType) {
   if (!resourceType || resourceType === UNKNOWN_RESOURCE) return UNKNOWN_RESOURCE;
   const parts = String(resourceType).split("-");
@@ -119,6 +123,7 @@ function parseFilterMeta(item) {
   return {
     region,
     az,
+    resourceSeries: getResourceSeries(resourceType),
     resourceFamily: getResourceFamily(resourceType),
     resourceGeneration: getResourceGeneration(resourceType),
     resourceType,
@@ -126,9 +131,13 @@ function parseFilterMeta(item) {
 }
 
 function buildResourceTree(items) {
-  const familyMap = new Map();
+  const seriesMap = new Map();
   items.forEach((item) => {
     const meta = parseFilterMeta(item);
+    if (!seriesMap.has(meta.resourceSeries)) {
+      seriesMap.set(meta.resourceSeries, new Map());
+    }
+    const familyMap = seriesMap.get(meta.resourceSeries);
     if (!familyMap.has(meta.resourceFamily)) {
       familyMap.set(meta.resourceFamily, new Map());
     }
@@ -139,11 +148,14 @@ function buildResourceTree(items) {
     generationMap.get(meta.resourceGeneration).set(meta.resourceType, option(meta.resourceType));
   });
 
-  return Array.from(familyMap.entries()).map(([family, generationMap]) => ({
-    ...option(family),
-    children: Array.from(generationMap.entries()).map(([generation, typeMap]) => ({
-      ...option(generation),
-      children: Array.from(typeMap.values()),
+  return Array.from(seriesMap.entries()).map(([series, familyMap]) => ({
+    ...option(series),
+    children: Array.from(familyMap.entries()).map(([family, generationMap]) => ({
+      ...option(family),
+      children: Array.from(generationMap.entries()).map(([generation, typeMap]) => ({
+        ...option(generation),
+        children: Array.from(typeMap.values()),
+      })),
     })),
   }));
 }
@@ -177,7 +189,11 @@ const filterOptions = computed(() => ({
 }));
 
 function flattenResourceGenerations(tree) {
-  return tree.flatMap((family) => family.children ?? []);
+  return flattenResourceFamilies(tree).flatMap((family) => family.children ?? []);
+}
+
+function flattenResourceFamilies(tree) {
+  return tree.flatMap((series) => series.children ?? []);
 }
 
 function flattenResourceTypes(tree) {
@@ -189,7 +205,8 @@ function createDefaultFilterValue(options) {
   return {
     regions: (options.regions ?? []).map((item) => item.value),
     azs: (options.azs ?? []).map((item) => item.value),
-    resourceFamilies: resourceTree.map((item) => item.value),
+    resourceSeries: resourceTree.map((item) => item.value),
+    resourceFamilies: flattenResourceFamilies(resourceTree).map((item) => item.value),
     resourceGenerations: flattenResourceGenerations(resourceTree).map((item) => item.value),
     resourceTypes: flattenResourceTypes(resourceTree).map((item) => item.value),
   };
@@ -203,12 +220,14 @@ function reconcileFilterValue(value, options) {
     const valid = (items ?? []).filter((item) => validValues.has(item));
     return Array.isArray(items) ? valid : defaultItems;
   };
+  const families = flattenResourceFamilies(options.resourceTree ?? []);
   const generations = flattenResourceGenerations(options.resourceTree ?? []);
   const types = flattenResourceTypes(options.resourceTree ?? []);
   return {
     regions: keep(value.regions, options.regions ?? [], fallback.regions),
     azs: keep(value.azs, options.azs ?? [], fallback.azs),
-    resourceFamilies: keep(value.resourceFamilies, options.resourceTree ?? [], fallback.resourceFamilies),
+    resourceSeries: keep(value.resourceSeries, options.resourceTree ?? [], fallback.resourceSeries),
+    resourceFamilies: keep(value.resourceFamilies, families, fallback.resourceFamilies),
     resourceGenerations: keep(value.resourceGenerations, generations, fallback.resourceGenerations),
     resourceTypes: keep(value.resourceTypes, types, fallback.resourceTypes),
   };
@@ -247,6 +266,7 @@ function passesFilterControls(item) {
   return (
     value.regions.includes(meta.region) &&
     value.azs.includes(meta.az) &&
+    value.resourceSeries.includes(meta.resourceSeries) &&
     value.resourceFamilies.includes(meta.resourceFamily) &&
     value.resourceGenerations.includes(meta.resourceGeneration) &&
     value.resourceTypes.includes(meta.resourceType)
