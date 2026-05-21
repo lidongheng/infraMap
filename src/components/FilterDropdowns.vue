@@ -230,6 +230,7 @@ const resourceSnapshot = ref(getResourceValue());
 const activeFamily = ref('');
 const activeGeneration = ref('');
 let syncingFromModel = false;
+let syncingResourceCascade = false;
 
 const filteredRegionOptions = computed(() => {
   const keyword = regionKeyword.value.trim().toLowerCase();
@@ -269,12 +270,29 @@ const resourceSummary = computed(() => {
 });
 
 watch(resourceFamiliesValue, () => {
+  if (syncingFromModel) return;
+  syncingResourceCascade = true;
   syncByVisibleOptions();
-});
+  syncingResourceCascade = false;
+  emitCurrentValue();
+}, { flush: 'sync' });
 
 watch(resourceGenerationsValue, () => {
+  if (syncingFromModel) return;
+  if (syncingResourceCascade) {
+    syncTypesByVisibleOptions();
+    return;
+  }
+  syncingResourceCascade = true;
   syncTypesByVisibleOptions();
-});
+  syncingResourceCascade = false;
+  emitCurrentValue();
+}, { flush: 'sync' });
+
+watch(resourceTypesValue, () => {
+  if (syncingFromModel || syncingResourceCascade) return;
+  emitCurrentValue();
+}, { deep: true, flush: 'sync' });
 
 watch([regionValue, azValue], () => {
   emitCurrentValue();
@@ -464,8 +482,11 @@ function getOptionsByType(type) {
 }
 
 function cancelResource() {
+  syncingFromModel = true;
   setResourceValue(resourceSnapshot.value);
+  syncingFromModel = false;
   resourceVisible.value = false;
+  emitCurrentValue();
 }
 
 function confirmResource() {

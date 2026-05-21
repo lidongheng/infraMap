@@ -59,7 +59,7 @@ const props = defineProps({
   collapsible: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["bubble-click", "visible-change", "collapse-change"]);
+const emit = defineEmits(["bubble-click", "visible-change", "collapse-change", "filter-change"]);
 
 const collapsed = ref(false);
 
@@ -159,10 +159,21 @@ function uniqueOptions(items, getter) {
   return Array.from(map.values());
 }
 
+const collectedFilterItems = ref([]);
+
+function mergeFilterItems(items) {
+  const map = new Map();
+  [...collectedFilterItems.value, ...items].forEach((item) => {
+    const key = item.azName || item.name;
+    if (key) map.set(key, item);
+  });
+  collectedFilterItems.value = Array.from(map.values());
+}
+
 const filterOptions = computed(() => ({
-  regions: uniqueOptions(props.data, (item) => parseFilterMeta(item).region),
-  azs: uniqueOptions(props.data, (item) => parseFilterMeta(item).az),
-  resourceTree: buildResourceTree(props.data),
+  regions: uniqueOptions(collectedFilterItems.value, (item) => parseFilterMeta(item).region),
+  azs: uniqueOptions(collectedFilterItems.value, (item) => parseFilterMeta(item).az),
+  resourceTree: buildResourceTree(collectedFilterItems.value),
 }));
 
 function flattenResourceGenerations(tree) {
@@ -263,6 +274,7 @@ function toggleTier(tierIdx) {
 function onFilterChange(value) {
   filterValue.value = reconcileFilterValue(value, filterOptions.value);
   filterInitialized.value = true;
+  emit("filter-change", { ...filterValue.value });
   emitVisibleChange();
   refreshChart();
 }
@@ -282,6 +294,14 @@ watch(
     refreshChart();
   },
   { deep: true }
+);
+
+watch(
+  () => props.data,
+  (data) => {
+    mergeFilterItems(data ?? []);
+  },
+  { deep: true, immediate: true }
 );
 
 watch(
