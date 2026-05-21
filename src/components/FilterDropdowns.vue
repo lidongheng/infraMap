@@ -88,7 +88,7 @@
         v-model:visible="resourceVisible"
         placement="bottom-start"
         trigger="click"
-        :width="760"
+        :width="980"
         :show-arrow="false"
         popper-class="filter-popper"
       >
@@ -101,12 +101,38 @@
         <div class="dropdown-panel resource-panel">
           <div class="resource-columns">
             <div class="resource-column">
+              <div class="column-title">资源系列</div>
+              <div class="resource-scroll">
+                <label class="resource-row checked-row">
+                  <el-checkbox
+                    :model-value="isAllSelected(resourceSeriesValue, resourceSeries)"
+                    :indeterminate="isIndeterminate(resourceSeriesValue, resourceSeries)"
+                    @change="checked => toggleAll('series', checked)"
+                  />
+                  <span>全部</span>
+                  <el-icon><ArrowRight /></el-icon>
+                </label>
+                <el-checkbox-group v-model="resourceSeriesValue">
+                  <label
+                    v-for="item in resourceSeries"
+                    :key="item.value"
+                    :class="['resource-row', { active: activeSeries === item.value }]"
+                    @mouseenter="activeSeries = item.value"
+                  >
+                    <el-checkbox :label="item.value">{{ item.label }}</el-checkbox>
+                    <el-icon><ArrowRight /></el-icon>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
+
+            <div class="resource-column">
               <div class="column-title">资源族</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
-                    :model-value="isAllSelected(resourceFamiliesValue, resourceFamilies)"
-                    :indeterminate="isIndeterminate(resourceFamiliesValue, resourceFamilies)"
+                    :model-value="isAllSelected(resourceFamiliesValue, visibleResourceFamilies)"
+                    :indeterminate="isIndeterminate(resourceFamiliesValue, visibleResourceFamilies)"
                     @change="checked => toggleAll('family', checked)"
                   />
                   <span>全部</span>
@@ -114,7 +140,7 @@
                 </label>
                 <el-checkbox-group v-model="resourceFamiliesValue">
                   <label
-                    v-for="item in resourceFamilies"
+                    v-for="item in visibleResourceFamilies"
                     :key="item.value"
                     :class="['resource-row', { active: activeFamily === item.value }]"
                     @mouseenter="activeFamily = item.value"
@@ -214,19 +240,27 @@ const regionKeyword = ref('');
 const regionOptions = computed(() => normalizeOptions(props.options?.regions));
 const azOptions = computed(() => normalizeOptions(props.options?.azs));
 const resourceTree = computed(() => normalizeResourceTree(props.options?.resourceTree));
-const resourceFamilies = computed(() => resourceTree.value.map(({ label, value }) => ({ label, value })));
-const allResourceGenerations = computed(() => getUniqueOptions(resourceTree.value.flatMap(item => item.children ?? [])));
-const allResourceTypes = computed(() => getUniqueOptions(
+const resourceSeries = computed(() => resourceTree.value.map(({ label, value }) => ({ label, value })));
+const allResourceFamilies = computed(() => getUniqueOptions(resourceTree.value.flatMap(item => item.children ?? [])));
+const allResourceGenerations = computed(() => getUniqueOptions(
   resourceTree.value.flatMap(item => item.children ?? []).flatMap(item => item.children ?? []),
+));
+const allResourceTypes = computed(() => getUniqueOptions(
+  resourceTree.value
+    .flatMap(item => item.children ?? [])
+    .flatMap(item => item.children ?? [])
+    .flatMap(item => item.children ?? []),
 ));
 
 const regionValue = ref([]);
 const azValue = ref([]);
+const resourceSeriesValue = ref([]);
 const resourceFamiliesValue = ref([]);
 const resourceGenerationsValue = ref([]);
 const resourceTypesValue = ref([]);
 const resourceSnapshot = ref(getResourceValue());
 
+const activeSeries = ref('');
 const activeFamily = ref('');
 const activeGeneration = ref('');
 let syncingFromModel = false;
@@ -240,18 +274,32 @@ const filteredRegionOptions = computed(() => {
   return regionOptions.value.filter(item => item.label.toLowerCase().includes(keyword));
 });
 
+const visibleResourceFamilies = computed(() => {
+  const seriesSet = new Set(resourceSeriesValue.value);
+  const families = resourceTree.value
+    .filter(item => seriesSet.has(item.value))
+    .flatMap(item => item.children ?? []);
+  return getUniqueOptions(families);
+});
+
 const visibleResourceGenerations = computed(() => {
+  const seriesSet = new Set(resourceSeriesValue.value);
   const familySet = new Set(resourceFamiliesValue.value);
   const generations = resourceTree.value
+    .filter(item => seriesSet.has(item.value))
+    .flatMap(item => item.children ?? [])
     .filter(item => familySet.has(item.value))
     .flatMap(item => item.children ?? []);
   return getUniqueOptions(generations);
 });
 
 const visibleResourceTypes = computed(() => {
+  const seriesSet = new Set(resourceSeriesValue.value);
   const familySet = new Set(resourceFamiliesValue.value);
   const generationSet = new Set(resourceGenerationsValue.value);
   const types = resourceTree.value
+    .filter(item => seriesSet.has(item.value))
+    .flatMap(item => item.children ?? [])
     .filter(item => familySet.has(item.value))
     .flatMap(item => item.children ?? [])
     .filter(item => generationSet.has(item.value))
@@ -261,16 +309,29 @@ const visibleResourceTypes = computed(() => {
 
 const resourceSummary = computed(() => {
   const values = [
+    ...resourceSeriesValue.value,
     ...resourceFamiliesValue.value,
     ...resourceGenerationsValue.value,
     ...resourceTypesValue.value,
   ];
-  const total = resourceFamilies.value.length + allResourceGenerations.value.length + allResourceTypes.value.length;
+  const total = resourceSeries.value.length + allResourceFamilies.value.length + allResourceGenerations.value.length + allResourceTypes.value.length;
   return values.length === total ? '全部' : `已选 ${values.length} 项`;
 });
 
+watch(resourceSeriesValue, () => {
+  if (syncingFromModel) return;
+  syncingResourceCascade = true;
+  syncFamiliesByVisibleOptions();
+  syncingResourceCascade = false;
+  emitCurrentValue();
+}, { flush: 'sync' });
+
 watch(resourceFamiliesValue, () => {
   if (syncingFromModel) return;
+  if (syncingResourceCascade) {
+    syncByVisibleOptions();
+    return;
+  }
   syncingResourceCascade = true;
   syncByVisibleOptions();
   syncingResourceCascade = false;
@@ -336,11 +397,17 @@ function normalizeResourceTree(tree) {
   return (tree ?? []).map(family => ({
     label: family?.label ?? family?.value ?? '',
     value: family?.value ?? family?.label ?? '',
-    children: normalizeOptions(family?.children).map(generation => {
-      const rawGeneration = (family?.children ?? []).find(item => (item?.value ?? item?.label) === generation.value) ?? {};
+    children: normalizeOptions(family?.children).map(resourceFamily => {
+      const rawFamily = (family?.children ?? []).find(item => (item?.value ?? item?.label) === resourceFamily.value) ?? {};
       return {
-        ...generation,
-        children: normalizeOptions(rawGeneration.children),
+        ...resourceFamily,
+        children: normalizeOptions(rawFamily.children).map(generation => {
+          const rawGeneration = (rawFamily.children ?? []).find(item => (item?.value ?? item?.label) === generation.value) ?? {};
+          return {
+            ...generation,
+            children: normalizeOptions(rawGeneration.children),
+          };
+        }),
       };
     }),
   })).filter(item => item.value);
@@ -350,7 +417,8 @@ function allSelectedValue() {
   return {
     regions: regionOptions.value.map(item => item.value),
     azs: azOptions.value.map(item => item.value),
-    resourceFamilies: resourceFamilies.value.map(item => item.value),
+    resourceSeries: resourceSeries.value.map(item => item.value),
+    resourceFamilies: allResourceFamilies.value.map(item => item.value),
     resourceGenerations: allResourceGenerations.value.map(item => item.value),
     resourceTypes: allResourceTypes.value.map(item => item.value),
   };
@@ -362,11 +430,13 @@ function applyModelValue(value) {
   const next = value ?? fallback;
   regionValue.value = keepValid(next.regions, regionOptions.value, fallback.regions);
   azValue.value = keepValid(next.azs, azOptions.value, fallback.azs);
-  resourceFamiliesValue.value = keepValid(next.resourceFamilies, resourceFamilies.value, fallback.resourceFamilies);
+  resourceSeriesValue.value = keepValid(next.resourceSeries, resourceSeries.value, fallback.resourceSeries);
+  resourceFamiliesValue.value = keepValid(next.resourceFamilies, allResourceFamilies.value, fallback.resourceFamilies);
   resourceGenerationsValue.value = keepValid(next.resourceGenerations, allResourceGenerations.value, fallback.resourceGenerations);
   resourceTypesValue.value = keepValid(next.resourceTypes, allResourceTypes.value, fallback.resourceTypes);
   resourceSnapshot.value = getResourceValue();
-  activeFamily.value = resourceFamilies.value[0]?.value ?? '';
+  activeSeries.value = resourceSeries.value[0]?.value ?? '';
+  activeFamily.value = allResourceFamilies.value[0]?.value ?? '';
   activeGeneration.value = allResourceGenerations.value[0]?.value ?? '';
   syncingFromModel = false;
 }
@@ -384,6 +454,7 @@ function emitCurrentValue() {
   const value = {
     regions: [...regionValue.value],
     azs: [...azValue.value],
+    resourceSeries: [...resourceSeriesValue.value],
     resourceFamilies: [...resourceFamiliesValue.value],
     resourceGenerations: [...resourceGenerationsValue.value],
     resourceTypes: [...resourceTypesValue.value],
@@ -405,6 +476,12 @@ function getUniqueOptions(options) {
   return Array.from(map.values());
 }
 
+function syncFamiliesByVisibleOptions() {
+  const familyValues = visibleResourceFamilies.value.map(item => item.value);
+  resourceFamiliesValue.value = resourceFamiliesValue.value.filter(item => familyValues.includes(item));
+  syncByVisibleOptions();
+}
+
 function syncByVisibleOptions() {
   const generationValues = visibleResourceGenerations.value.map(item => item.value);
   resourceGenerationsValue.value = resourceGenerationsValue.value.filter(item => generationValues.includes(item));
@@ -418,6 +495,7 @@ function syncTypesByVisibleOptions() {
 
 function getResourceValue() {
   return {
+    series: [...resourceSeriesValue.value],
     families: [...resourceFamiliesValue.value],
     generations: [...resourceGenerationsValue.value],
     types: [...resourceTypesValue.value],
@@ -425,6 +503,7 @@ function getResourceValue() {
 }
 
 function setResourceValue(value) {
+  resourceSeriesValue.value = [...(value.series ?? [])];
   resourceFamiliesValue.value = [...value.families];
   resourceGenerationsValue.value = [...value.generations];
   resourceTypesValue.value = [...value.types];
@@ -459,6 +538,9 @@ function toggleAll(type, checked) {
   if (type === 'az') {
     azValue.value = values;
   }
+  if (type === 'series') {
+    resourceSeriesValue.value = values;
+  }
   if (type === 'family') {
     resourceFamiliesValue.value = values;
   }
@@ -474,7 +556,8 @@ function getOptionsByType(type) {
   const map = {
     region: filteredRegionOptions.value,
     az: azOptions.value,
-    family: resourceFamilies.value,
+    series: resourceSeries.value,
+    family: visibleResourceFamilies.value,
     generation: visibleResourceGenerations.value,
     type: visibleResourceTypes.value,
   };
@@ -642,12 +725,12 @@ function confirmResource() {
 }
 
 .resource-panel {
-  width: 720px;
+  width: 940px;
 }
 
 .resource-columns {
   display: grid;
-  grid-template-columns: repeat(3, minmax(190px, 1fr));
+  grid-template-columns: repeat(4, minmax(190px, 1fr));
   gap: 12px;
   padding: 10px 14px 8px;
 }
