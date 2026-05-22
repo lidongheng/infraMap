@@ -104,7 +104,7 @@ function getResourceGeneration(resourceType) {
 function parseFilterMeta(item) {
   const rawName = String(item.azName || item.name || "").trim();
   const azMatch = rawName.match(/\bAZ\d+\b/i);
-  const az = azMatch ? azMatch[0].toUpperCase() : UNKNOWN_RESOURCE;
+  const az = rawName || UNKNOWN_RESOURCE;
   let region = rawName || UNKNOWN_RESOURCE;
   let resourceType = UNKNOWN_RESOURCE;
 
@@ -242,6 +242,24 @@ function reconcileFilterValue(value, options) {
     resourceGenerations: keep(value.resourceGenerations, generations, fallback.resourceGenerations),
     resourceTypes: keep(value.resourceTypes, types, fallback.resourceTypes),
   };
+}
+
+function fillNewFilterGroups(value, options, oldOptions = {}) {
+  const fallback = createDefaultFilterValue(options);
+  const withDefaults = { ...value };
+  if ((oldOptions.regions ?? []).length === 0 && (options.regions ?? []).length > 0) {
+    withDefaults.regions = fallback.regions;
+  }
+  if ((oldOptions.azs ?? []).length === 0 && (options.azs ?? []).length > 0) {
+    withDefaults.azs = fallback.azs;
+  }
+  if ((oldOptions.resourceTree ?? []).length === 0 && (options.resourceTree ?? []).length > 0) {
+    withDefaults.resourceSeries = fallback.resourceSeries;
+    withDefaults.resourceFamilies = fallback.resourceFamilies;
+    withDefaults.resourceGenerations = fallback.resourceGenerations;
+    withDefaults.resourceTypes = fallback.resourceTypes;
+  }
+  return withDefaults;
 }
 
 function parseOptionObj(item) {
@@ -407,9 +425,10 @@ watch(
   (options, oldOptions) => {
     const hadOptions = hasFilterOptions(oldOptions ?? {});
     const hasOptions = hasFilterOptions(options);
-    filterValue.value = !hadOptions && hasOptions
+    const nextValue = !hadOptions && hasOptions
       ? createDefaultFilterValue(options)
-      : reconcileFilterValue(filterValue.value, options);
+      : fillNewFilterGroups(filterValue.value, options, oldOptions);
+    filterValue.value = reconcileFilterValue(nextValue, options);
     filterInitialized.value = hasOptions;
     emitVisibleChange();
     refreshChart();
