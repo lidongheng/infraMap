@@ -292,13 +292,28 @@ function mapSelectedSubmitValues(selectedValues, optionItems, keys) {
     .filter(Boolean);
 }
 
+function flattenResourceTypesWithSeries(tree) {
+  return (tree ?? []).flatMap((series) => {
+    const resourceSeries = getSubmitValue(series, ["resourceSeries", "level0"]);
+    return (series.children ?? []).flatMap((family) =>
+      (family.children ?? []).flatMap((generation) =>
+        (generation.children ?? []).map((type) => ({
+          item: type,
+          resourceSeries,
+        })),
+      ),
+    );
+  });
+}
+
 function buildResourceTypeList(selectedValues, resourceTree) {
   const selectedSet = new Set(selectedValues ?? []);
-  return flattenResourceTypes(resourceTree)
-    .filter((item) => selectedSet.has(getFilterOptionValue(item)))
-    .map((item) => {
+  return flattenResourceTypesWithSeries(resourceTree)
+    .filter(({ item }) => selectedSet.has(getFilterOptionValue(item)))
+    .map(({ item, resourceSeries }) => {
       const obj = parseOptionObj(item) ?? {};
       return {
+        resourceSeries,
         resourceFamily: obj.resourceFamily ?? "",
         resourceVer: obj.resourceVer ?? "",
         resourceType: obj.resourceType ?? getSubmitValue(item, ["resourceType"]),
