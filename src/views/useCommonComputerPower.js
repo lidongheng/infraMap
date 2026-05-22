@@ -183,6 +183,14 @@ function toChartData(mergedList) {
   });
 }
 
+function normalizeFilterParams(filters = {}) {
+  return {
+    regionName: filters.regionName ?? "",
+    azName: filters.azName ?? "",
+    resourceTypeList: Array.isArray(filters.resourceTypeList) ? filters.resourceTypeList : [],
+  };
+}
+
 /** 通用算力数据 Hook */
 export function useCommonComputerPower() {
   const data = ref([]);
@@ -225,10 +233,16 @@ export function useCommonComputerPower() {
     loading.value = true;
     error.value = null;
     forbidden.value = false;
-    currentFilters.value = filters ?? {};
+    currentFilters.value = normalizeFilterParams(filters);
     const cloudServerName = keepEnglishOnly(selectedPool.value);
     syncAzOptionsContext(cloudServerName, month);
-    const params = { cloudServerName, month, ...currentFilters.value };
+    const params = {
+      cloudServerName,
+      month,
+      regionName: currentFilters.value.regionName,
+      azName: currentFilters.value.azName,
+      resourceTypeList: currentFilters.value.resourceTypeList,
+    };
 
     try {
       if (!directoryTreeList.value.length) {
