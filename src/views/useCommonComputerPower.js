@@ -189,6 +189,7 @@ export function useCommonComputerPower() {
   const forbidden = ref(false);
   const rawData = ref(null);
   const azOptions = ref([]);
+  const azOptionsContextKey = ref("");
   const currentFilters = ref({});
   const { directoryTreeList, fetchDirectoryTree } = useDirectoryTree();
 
@@ -196,7 +197,19 @@ export function useCommonComputerPower() {
     data.value = [];
     avgRangeList.value = [];
     rawData.value = null;
-    azOptions.value = [];
+  }
+
+  function syncAzOptionsContext(cloudServerName, month) {
+    const nextKey = `${cloudServerName ?? ""}__${month ?? ""}`;
+    if (azOptionsContextKey.value !== nextKey) {
+      azOptionsContextKey.value = nextKey;
+      azOptions.value = [];
+    }
+  }
+
+  function cacheInitialAzOptions(efficiencyList) {
+    if (azOptions.value.length) return;
+    azOptions.value = buildAzOptionsFromEfficiencyList(efficiencyList, ["azName"]);
   }
 
   async function fetchData(month, filters = currentFilters.value) {
@@ -205,6 +218,7 @@ export function useCommonComputerPower() {
     forbidden.value = false;
     currentFilters.value = filters ?? {};
     const cloudServerName = keepEnglishOnly(selectedPool.value);
+    syncAzOptionsContext(cloudServerName, month);
     const params = { cloudServerName, month, ...currentFilters.value };
 
     try {
@@ -221,7 +235,7 @@ export function useCommonComputerPower() {
       }
 
       const { list: efficiencyList } = parsed;
-      azOptions.value = buildAzOptionsFromEfficiencyList(efficiencyList, ["azName"]);
+      cacheInitialAzOptions(efficiencyList);
 
       // TODO: 替换为真实接口
       const operateRes = await mockFetchOperate(params);
