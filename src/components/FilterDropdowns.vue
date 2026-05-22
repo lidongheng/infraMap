@@ -240,7 +240,7 @@ const regionKeyword = ref('');
 const regionOptions = computed(() => normalizeOptions(props.options?.regions));
 const azOptions = computed(() => normalizeOptions(props.options?.azs));
 const resourceTree = computed(() => normalizeResourceTree(props.options?.resourceTree));
-const resourceSeries = computed(() => resourceTree.value.map(({ label, value }) => ({ label, value })));
+const resourceSeries = computed(() => resourceTree.value.map(toOptionMeta));
 const allResourceFamilies = computed(() => getUniqueOptions(resourceTree.value.flatMap(item => item.children ?? [])));
 const allResourceGenerations = computed(() => getUniqueOptions(
   resourceTree.value.flatMap(item => item.children ?? []).flatMap(item => item.children ?? []),
@@ -384,33 +384,39 @@ watch(
 function normalizeOptions(options) {
   return (options ?? []).map(item => {
     if (typeof item === 'string') {
-      return { label: item, value: item };
+      return { label: item, value: item, name: item };
     }
-    return {
-      label: item?.label ?? item?.value ?? item?.name ?? '',
-      value: item?.value ?? item?.label ?? item?.name ?? '',
-    };
+    return normalizeNode(item);
   }).filter(item => item.value);
 }
 
 function normalizeResourceTree(tree) {
-  return (tree ?? []).map(family => ({
-    label: family?.label ?? family?.value ?? '',
-    value: family?.value ?? family?.label ?? '',
-    children: normalizeOptions(family?.children).map(resourceFamily => {
-      const rawFamily = (family?.children ?? []).find(item => (item?.value ?? item?.label) === resourceFamily.value) ?? {};
-      return {
-        ...resourceFamily,
-        children: normalizeOptions(rawFamily.children).map(generation => {
-          const rawGeneration = (rawFamily.children ?? []).find(item => (item?.value ?? item?.label) === generation.value) ?? {};
-          return {
-            ...generation,
-            children: normalizeOptions(rawGeneration.children),
-          };
-        }),
-      };
-    }),
-  })).filter(item => item.value);
+  return (tree ?? []).map(normalizeNode).filter(item => item.value);
+}
+
+function normalizeNode(item) {
+  const label = item?.label ?? item?.name ?? item?.value ?? '';
+  const value = item?.objStr ?? item?.value ?? item?.name ?? item?.label ?? '';
+  return {
+    label,
+    value,
+    name: item?.name ?? label,
+    level: item?.level,
+    obj: item?.obj,
+    objStr: item?.objStr,
+    children: normalizeOptions(item?.children),
+  };
+}
+
+function toOptionMeta(item) {
+  return {
+    label: item.label,
+    value: item.value,
+    name: item.name,
+    level: item.level,
+    obj: item.obj,
+    objStr: item.objStr,
+  };
 }
 
 function allSelectedValue() {
@@ -467,10 +473,7 @@ function getUniqueOptions(options) {
   const map = new Map();
   (options ?? []).forEach(item => {
     if (!map.has(item.value)) {
-      map.set(item.value, {
-        label: item.label,
-        value: item.value,
-      });
+      map.set(item.value, toOptionMeta(item));
     }
   });
   return Array.from(map.values());
