@@ -387,8 +387,8 @@ function normalizeOptions(options) {
       return { label: item, value: item };
     }
     return {
-      label: item?.label ?? item?.value ?? '',
-      value: item?.value ?? item?.label ?? '',
+      label: item?.label ?? item?.value ?? item?.name ?? '',
+      value: item?.value ?? item?.label ?? item?.name ?? '',
     };
   }).filter(item => item.value);
 }

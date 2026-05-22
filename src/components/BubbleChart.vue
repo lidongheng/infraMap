@@ -57,6 +57,7 @@ const props = defineProps({
   initialVisibleTiers: { type: Array, default: () => [false, true, true, true] },
   /** 是否显示收起/展开按钮 */
   collapsible: { type: Boolean, default: false },
+  filterOptions: { type: Object, default: null },
 });
 
 const emit = defineEmits(["bubble-click", "visible-change", "collapse-change", "filter-change"]);
@@ -182,10 +183,16 @@ function mergeFilterItems(items) {
   collectedFilterItems.value = Array.from(map.values());
 }
 
-const filterOptions = computed(() => ({
+const internalFilterOptions = computed(() => ({
   regions: uniqueOptions(collectedFilterItems.value, (item) => parseFilterMeta(item).region),
   azs: uniqueOptions(collectedFilterItems.value, (item) => parseFilterMeta(item).az),
   resourceTree: buildResourceTree(collectedFilterItems.value),
+}));
+
+const filterOptions = computed(() => ({
+  regions: props.filterOptions?.regions ?? internalFilterOptions.value.regions,
+  azs: props.filterOptions?.azs ?? internalFilterOptions.value.azs,
+  resourceTree: props.filterOptions?.resourceTree ?? internalFilterOptions.value.resourceTree,
 }));
 
 function flattenResourceGenerations(tree) {
