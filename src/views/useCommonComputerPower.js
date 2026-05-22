@@ -3,6 +3,8 @@ import { storeToRefs } from "pinia";
 import { applyBubbleConfig, SIZE_TIERS } from "./commonComputerPowerConfig";
 import { selectedPool } from "./useChartOption";
 import { useCurrentDate } from "./useCurrentDate";
+import { useDirectoryTree } from "./useDirectoryTree";
+import { buildAzOptionsFromEfficiencyList } from "./bubbleFilterOptions";
 
 /**
  * 通用算力散点图 Hook
@@ -186,12 +188,15 @@ export function useCommonComputerPower() {
   const error = ref(null);
   const forbidden = ref(false);
   const rawData = ref(null);
+  const azOptions = ref([]);
   const currentFilters = ref({});
+  const { directoryTreeList, fetchDirectoryTree } = useDirectoryTree();
 
   function resetState() {
     data.value = [];
     avgRangeList.value = [];
     rawData.value = null;
+    azOptions.value = [];
   }
 
   async function fetchData(month, filters = currentFilters.value) {
@@ -203,6 +208,10 @@ export function useCommonComputerPower() {
     const params = { cloudServerName, month, ...currentFilters.value };
 
     try {
+      if (!directoryTreeList.value.length) {
+        await fetchDirectoryTree({ cloudServerName });
+      }
+
       // TODO: 替换为真实接口
       const efficiencyRes = await mockFetchEfficiency(params);
       const parsed = parseEfficiencyResponse(efficiencyRes);
@@ -212,6 +221,7 @@ export function useCommonComputerPower() {
       }
 
       const { list: efficiencyList } = parsed;
+      azOptions.value = buildAzOptionsFromEfficiencyList(efficiencyList, ["azName"]);
 
       // TODO: 替换为真实接口
       const operateRes = await mockFetchOperate(params);
@@ -240,6 +250,8 @@ export function useCommonComputerPower() {
     error,
     forbidden,
     rawData,
+    azOptions,
+    directoryTreeList,
     fetchData,
   };
 }

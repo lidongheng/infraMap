@@ -13,6 +13,7 @@
     :trafficLights="trafficLightRules"
     :trafficLightKeys="trafficLightKeys"
     :yTicks="chartYTicks"
+    :filterOptions="bubbleFilterOptions"
     @bubble-click="(e) => emit('bubble-click', e)"
     @visible-change="onVisibleChange"
     @filter-change="onFilterChange"
@@ -52,7 +53,7 @@ const props = defineProps({
 
 const emit = defineEmits(["bubble-click", "visible-change"]);
 
-const { data, avgRangeList, forbidden, fetchData } = useCommonComputerPower();
+const { data, avgRangeList, forbidden, azOptions, directoryTreeList, fetchData } = useCommonComputerPower();
 const { date: currentMonth } = storeToRefs(useCurrentDate());
 
 const visibleTiers = ref([false, true, true, true]);
@@ -85,6 +86,11 @@ const { chartXRange, chartYRange, chartYTicks } = useBubbleAxisRange(
   props,
   mappedData
 );
+
+const bubbleFilterOptions = computed(() => ({
+  azs: azOptions.value,
+  resourceTree: directoryTreeList.value,
+}));
 
 onMounted(() => {
   fetchData(currentMonth.value, backendFilters.value);
