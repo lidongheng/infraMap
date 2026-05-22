@@ -308,14 +308,7 @@ const visibleResourceTypes = computed(() => {
 });
 
 const resourceSummary = computed(() => {
-  const values = [
-    ...resourceSeriesValue.value,
-    ...resourceFamiliesValue.value,
-    ...resourceGenerationsValue.value,
-    ...resourceTypesValue.value,
-  ];
-  const total = resourceSeries.value.length + allResourceFamilies.value.length + allResourceGenerations.value.length + allResourceTypes.value.length;
-  return values.length === total ? '全部' : `已选 ${values.length} 项`;
+  return `已选 ${resourceTypesValue.value.length} 项`;
 });
 
 watch(resourceSeriesValue, () => {
