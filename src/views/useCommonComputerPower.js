@@ -4,7 +4,10 @@ import { applyBubbleConfig, SIZE_TIERS } from "./commonComputerPowerConfig";
 import { selectedPool } from "./useChartOption";
 import { useCurrentDate } from "./useCurrentDate";
 import { useDirectoryTree } from "./useDirectoryTree";
-import { buildAzOptionsFromEfficiencyList } from "./bubbleFilterOptions";
+import {
+  buildAzOptionsFromEfficiencyList,
+  buildRegionOptionsFromEfficiencyList,
+} from "./bubbleFilterOptions";
 
 /**
  * 通用算力散点图 Hook
@@ -164,10 +167,10 @@ function mergeEfficiencyWithOperate(efficiencyList, operateMap) {
 /** 转换为散点图所需的数据格式 */
 function toChartData(mergedList) {
   return mergedList.map((item) => {
-    const regionName = item.azName.split("(").shift();
     const toPercent = (v) => (v != null ? v * 100 : null);
     return applyBubbleConfig({
-      name: regionName,
+      name: item.azName,
+      regionName: item.regionName || "",
       azName: item.azName,
       x: toPercent(item.useRate),
       y: toPercent(item.grossProfitRate),
@@ -188,8 +191,9 @@ export function useCommonComputerPower() {
   const error = ref(null);
   const forbidden = ref(false);
   const rawData = ref(null);
+  const regionOptions = ref([]);
   const azOptions = ref([]);
-  const azOptionsContextKey = ref("");
+  const locationOptionsContextKey = ref("");
   const currentFilters = ref({});
   const { directoryTreeList, fetchDirectoryTree } = useDirectoryTree();
 
@@ -201,15 +205,20 @@ export function useCommonComputerPower() {
 
   function syncAzOptionsContext(cloudServerName, month) {
     const nextKey = `${cloudServerName ?? ""}__${month ?? ""}`;
-    if (azOptionsContextKey.value !== nextKey) {
-      azOptionsContextKey.value = nextKey;
+    if (locationOptionsContextKey.value !== nextKey) {
+      locationOptionsContextKey.value = nextKey;
+      regionOptions.value = [];
       azOptions.value = [];
     }
   }
 
-  function cacheInitialAzOptions(efficiencyList) {
-    if (azOptions.value.length) return;
-    azOptions.value = buildAzOptionsFromEfficiencyList(efficiencyList, ["azName"]);
+  function cacheInitialLocationOptions(efficiencyList) {
+    if (!regionOptions.value.length) {
+      regionOptions.value = buildRegionOptionsFromEfficiencyList(efficiencyList, ["regionName"]);
+    }
+    if (!azOptions.value.length) {
+      azOptions.value = buildAzOptionsFromEfficiencyList(efficiencyList, ["azName"]);
+    }
   }
 
   async function fetchData(month, filters = currentFilters.value) {
@@ -235,7 +244,7 @@ export function useCommonComputerPower() {
       }
 
       const { list: efficiencyList } = parsed;
-      cacheInitialAzOptions(efficiencyList);
+      cacheInitialLocationOptions(efficiencyList);
 
       // TODO: 替换为真实接口
       const operateRes = await mockFetchOperate(params);
@@ -264,6 +273,7 @@ export function useCommonComputerPower() {
     error,
     forbidden,
     rawData,
+    regionOptions,
     azOptions,
     directoryTreeList,
     fetchData,

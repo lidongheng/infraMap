@@ -53,7 +53,7 @@ const props = defineProps({
 
 const emit = defineEmits(["bubble-click", "visible-change"]);
 
-const { data, avgRangeList, forbidden, azOptions, directoryTreeList, fetchData } = useCommonComputerPower();
+const { data, avgRangeList, forbidden, regionOptions, azOptions, directoryTreeList, fetchData } = useCommonComputerPower();
 const { date: currentMonth } = storeToRefs(useCurrentDate());
 
 const visibleTiers = ref([false, true, true, true]);
@@ -88,6 +88,7 @@ const { chartXRange, chartYRange, chartYTicks } = useBubbleAxisRange(
 );
 
 const bubbleFilterOptions = computed(() => ({
+  regions: regionOptions.value,
   azs: azOptions.value,
   resourceTree: directoryTreeList.value,
 }));

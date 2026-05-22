@@ -79,14 +79,13 @@ function toggleCollapse() {
 const el = ref(null);
 let chart = null;
 const visibleTiers = ref([...props.initialVisibleTiers]);
-const UNKNOWN_RESOURCE = "未标识";
 
 function option(label, value = label) {
   return { label, value };
 }
 
 function getResourceFamily(resourceType) {
-  if (!resourceType || resourceType === UNKNOWN_RESOURCE) return UNKNOWN_RESOURCE;
+  if (!resourceType) return "";
   const match = String(resourceType).match(/^[a-zA-Z]+/);
   return match ? match[0] : resourceType;
 }
@@ -96,7 +95,7 @@ function getResourceSeries(resourceType) {
 }
 
 function getResourceGeneration(resourceType) {
-  if (!resourceType || resourceType === UNKNOWN_RESOURCE) return UNKNOWN_RESOURCE;
+  if (!resourceType) return "";
   const parts = String(resourceType).split("-");
   return parts.length > 1 ? parts.slice(0, -1).join("-") : resourceType;
 }
@@ -104,21 +103,17 @@ function getResourceGeneration(resourceType) {
 function parseFilterMeta(item) {
   const rawName = String(item.azName || item.name || "").trim();
   const azMatch = rawName.match(/\bAZ\d+\b/i);
-  const az = rawName || UNKNOWN_RESOURCE;
-  let region = rawName || UNKNOWN_RESOURCE;
-  let resourceType = UNKNOWN_RESOURCE;
+  const az = rawName;
+  const region = item.regionName || "";
+  let resourceType = "";
 
   if (azMatch) {
-    region = rawName
-      .slice(0, azMatch.index)
-      .replace(/[-(\s]+$/g, "")
-      .trim() || UNKNOWN_RESOURCE;
     const rest = rawName
       .slice(azMatch.index + azMatch[0].length)
       .replace(/^\)+/, "")
       .replace(/^[-\s]+/, "")
       .trim();
-    resourceType = rest || UNKNOWN_RESOURCE;
+    resourceType = rest;
   }
 
   return {
