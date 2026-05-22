@@ -211,13 +211,18 @@ function getFilterOptionValue(item) {
 function createDefaultFilterValue(options) {
   const resourceTree = options.resourceTree ?? [];
   return {
-    regions: (options.regions ?? []).map(getFilterOptionValue),
-    azs: (options.azs ?? []).map(getFilterOptionValue),
+    regionName: (options.regions ?? []).map(getFilterOptionValue),
+    azName: (options.azs ?? []).map(getFilterOptionValue),
     resourceSeries: resourceTree.map(getFilterOptionValue),
-    resourceFamilies: flattenResourceFamilies(resourceTree).map(getFilterOptionValue),
-    resourceGenerations: flattenResourceGenerations(resourceTree).map(getFilterOptionValue),
-    resourceTypes: flattenResourceTypes(resourceTree).map(getFilterOptionValue),
+    resourceFamily: flattenResourceFamilies(resourceTree).map(getFilterOptionValue),
+    resourceVer: flattenResourceGenerations(resourceTree).map(getFilterOptionValue),
+    resourceType: flattenResourceTypes(resourceTree).map(getFilterOptionValue),
   };
+}
+
+function readFilterList(value, key, legacyKey) {
+  const list = value?.[key] ?? value?.[legacyKey];
+  return Array.isArray(list) ? list : null;
 }
 
 function reconcileFilterValue(value, options) {
@@ -232,12 +237,12 @@ function reconcileFilterValue(value, options) {
   const generations = flattenResourceGenerations(options.resourceTree ?? []);
   const types = flattenResourceTypes(options.resourceTree ?? []);
   return {
-    regions: keep(value.regions, options.regions ?? [], fallback.regions),
-    azs: keep(value.azs, options.azs ?? [], fallback.azs),
+    regionName: keep(readFilterList(value, "regionName", "regions"), options.regions ?? [], fallback.regionName),
+    azName: keep(readFilterList(value, "azName", "azs"), options.azs ?? [], fallback.azName),
     resourceSeries: keep(value.resourceSeries, options.resourceTree ?? [], fallback.resourceSeries),
-    resourceFamilies: keep(value.resourceFamilies, families, fallback.resourceFamilies),
-    resourceGenerations: keep(value.resourceGenerations, generations, fallback.resourceGenerations),
-    resourceTypes: keep(value.resourceTypes, types, fallback.resourceTypes),
+    resourceFamily: keep(readFilterList(value, "resourceFamily", "resourceFamilies"), families, fallback.resourceFamily),
+    resourceVer: keep(readFilterList(value, "resourceVer", "resourceGenerations"), generations, fallback.resourceVer),
+    resourceType: keep(readFilterList(value, "resourceType", "resourceTypes"), types, fallback.resourceType),
   };
 }
 
@@ -245,16 +250,16 @@ function fillNewFilterGroups(value, options, oldOptions = {}) {
   const fallback = createDefaultFilterValue(options);
   const withDefaults = { ...value };
   if ((oldOptions.regions ?? []).length === 0 && (options.regions ?? []).length > 0) {
-    withDefaults.regions = fallback.regions;
+    withDefaults.regionName = fallback.regionName;
   }
   if ((oldOptions.azs ?? []).length === 0 && (options.azs ?? []).length > 0) {
-    withDefaults.azs = fallback.azs;
+    withDefaults.azName = fallback.azName;
   }
   if ((oldOptions.resourceTree ?? []).length === 0 && (options.resourceTree ?? []).length > 0) {
     withDefaults.resourceSeries = fallback.resourceSeries;
-    withDefaults.resourceFamilies = fallback.resourceFamilies;
-    withDefaults.resourceGenerations = fallback.resourceGenerations;
-    withDefaults.resourceTypes = fallback.resourceTypes;
+    withDefaults.resourceFamily = fallback.resourceFamily;
+    withDefaults.resourceVer = fallback.resourceVer;
+    withDefaults.resourceType = fallback.resourceType;
   }
   return withDefaults;
 }
@@ -287,31 +292,27 @@ function mapSelectedSubmitValues(selectedValues, optionItems, keys) {
     .filter(Boolean);
 }
 
+function buildResourceTypeList(selectedValues, resourceTree) {
+  const selectedSet = new Set(selectedValues ?? []);
+  return flattenResourceTypes(resourceTree)
+    .filter((item) => selectedSet.has(getFilterOptionValue(item)))
+    .map((item) => {
+      const obj = parseOptionObj(item) ?? {};
+      return {
+        resourceFamily: obj.resourceFamily ?? "",
+        resourceVer: obj.resourceVer ?? "",
+        resourceType: obj.resourceType ?? getSubmitValue(item, ["resourceType"]),
+      };
+    })
+    .filter((item) => item.resourceType);
+}
+
 function buildBackendFilterValue(value, options) {
   const resourceTree = options.resourceTree ?? [];
   return {
-    regions: [...(value.regions ?? [])],
-    azs: [...(value.azs ?? [])],
-    resourceSeries: mapSelectedSubmitValues(
-      value.resourceSeries,
-      resourceTree,
-      ["resourceSeries", "level0"],
-    ),
-    resourceFamilies: mapSelectedSubmitValues(
-      value.resourceFamilies,
-      flattenResourceFamilies(resourceTree),
-      ["resourceFamily"],
-    ),
-    resourceGenerations: mapSelectedSubmitValues(
-      value.resourceGenerations,
-      flattenResourceGenerations(resourceTree),
-      ["resourceGeneration", "resourceVer"],
-    ),
-    resourceTypes: mapSelectedSubmitValues(
-      value.resourceTypes,
-      flattenResourceTypes(resourceTree),
-      ["resourceType"],
-    ),
+    regionName: mapSelectedSubmitValues(value.regionName, options.regions ?? [], ["regionName"]).join(","),
+    azName: mapSelectedSubmitValues(value.azName, options.azs ?? [], ["azName"]).join(","),
+    resourceTypeList: buildResourceTypeList(value.resourceType, resourceTree),
   };
 }
 
@@ -346,9 +347,11 @@ function passesFilterControls(item) {
   if (!filterInitialized.value) return true;
   const value = filterValue.value;
   const meta = parseFilterMeta(item);
+  const hasRegionOptions = (filterOptions.value.regions ?? []).length > 0;
+  const hasAzOptions = (filterOptions.value.azs ?? []).length > 0;
   const passesLocation =
-    value.regions.includes(meta.region) &&
-    value.azs.includes(meta.az);
+    (!hasRegionOptions || value.regionName.includes(meta.region)) &&
+    (!hasAzOptions || value.azName.includes(meta.az));
 
   if (!passesLocation) {
     return false;
@@ -358,11 +361,16 @@ function passesFilterControls(item) {
     return true;
   }
 
+  const hasResourceOptions = (filterOptions.value.resourceTree ?? []).length > 0;
+  if (!hasResourceOptions) {
+    return true;
+  }
+
   return (
     value.resourceSeries.includes(meta.resourceSeries) &&
-    value.resourceFamilies.includes(meta.resourceFamily) &&
-    value.resourceGenerations.includes(meta.resourceGeneration) &&
-    value.resourceTypes.includes(meta.resourceType)
+    value.resourceFamily.includes(meta.resourceFamily) &&
+    value.resourceVer.includes(meta.resourceGeneration) &&
+    value.resourceType.includes(meta.resourceType)
   );
 }
 

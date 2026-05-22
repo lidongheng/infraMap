@@ -421,25 +421,30 @@ function toOptionMeta(item) {
 
 function allSelectedValue() {
   return {
-    regions: regionOptions.value.map(item => item.value),
-    azs: azOptions.value.map(item => item.value),
+    regionName: regionOptions.value.map(item => item.value),
+    azName: azOptions.value.map(item => item.value),
     resourceSeries: resourceSeries.value.map(item => item.value),
-    resourceFamilies: allResourceFamilies.value.map(item => item.value),
-    resourceGenerations: allResourceGenerations.value.map(item => item.value),
-    resourceTypes: allResourceTypes.value.map(item => item.value),
+    resourceFamily: allResourceFamilies.value.map(item => item.value),
+    resourceVer: allResourceGenerations.value.map(item => item.value),
+    resourceType: allResourceTypes.value.map(item => item.value),
   };
+}
+
+function readModelList(value, key, legacyKey) {
+  const list = value?.[key] ?? value?.[legacyKey];
+  return Array.isArray(list) ? list : null;
 }
 
 function applyModelValue(value) {
   syncingFromModel = true;
   const fallback = allSelectedValue();
   const next = value ?? fallback;
-  regionValue.value = keepValid(next.regions, regionOptions.value, fallback.regions);
-  azValue.value = keepValid(next.azs, azOptions.value, fallback.azs);
+  regionValue.value = keepValid(readModelList(next, 'regionName', 'regions'), regionOptions.value, fallback.regionName);
+  azValue.value = keepValid(readModelList(next, 'azName', 'azs'), azOptions.value, fallback.azName);
   resourceSeriesValue.value = keepValid(next.resourceSeries, resourceSeries.value, fallback.resourceSeries);
-  resourceFamiliesValue.value = keepValid(next.resourceFamilies, allResourceFamilies.value, fallback.resourceFamilies);
-  resourceGenerationsValue.value = keepValid(next.resourceGenerations, allResourceGenerations.value, fallback.resourceGenerations);
-  resourceTypesValue.value = keepValid(next.resourceTypes, allResourceTypes.value, fallback.resourceTypes);
+  resourceFamiliesValue.value = keepValid(readModelList(next, 'resourceFamily', 'resourceFamilies'), allResourceFamilies.value, fallback.resourceFamily);
+  resourceGenerationsValue.value = keepValid(readModelList(next, 'resourceVer', 'resourceGenerations'), allResourceGenerations.value, fallback.resourceVer);
+  resourceTypesValue.value = keepValid(readModelList(next, 'resourceType', 'resourceTypes'), allResourceTypes.value, fallback.resourceType);
   resourceSnapshot.value = getResourceValue();
   activeSeries.value = resourceSeries.value[0]?.value ?? '';
   activeFamily.value = allResourceFamilies.value[0]?.value ?? '';
@@ -458,12 +463,12 @@ function keepValid(values, options, fallback) {
 function emitCurrentValue() {
   if (syncingFromModel) return;
   const value = {
-    regions: [...regionValue.value],
-    azs: [...azValue.value],
+    regionName: [...regionValue.value],
+    azName: [...azValue.value],
     resourceSeries: [...resourceSeriesValue.value],
-    resourceFamilies: [...resourceFamiliesValue.value],
-    resourceGenerations: [...resourceGenerationsValue.value],
-    resourceTypes: [...resourceTypesValue.value],
+    resourceFamily: [...resourceFamiliesValue.value],
+    resourceVer: [...resourceGenerationsValue.value],
+    resourceType: [...resourceTypesValue.value],
   };
   emit('update:modelValue', value);
   emit('change', value);
@@ -499,17 +504,17 @@ function syncTypesByVisibleOptions() {
 function getResourceValue() {
   return {
     series: [...resourceSeriesValue.value],
-    families: [...resourceFamiliesValue.value],
-    generations: [...resourceGenerationsValue.value],
-    types: [...resourceTypesValue.value],
+    resourceFamily: [...resourceFamiliesValue.value],
+    resourceVer: [...resourceGenerationsValue.value],
+    resourceType: [...resourceTypesValue.value],
   };
 }
 
 function setResourceValue(value) {
   resourceSeriesValue.value = [...(value.series ?? [])];
-  resourceFamiliesValue.value = [...value.families];
-  resourceGenerationsValue.value = [...value.generations];
-  resourceTypesValue.value = [...value.types];
+  resourceFamiliesValue.value = [...(value.resourceFamily ?? [])];
+  resourceGenerationsValue.value = [...(value.resourceVer ?? [])];
+  resourceTypesValue.value = [...(value.resourceType ?? [])];
 }
 
 function getSummary(value, options) {
