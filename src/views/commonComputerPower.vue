@@ -13,6 +13,7 @@
     :trafficLights="trafficLightRules"
     :trafficLightKeys="trafficLightKeys"
     :yTicks="chartYTicks"
+    :showFilters="true"
     :filterOptions="bubbleFilterOptions"
     @bubble-click="(e) => emit('bubble-click', e)"
     @visible-change="onVisibleChange"

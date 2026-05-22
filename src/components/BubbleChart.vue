@@ -1,6 +1,6 @@
 <template>
   <div class="bubble-chart-wrap">
-    <div class="bubble-chart-toolbar">
+    <div v-if="showFilters" class="bubble-chart-toolbar">
       <FilterDropdowns
         v-model="filterValue"
         :options="filterOptions"
@@ -57,6 +57,8 @@ const props = defineProps({
   initialVisibleTiers: { type: Array, default: () => [false, true, true, true] },
   /** 是否显示收起/展开按钮 */
   collapsible: { type: Boolean, default: false },
+  /** 是否显示 Region/AZ/资源类型筛选条 */
+  showFilters: { type: Boolean, default: false },
   filterOptions: { type: Object, default: null },
 });
 
