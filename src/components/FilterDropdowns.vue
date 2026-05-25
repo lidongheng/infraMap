@@ -773,6 +773,7 @@ function confirmResource() {
   height: 174px;
   overflow-y: auto;
   padding-right: 4px;
+  overflow-x: hidden;
 }
 
 .resource-row {
