@@ -340,17 +340,17 @@ const usesBackendResourceTree = computed(() => (props.filterOptions?.resourceTre
 
 function buildTierFilter(tiers) {
   const allChecked = tiers.every(Boolean);
-  const filterFn = props.dataFilter ?? defaultFilter;
   return (item) => {
-    return filterFn(item) && passesFilterControls(item) && (allChecked || passesTierFilter(item, tiers));
+    return allChecked || passesTierFilter(item, tiers);
   };
 }
 
 function passesTierFilter(item, tiers) {
-  const tierIdx = props.sizeTiers.indexOf(
-    getTierByNum(item.serverNum ?? 0, props.sizeTiers)
-  );
-  return tiers[tierIdx];
+  const serverNum = Number(item.serverNum ?? 0);
+  const value = Number.isFinite(serverNum) ? serverNum : 0;
+  const tierIdx = props.sizeTiers.findLastIndex((tier) => value > tier.min);
+  const normalizedTierIdx = tierIdx >= 0 ? tierIdx : 0;
+  return tiers[normalizedTierIdx] === true;
 }
 
 function passesFilterControls(item) {
