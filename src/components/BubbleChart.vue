@@ -366,7 +366,6 @@ function buildVisibleResourcePoolNames(tiers, allChecked = tiers.every(Boolean))
   const filterFn = props.dataFilter ?? defaultFilter;
   return props.data
     .filter(filterFn)
-    .filter(passesFilterControls)
     .filter((item) => allChecked || passesTierFilter(item, tiers))
     .map(getResourcePoolFilterName)
     .filter(Boolean);
@@ -384,6 +383,8 @@ function passesResourcePoolNameFilter(item, resourcePoolNames, shouldFilter) {
 
 function passesFilterControls(item) {
   if (!filterInitialized.value) return true;
+  if (usesBackendResourceTree.value) return true;
+
   const value = filterValue.value;
   const meta = parseFilterMeta(item);
   const hasRegionOptions = (filterOptions.value.regions ?? []).length > 0;
@@ -394,10 +395,6 @@ function passesFilterControls(item) {
 
   if (!passesLocation) {
     return false;
-  }
-
-  if (usesBackendResourceTree.value) {
-    return true;
   }
 
   const hasResourceOptions = (filterOptions.value.resourceTree ?? []).length > 0;
