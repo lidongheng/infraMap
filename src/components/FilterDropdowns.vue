@@ -6,7 +6,7 @@
         v-model:visible="regionVisible"
         placement="bottom-start"
         trigger="click"
-        :width="240"
+        width="fit-content"
         :show-arrow="false"
         popper-class="filter-popper filter-popper--single"
       >
@@ -49,7 +49,7 @@
         v-model:visible="azVisible"
         placement="bottom-start"
         trigger="click"
-        :width="240"
+        width="fit-content"
         :show-arrow="false"
         popper-class="filter-popper filter-popper--single"
       >
@@ -237,8 +237,8 @@ const azVisible = ref(false);
 const resourceVisible = ref(false);
 const regionKeyword = ref('');
 
-const regionOptions = computed(() => normalizeOptions(props.options?.regions));
-const azOptions = computed(() => normalizeOptions(props.options?.azs));
+const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.regions)));
+const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azs)));
 const resourceTree = computed(() => normalizeResourceTree(props.options?.resourceTree));
 const resourceSeries = computed(() => resourceTree.value.map(toOptionMeta));
 const allResourceFamilies = computed(() => getUniqueOptions(resourceTree.value.flatMap(item => item.children ?? [])));
@@ -381,6 +381,14 @@ function normalizeOptions(options) {
     }
     return normalizeNode(item);
   }).filter(item => item.value);
+}
+
+function sortOptionsByInitial(options) {
+  const collator = new Intl.Collator('zh-Hans-CN', {
+    numeric: true,
+    sensitivity: 'base',
+  });
+  return [...options].sort((a, b) => collator.compare(a.label, b.label));
 }
 
 function normalizeResourceTree(tree) {
