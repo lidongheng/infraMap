@@ -605,8 +605,8 @@ function confirmResource() {
 .filter-label {
   flex: 0 0 auto;
   font-size: 14px;
-  font-weight: 600;
-  color: #252b3a;
+  font-weight: 400;
+  color: #6262a8;
 }
 
 .select-trigger {
@@ -674,8 +674,12 @@ function confirmResource() {
     border: 0;
     outline: 0;
     min-width: 0;
-    color: #252b3a;
+    color: #33336b;
     font-size: 14px;
+
+    &::placeholder {
+      color: #adb0b8;
+    }
   }
 }
 
@@ -693,7 +697,7 @@ function confirmResource() {
   align-items: center;
   border-radius: 4px;
   box-sizing: border-box;
-  color: #252b3a;
+  color: #33336b;
   font-size: 14px;
 }
 
@@ -702,12 +706,12 @@ function confirmResource() {
 }
 
 .checked-row {
-  background: #f2f5fc;
+  background: #e9ebfd;
 }
 
 .option-row:has(.el-checkbox.is-checked),
 .resource-row:has(.el-checkbox.is-checked) {
-  background: #f2f5fc;
+  background: #e9ebfd;
 }
 
 .checked-row {
@@ -724,7 +728,8 @@ function confirmResource() {
 
   > :deep(.el-checkbox.is-checked) + span,
   > :deep(.el-checkbox.is-indeterminate) + span {
-    color: #409eff;
+    color: #33336b;
+    font-weight: 600;
   }
 }
 
@@ -805,6 +810,18 @@ function confirmResource() {
   margin-right: 0;
 }
 
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner),
+:deep(.el-checkbox__input.is-indeterminate .el-checkbox__inner) {
+  background-color: #444494;
+  border-color: #444494;
+}
+
+:deep(.el-checkbox__input.is-checked + .el-checkbox__label),
+:deep(.el-checkbox__input.is-indeterminate + .el-checkbox__label) {
+  color: #33336b;
+  font-weight: 600;
+}
+
 .resource-row :deep(.el-checkbox) {
   width: auto;
   flex: 1;
@@ -829,8 +846,9 @@ function confirmResource() {
 }
 
 :deep(.el-checkbox__label) {
-  color: #252b3a;
+  color: #33336b;
   font-size: 14px;
+  font-weight: 400;
   white-space: nowrap;
 }
 </style>
