@@ -38,7 +38,7 @@
         </div>
         <ResourcePoolTable
           ref="grossProfitTableRef"
-          :data="chartData"
+          :data="filteredTestData1"
         />
       </section>
     </section>
@@ -51,6 +51,7 @@ import CategoryNav from "@/components/CategoryNav.vue";
 import CommonComputerPower from "./commonComputerPower.vue";
 import ResourcePoolTable from "@/components/ResourcePoolTable.vue";
 import { activeCategory } from "./useGeneralComputer";
+import { tierFilter, testData1 } from "./useCommonComputerPower";
 
 function keepEnglishOnly(str) {
   const match = String(str ?? "").match(/^[a-zA-Z\s]*/);
@@ -134,11 +135,8 @@ const axisRangeDataPaddingForChart = computed(() =>
 
 const grossProfitChartRef = ref(null);
 const grossProfitTableRef = ref(null);
-const tierFilter = ref(null);
-
-const allData = computed(() => grossProfitChartRef.value?.data ?? []);
-const chartData = computed(() =>
-  tierFilter.value ? allData.value.filter(tierFilter.value) : allData.value
+const filteredTestData1 = computed(() =>
+  tierFilter.value ? testData1.value.filter(tierFilter.value) : testData1.value
 );
 
 function onVisibleChange(filterFn) {

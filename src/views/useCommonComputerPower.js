@@ -172,6 +172,7 @@ function toChartData(mergedList) {
       name: item.azName,
       regionName: item.regionName || "",
       azName: item.azName,
+      resourcePoolTotalName: item.resourcePoolTotalName,
       x: toPercent(item.useRate),
       y: toPercent(item.grossProfitRate),
       serverNum: item.serverNum ?? 0,
@@ -298,3 +299,13 @@ export function useCommonComputerPower() {
     fetchData,
   };
 }
+
+export const testData1 = ref([
+  {
+    resourcePoolTotalName: '华北-北京四(AZ1)-kc1n',
+    regionName: '华北-北京四',
+    serverNum: 190
+  }
+]);
+
+export const tierFilter = ref(null);

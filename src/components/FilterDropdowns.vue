@@ -321,7 +321,6 @@ watch(resourceSeriesValue, (nextValue, oldValue) => {
   syncingResourceCascade = true;
   syncSeriesCascade(nextValue, oldValue);
   syncingResourceCascade = false;
-  emitCurrentValue();
 }, { flush: 'sync' });
 
 watch(resourceFamilyValue, (nextValue, oldValue) => {
@@ -330,7 +329,6 @@ watch(resourceFamilyValue, (nextValue, oldValue) => {
   syncingResourceCascade = true;
   syncFamilyCascade(nextValue, oldValue);
   syncingResourceCascade = false;
-  emitCurrentValue();
 }, { flush: 'sync' });
 
 watch(resourceVerValue, (nextValue, oldValue) => {
@@ -339,13 +337,7 @@ watch(resourceVerValue, (nextValue, oldValue) => {
   syncingResourceCascade = true;
   syncGenerationCascade(nextValue, oldValue);
   syncingResourceCascade = false;
-  emitCurrentValue();
 }, { flush: 'sync' });
-
-watch(resourceTypeValue, () => {
-  if (syncingFromModel || syncingResourceCascade) return;
-  emitCurrentValue();
-}, { deep: true, flush: 'sync' });
 
 watch([regionValue, azValue], () => {
   emitCurrentValue();
@@ -354,7 +346,12 @@ watch([regionValue, azValue], () => {
 watch(resourceVisible, (visible) => {
   if (visible) {
     resourceSnapshot.value = getResourceValue();
+    return;
   }
+
+  syncingFromModel = true;
+  setResourceValue(resourceSnapshot.value);
+  syncingFromModel = false;
 });
 
 watch(
@@ -652,7 +649,6 @@ function cancelResource() {
   setResourceValue(resourceSnapshot.value);
   syncingFromModel = false;
   resourceVisible.value = false;
-  emitCurrentValue();
 }
 
 function confirmResource() {

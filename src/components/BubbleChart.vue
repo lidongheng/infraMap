@@ -340,8 +340,13 @@ const usesBackendResourceTree = computed(() => (props.filterOptions?.resourceTre
 
 function buildTierFilter(tiers) {
   const allChecked = tiers.every(Boolean);
+  const resourcePoolNames = buildVisibleResourcePoolNames(tiers, allChecked);
+  const shouldFilterResourcePool = props.data.length > 0;
   return (item) => {
-    return allChecked || passesTierFilter(item, tiers);
+    return (
+      (allChecked || passesTierFilter(item, tiers)) &&
+      passesResourcePoolNameFilter(item, resourcePoolNames, shouldFilterResourcePool)
+    );
   };
 }
 
@@ -351,6 +356,30 @@ function passesTierFilter(item, tiers) {
   const tierIdx = props.sizeTiers.findLastIndex((tier) => value > tier.min);
   const normalizedTierIdx = tierIdx >= 0 ? tierIdx : 0;
   return tiers[normalizedTierIdx] === true;
+}
+
+function getResourcePoolFilterName(item) {
+  return String(item.resourcePoolTotalName ?? item.azName ?? item.name ?? "").trim();
+}
+
+function buildVisibleResourcePoolNames(tiers, allChecked = tiers.every(Boolean)) {
+  const filterFn = props.dataFilter ?? defaultFilter;
+  return props.data
+    .filter(filterFn)
+    .filter(passesFilterControls)
+    .filter((item) => allChecked || passesTierFilter(item, tiers))
+    .map(getResourcePoolFilterName)
+    .filter(Boolean);
+}
+
+function passesResourcePoolNameFilter(item, resourcePoolNames, shouldFilter) {
+  if (!shouldFilter) return true;
+  if (resourcePoolNames.length === 0) return false;
+
+  const targetName = getResourcePoolFilterName(item);
+  return resourcePoolNames.some(
+    (name) => targetName.includes(name) || name.includes(targetName)
+  );
 }
 
 function passesFilterControls(item) {
@@ -405,8 +434,8 @@ function toggleTier(tierIdx) {
 function onFilterChange(value) {
   filterValue.value = reconcileFilterValue(value, filterOptions.value);
   filterInitialized.value = true;
+  emit("visible-change", null, [...visibleTiers.value]);
   emit("filter-change", buildBackendFilterValue(filterValue.value, filterOptions.value));
-  emitVisibleChange();
   refreshChart();
 }
 
@@ -431,6 +460,7 @@ watch(
   () => props.data,
   (data) => {
     mergeFilterItems(data ?? []);
+    emitVisibleChange();
   },
   { deep: true, immediate: true }
 );
