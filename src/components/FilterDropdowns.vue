@@ -315,34 +315,29 @@ const resourceSummary = computed(() => {
   return `已选 ${resourceTypeValue.value.length} 项`;
 });
 
-watch(resourceSeriesValue, () => {
+watch(resourceSeriesValue, (nextValue, oldValue) => {
   if (syncingFromModel) return;
+  if (syncingResourceCascade) return;
   syncingResourceCascade = true;
-  syncFamiliesByVisibleOptions();
+  syncSeriesCascade(nextValue, oldValue);
   syncingResourceCascade = false;
   emitCurrentValue();
 }, { flush: 'sync' });
 
-watch(resourceFamilyValue, () => {
+watch(resourceFamilyValue, (nextValue, oldValue) => {
   if (syncingFromModel) return;
-  if (syncingResourceCascade) {
-    syncByVisibleOptions();
-    return;
-  }
+  if (syncingResourceCascade) return;
   syncingResourceCascade = true;
-  syncByVisibleOptions();
+  syncFamilyCascade(nextValue, oldValue);
   syncingResourceCascade = false;
   emitCurrentValue();
 }, { flush: 'sync' });
 
-watch(resourceVerValue, () => {
+watch(resourceVerValue, (nextValue, oldValue) => {
   if (syncingFromModel) return;
-  if (syncingResourceCascade) {
-    syncTypesByVisibleOptions();
-    return;
-  }
+  if (syncingResourceCascade) return;
   syncingResourceCascade = true;
-  syncTypesByVisibleOptions();
+  syncGenerationCascade(nextValue, oldValue);
   syncingResourceCascade = false;
   emitCurrentValue();
 }, { flush: 'sync' });
@@ -484,21 +479,101 @@ function getUniqueOptions(options) {
   return Array.from(map.values());
 }
 
-function syncFamiliesByVisibleOptions() {
-  const familyValues = visibleResourceFamilies.value.map(item => item.value);
-  resourceFamilyValue.value = resourceFamilyValue.value.filter(item => familyValues.includes(item));
-  syncByVisibleOptions();
+function syncSeriesCascade(nextValue, oldValue) {
+  const { added } = getValueChange(nextValue, oldValue);
+  const addedFamilies = collectFamiliesBySeries(added);
+  const addedGenerations = collectGenerationsByFamilies(nextValue, addedFamilies.map(item => item.value));
+  const addedTypes = collectTypesByGenerations(
+    nextValue,
+    addedFamilies.map(item => item.value),
+    addedGenerations.map(item => item.value),
+  );
+  resourceFamilyValue.value = mergeValues(resourceFamilyValue.value, addedFamilies.map(item => item.value));
+  resourceVerValue.value = mergeValues(resourceVerValue.value, addedGenerations.map(item => item.value));
+  resourceTypeValue.value = mergeValues(resourceTypeValue.value, addedTypes.map(item => item.value));
+  pruneResourceSelections();
 }
 
-function syncByVisibleOptions() {
-  const generationValues = visibleResourceGenerations.value.map(item => item.value);
-  resourceVerValue.value = resourceVerValue.value.filter(item => generationValues.includes(item));
-  syncTypesByVisibleOptions();
+function syncFamilyCascade(nextValue, oldValue) {
+  const { added } = getValueChange(nextValue, oldValue);
+  const addedGenerations = collectGenerationsByFamilies(resourceSeriesValue.value, added);
+  const addedTypes = collectTypesByGenerations(
+    resourceSeriesValue.value,
+    nextValue,
+    addedGenerations.map(item => item.value),
+  );
+  resourceVerValue.value = mergeValues(resourceVerValue.value, addedGenerations.map(item => item.value));
+  resourceTypeValue.value = mergeValues(resourceTypeValue.value, addedTypes.map(item => item.value));
+  pruneResourceSelections();
 }
 
-function syncTypesByVisibleOptions() {
-  const typeValues = visibleResourceTypes.value.map(item => item.value);
-  resourceTypeValue.value = resourceTypeValue.value.filter(item => typeValues.includes(item));
+function syncGenerationCascade(nextValue, oldValue) {
+  const { added } = getValueChange(nextValue, oldValue);
+  const addedTypes = collectTypesByGenerations(resourceSeriesValue.value, resourceFamilyValue.value, added);
+  resourceTypeValue.value = mergeValues(resourceTypeValue.value, addedTypes.map(item => item.value));
+  pruneResourceSelections();
+}
+
+function pruneResourceSelections() {
+  const familyValues = collectFamiliesBySeries(resourceSeriesValue.value).map(item => item.value);
+  resourceFamilyValue.value = keepValueIntersection(resourceFamilyValue.value, familyValues);
+
+  const generationValues = collectGenerationsByFamilies(resourceSeriesValue.value, resourceFamilyValue.value).map(item => item.value);
+  resourceVerValue.value = keepValueIntersection(resourceVerValue.value, generationValues);
+
+  const typeValues = collectTypesByGenerations(resourceSeriesValue.value, resourceFamilyValue.value, resourceVerValue.value).map(item => item.value);
+  resourceTypeValue.value = keepValueIntersection(resourceTypeValue.value, typeValues);
+}
+
+function collectFamiliesBySeries(seriesValues) {
+  const seriesSet = new Set(seriesValues);
+  const families = resourceTree.value
+    .filter(item => seriesSet.has(item.value))
+    .flatMap(item => item.children ?? []);
+  return getUniqueOptions(families);
+}
+
+function collectGenerationsByFamilies(seriesValues, familyValues) {
+  const seriesSet = new Set(seriesValues);
+  const familySet = new Set(familyValues);
+  const generations = resourceTree.value
+    .filter(item => seriesSet.has(item.value))
+    .flatMap(item => item.children ?? [])
+    .filter(item => familySet.has(item.value))
+    .flatMap(item => item.children ?? []);
+  return getUniqueOptions(generations);
+}
+
+function collectTypesByGenerations(seriesValues, familyValues, generationValues) {
+  const seriesSet = new Set(seriesValues);
+  const familySet = new Set(familyValues);
+  const generationSet = new Set(generationValues);
+  const types = resourceTree.value
+    .filter(item => seriesSet.has(item.value))
+    .flatMap(item => item.children ?? [])
+    .filter(item => familySet.has(item.value))
+    .flatMap(item => item.children ?? [])
+    .filter(item => generationSet.has(item.value))
+    .flatMap(item => item.children ?? []);
+  return getUniqueOptions(types);
+}
+
+function getValueChange(nextValue = [], oldValue = []) {
+  const oldSet = new Set(oldValue);
+  const nextSet = new Set(nextValue);
+  return {
+    added: nextValue.filter(item => !oldSet.has(item)),
+    removed: oldValue.filter(item => !nextSet.has(item)),
+  };
+}
+
+function mergeValues(currentValue, addedValue) {
+  return Array.from(new Set([...(currentValue ?? []), ...(addedValue ?? [])]));
+}
+
+function keepValueIntersection(currentValue, allowedValue) {
+  const allowedSet = new Set(allowedValue);
+  return (currentValue ?? []).filter(item => allowedSet.has(item));
 }
 
 function getResourceValue() {
