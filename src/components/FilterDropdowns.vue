@@ -21,24 +21,26 @@
             <el-icon><Search /></el-icon>
             <input v-model="regionKeyword" placeholder="请输入关键字" />
           </div>
-          <label class="option-row checked-row">
-            <el-checkbox
-              :model-value="isAllSelected(regionValue, filteredRegionOptions)"
-              :indeterminate="isIndeterminate(regionValue, filteredRegionOptions)"
-              @change="checked => toggleAll('region', checked)"
-            />
-            <span>全部</span>
-          </label>
-          <el-checkbox-group v-model="regionValue" class="option-list">
-            <el-checkbox
-              v-for="item in filteredRegionOptions"
-              :key="item.value"
-              :label="item.value"
-              class="option-row"
-            >
-              {{ item.label }}
-            </el-checkbox>
-          </el-checkbox-group>
+          <div class="option-list">
+            <label class="option-row checked-row">
+              <el-checkbox
+                :model-value="isAllSelected(regionValue, filteredRegionOptions)"
+                :indeterminate="isIndeterminate(regionValue, filteredRegionOptions)"
+                @change="checked => toggleAll('region', checked)"
+              />
+              <span>全部</span>
+            </label>
+            <el-checkbox-group v-model="regionValue" class="option-group">
+              <el-checkbox
+                v-for="item in filteredRegionOptions"
+                :key="item.value"
+                :label="item.value"
+                class="option-row"
+              >
+                {{ item.label }}
+              </el-checkbox>
+            </el-checkbox-group>
+          </div>
         </div>
       </el-popover>
     </div>
@@ -60,24 +62,26 @@
           </button>
         </template>
         <div class="dropdown-panel single az-panel">
-          <label class="option-row checked-row">
-            <el-checkbox
-              :model-value="isAllSelected(azValue, azOptions)"
-              :indeterminate="isIndeterminate(azValue, azOptions)"
-              @change="checked => toggleAll('az', checked)"
-            />
-            <span>全部</span>
-          </label>
-          <el-checkbox-group v-model="azValue" class="option-list">
-            <el-checkbox
-              v-for="item in azOptions"
-              :key="item.value"
-              :label="item.value"
-              class="option-row"
-            >
-              {{ item.label }}
-            </el-checkbox>
-          </el-checkbox-group>
+          <div class="option-list">
+            <label class="option-row checked-row">
+              <el-checkbox
+                :model-value="isAllSelected(azValue, azOptions)"
+                :indeterminate="isIndeterminate(azValue, azOptions)"
+                @change="checked => toggleAll('az', checked)"
+              />
+              <span>全部</span>
+            </label>
+            <el-checkbox-group v-model="azValue" class="option-group">
+              <el-checkbox
+                v-for="item in azOptions"
+                :key="item.value"
+                :label="item.value"
+                class="option-row"
+              >
+                {{ item.label }}
+              </el-checkbox>
+            </el-checkbox-group>
+          </div>
         </div>
       </el-popover>
     </div>
@@ -690,6 +694,11 @@ function confirmResource() {
   flex-direction: column;
 }
 
+.option-group {
+  display: flex;
+  flex-direction: column;
+}
+
 .option-row,
 .resource-row {
   min-height: 32px;
@@ -709,7 +718,10 @@ function confirmResource() {
   background: #e9ebfd;
 }
 
+.option-row.is-checked,
+.option-row.is-indeterminate,
 .option-row:has(.el-checkbox.is-checked),
+.option-row:has(.el-checkbox.is-indeterminate),
 .resource-row:has(.el-checkbox.is-checked) {
   background: #e9ebfd;
 }
