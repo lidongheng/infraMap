@@ -211,18 +211,13 @@ function getFilterOptionValue(item) {
 function createDefaultFilterValue(options) {
   const resourceTree = options.resourceTree ?? [];
   return {
-    regionName: (options.regions ?? []).map(getFilterOptionValue),
-    azName: (options.azs ?? []).map(getFilterOptionValue),
+    regionNameList: (options.regions ?? []).map(getFilterOptionValue),
+    azNameList: (options.azs ?? []).map(getFilterOptionValue),
     resourceSeries: resourceTree.map(getFilterOptionValue),
     resourceFamily: flattenResourceFamilies(resourceTree).map(getFilterOptionValue),
     resourceVer: flattenResourceGenerations(resourceTree).map(getFilterOptionValue),
     resourceType: flattenResourceTypes(resourceTree).map(getFilterOptionValue),
   };
-}
-
-function readFilterList(value, key, legacyKey) {
-  const list = value?.[key] ?? value?.[legacyKey];
-  return Array.isArray(list) ? list : null;
 }
 
 function reconcileFilterValue(value, options) {
@@ -237,12 +232,12 @@ function reconcileFilterValue(value, options) {
   const generations = flattenResourceGenerations(options.resourceTree ?? []);
   const types = flattenResourceTypes(options.resourceTree ?? []);
   return {
-    regionName: keep(readFilterList(value, "regionName", "regions"), options.regions ?? [], fallback.regionName),
-    azName: keep(readFilterList(value, "azName", "azs"), options.azs ?? [], fallback.azName),
+    regionNameList: keep(value.regionNameList, options.regions ?? [], fallback.regionNameList),
+    azNameList: keep(value.azNameList, options.azs ?? [], fallback.azNameList),
     resourceSeries: keep(value.resourceSeries, options.resourceTree ?? [], fallback.resourceSeries),
-    resourceFamily: keep(readFilterList(value, "resourceFamily", "resourceFamilies"), families, fallback.resourceFamily),
-    resourceVer: keep(readFilterList(value, "resourceVer", "resourceGenerations"), generations, fallback.resourceVer),
-    resourceType: keep(readFilterList(value, "resourceType", "resourceTypes"), types, fallback.resourceType),
+    resourceFamily: keep(value.resourceFamily, families, fallback.resourceFamily),
+    resourceVer: keep(value.resourceVer, generations, fallback.resourceVer),
+    resourceType: keep(value.resourceType, types, fallback.resourceType),
   };
 }
 
@@ -250,10 +245,10 @@ function fillNewFilterGroups(value, options, oldOptions = {}) {
   const fallback = createDefaultFilterValue(options);
   const withDefaults = { ...value };
   if ((oldOptions.regions ?? []).length === 0 && (options.regions ?? []).length > 0) {
-    withDefaults.regionName = fallback.regionName;
+    withDefaults.regionNameList = fallback.regionNameList;
   }
   if ((oldOptions.azs ?? []).length === 0 && (options.azs ?? []).length > 0) {
-    withDefaults.azName = fallback.azName;
+    withDefaults.azNameList = fallback.azNameList;
   }
   if ((oldOptions.resourceTree ?? []).length === 0 && (options.resourceTree ?? []).length > 0) {
     withDefaults.resourceSeries = fallback.resourceSeries;
@@ -325,8 +320,8 @@ function buildResourceTypeList(selectedValues, resourceTree) {
 function buildBackendFilterValue(value, options) {
   const resourceTree = options.resourceTree ?? [];
   return {
-    regionName: mapSelectedSubmitValues(value.regionName, options.regions ?? [], ["regionName"]).join(","),
-    azName: mapSelectedSubmitValues(value.azName, options.azs ?? [], ["azName"]).join(","),
+    regionNameList: mapSelectedSubmitValues(value.regionNameList, options.regions ?? [], ["regionName"]),
+    azNameList: mapSelectedSubmitValues(value.azNameList, options.azs ?? [], ["azName"]),
     resourceTypeList: buildResourceTypeList(value.resourceType, resourceTree),
   };
 }
@@ -365,8 +360,8 @@ function passesFilterControls(item) {
   const hasRegionOptions = (filterOptions.value.regions ?? []).length > 0;
   const hasAzOptions = (filterOptions.value.azs ?? []).length > 0;
   const passesLocation =
-    (!hasRegionOptions || value.regionName.includes(meta.region)) &&
-    (!hasAzOptions || value.azName.includes(meta.az));
+    (!hasRegionOptions || value.regionNameList.includes(meta.region)) &&
+    (!hasAzOptions || value.azNameList.includes(meta.az));
 
   if (!passesLocation) {
     return false;

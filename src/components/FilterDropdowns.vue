@@ -88,7 +88,7 @@
         v-model:visible="resourceVisible"
         placement="bottom-start"
         trigger="click"
-        :width="980"
+        width="fit-content"
         :show-arrow="false"
         popper-class="filter-popper"
       >
@@ -107,7 +107,7 @@
                   <el-checkbox
                     :model-value="isAllSelected(resourceSeriesValue, resourceSeries)"
                     :indeterminate="isIndeterminate(resourceSeriesValue, resourceSeries)"
-                    @change="checked => toggleAll('series', checked)"
+                    @change="checked => toggleAll('resourceSeries', checked)"
                   />
                   <span>全部</span>
                   <el-icon><ArrowRight /></el-icon>
@@ -131,14 +131,14 @@
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
-                    :model-value="isAllSelected(resourceFamiliesValue, visibleResourceFamilies)"
-                    :indeterminate="isIndeterminate(resourceFamiliesValue, visibleResourceFamilies)"
-                    @change="checked => toggleAll('family', checked)"
+                    :model-value="isAllSelected(resourceFamilyValue, visibleResourceFamilies)"
+                    :indeterminate="isIndeterminate(resourceFamilyValue, visibleResourceFamilies)"
+                    @change="checked => toggleAll('resourceFamily', checked)"
                   />
                   <span>全部</span>
                   <el-icon><ArrowRight /></el-icon>
                 </label>
-                <el-checkbox-group v-model="resourceFamiliesValue">
+                <el-checkbox-group v-model="resourceFamilyValue">
                   <label
                     v-for="item in visibleResourceFamilies"
                     :key="item.value"
@@ -157,14 +157,14 @@
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
-                    :model-value="isAllSelected(resourceGenerationsValue, visibleResourceGenerations)"
-                    :indeterminate="isIndeterminate(resourceGenerationsValue, visibleResourceGenerations)"
-                    @change="checked => toggleAll('generation', checked)"
+                    :model-value="isAllSelected(resourceVerValue, visibleResourceGenerations)"
+                    :indeterminate="isIndeterminate(resourceVerValue, visibleResourceGenerations)"
+                    @change="checked => toggleAll('resourceVer', checked)"
                   />
                   <span>全部</span>
                   <el-icon><ArrowRight /></el-icon>
                 </label>
-                <el-checkbox-group v-model="resourceGenerationsValue">
+                <el-checkbox-group v-model="resourceVerValue">
                   <label
                     v-for="item in visibleResourceGenerations"
                     :key="item.value"
@@ -183,13 +183,13 @@
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
-                    :model-value="isAllSelected(resourceTypesValue, visibleResourceTypes)"
-                    :indeterminate="isIndeterminate(resourceTypesValue, visibleResourceTypes)"
-                    @change="checked => toggleAll('type', checked)"
+                    :model-value="isAllSelected(resourceTypeValue, visibleResourceTypes)"
+                    :indeterminate="isIndeterminate(resourceTypeValue, visibleResourceTypes)"
+                    @change="checked => toggleAll('resourceType', checked)"
                   />
                   <span>全部</span>
                 </label>
-                <el-checkbox-group v-model="resourceTypesValue">
+                <el-checkbox-group v-model="resourceTypeValue">
                   <label
                     v-for="item in visibleResourceTypes"
                     :key="item.value"
@@ -255,9 +255,9 @@ const allResourceTypes = computed(() => getUniqueOptions(
 const regionValue = ref([]);
 const azValue = ref([]);
 const resourceSeriesValue = ref([]);
-const resourceFamiliesValue = ref([]);
-const resourceGenerationsValue = ref([]);
-const resourceTypesValue = ref([]);
+const resourceFamilyValue = ref([]);
+const resourceVerValue = ref([]);
+const resourceTypeValue = ref([]);
 const resourceSnapshot = ref(getResourceValue());
 
 const activeSeries = ref('');
@@ -284,7 +284,7 @@ const visibleResourceFamilies = computed(() => {
 
 const visibleResourceGenerations = computed(() => {
   const seriesSet = new Set(resourceSeriesValue.value);
-  const familySet = new Set(resourceFamiliesValue.value);
+  const familySet = new Set(resourceFamilyValue.value);
   const generations = resourceTree.value
     .filter(item => seriesSet.has(item.value))
     .flatMap(item => item.children ?? [])
@@ -295,8 +295,8 @@ const visibleResourceGenerations = computed(() => {
 
 const visibleResourceTypes = computed(() => {
   const seriesSet = new Set(resourceSeriesValue.value);
-  const familySet = new Set(resourceFamiliesValue.value);
-  const generationSet = new Set(resourceGenerationsValue.value);
+  const familySet = new Set(resourceFamilyValue.value);
+  const generationSet = new Set(resourceVerValue.value);
   const types = resourceTree.value
     .filter(item => seriesSet.has(item.value))
     .flatMap(item => item.children ?? [])
@@ -308,7 +308,7 @@ const visibleResourceTypes = computed(() => {
 });
 
 const resourceSummary = computed(() => {
-  return `已选 ${resourceTypesValue.value.length} 项`;
+  return `已选 ${resourceTypeValue.value.length} 项`;
 });
 
 watch(resourceSeriesValue, () => {
@@ -319,7 +319,7 @@ watch(resourceSeriesValue, () => {
   emitCurrentValue();
 }, { flush: 'sync' });
 
-watch(resourceFamiliesValue, () => {
+watch(resourceFamilyValue, () => {
   if (syncingFromModel) return;
   if (syncingResourceCascade) {
     syncByVisibleOptions();
@@ -331,7 +331,7 @@ watch(resourceFamiliesValue, () => {
   emitCurrentValue();
 }, { flush: 'sync' });
 
-watch(resourceGenerationsValue, () => {
+watch(resourceVerValue, () => {
   if (syncingFromModel) return;
   if (syncingResourceCascade) {
     syncTypesByVisibleOptions();
@@ -343,7 +343,7 @@ watch(resourceGenerationsValue, () => {
   emitCurrentValue();
 }, { flush: 'sync' });
 
-watch(resourceTypesValue, () => {
+watch(resourceTypeValue, () => {
   if (syncingFromModel || syncingResourceCascade) return;
   emitCurrentValue();
 }, { deep: true, flush: 'sync' });
@@ -414,8 +414,8 @@ function toOptionMeta(item) {
 
 function allSelectedValue() {
   return {
-    regionName: regionOptions.value.map(item => item.value),
-    azName: azOptions.value.map(item => item.value),
+    regionNameList: regionOptions.value.map(item => item.value),
+    azNameList: azOptions.value.map(item => item.value),
     resourceSeries: resourceSeries.value.map(item => item.value),
     resourceFamily: allResourceFamilies.value.map(item => item.value),
     resourceVer: allResourceGenerations.value.map(item => item.value),
@@ -423,21 +423,16 @@ function allSelectedValue() {
   };
 }
 
-function readModelList(value, key, legacyKey) {
-  const list = value?.[key] ?? value?.[legacyKey];
-  return Array.isArray(list) ? list : null;
-}
-
 function applyModelValue(value) {
   syncingFromModel = true;
   const fallback = allSelectedValue();
   const next = value ?? fallback;
-  regionValue.value = keepValid(readModelList(next, 'regionName', 'regions'), regionOptions.value, fallback.regionName);
-  azValue.value = keepValid(readModelList(next, 'azName', 'azs'), azOptions.value, fallback.azName);
+  regionValue.value = keepValid(next.regionNameList, regionOptions.value, fallback.regionNameList);
+  azValue.value = keepValid(next.azNameList, azOptions.value, fallback.azNameList);
   resourceSeriesValue.value = keepValid(next.resourceSeries, resourceSeries.value, fallback.resourceSeries);
-  resourceFamiliesValue.value = keepValid(readModelList(next, 'resourceFamily', 'resourceFamilies'), allResourceFamilies.value, fallback.resourceFamily);
-  resourceGenerationsValue.value = keepValid(readModelList(next, 'resourceVer', 'resourceGenerations'), allResourceGenerations.value, fallback.resourceVer);
-  resourceTypesValue.value = keepValid(readModelList(next, 'resourceType', 'resourceTypes'), allResourceTypes.value, fallback.resourceType);
+  resourceFamilyValue.value = keepValid(next.resourceFamily, allResourceFamilies.value, fallback.resourceFamily);
+  resourceVerValue.value = keepValid(next.resourceVer, allResourceGenerations.value, fallback.resourceVer);
+  resourceTypeValue.value = keepValid(next.resourceType, allResourceTypes.value, fallback.resourceType);
   resourceSnapshot.value = getResourceValue();
   activeSeries.value = resourceSeries.value[0]?.value ?? '';
   activeFamily.value = allResourceFamilies.value[0]?.value ?? '';
@@ -456,12 +451,12 @@ function keepValid(values, options, fallback) {
 function emitCurrentValue() {
   if (syncingFromModel) return;
   const value = {
-    regionName: [...regionValue.value],
-    azName: [...azValue.value],
+    regionNameList: [...regionValue.value],
+    azNameList: [...azValue.value],
     resourceSeries: [...resourceSeriesValue.value],
-    resourceFamily: [...resourceFamiliesValue.value],
-    resourceVer: [...resourceGenerationsValue.value],
-    resourceType: [...resourceTypesValue.value],
+    resourceFamily: [...resourceFamilyValue.value],
+    resourceVer: [...resourceVerValue.value],
+    resourceType: [...resourceTypeValue.value],
   };
   emit('update:modelValue', value);
   emit('change', value);
@@ -479,35 +474,35 @@ function getUniqueOptions(options) {
 
 function syncFamiliesByVisibleOptions() {
   const familyValues = visibleResourceFamilies.value.map(item => item.value);
-  resourceFamiliesValue.value = resourceFamiliesValue.value.filter(item => familyValues.includes(item));
+  resourceFamilyValue.value = resourceFamilyValue.value.filter(item => familyValues.includes(item));
   syncByVisibleOptions();
 }
 
 function syncByVisibleOptions() {
   const generationValues = visibleResourceGenerations.value.map(item => item.value);
-  resourceGenerationsValue.value = resourceGenerationsValue.value.filter(item => generationValues.includes(item));
+  resourceVerValue.value = resourceVerValue.value.filter(item => generationValues.includes(item));
   syncTypesByVisibleOptions();
 }
 
 function syncTypesByVisibleOptions() {
   const typeValues = visibleResourceTypes.value.map(item => item.value);
-  resourceTypesValue.value = resourceTypesValue.value.filter(item => typeValues.includes(item));
+  resourceTypeValue.value = resourceTypeValue.value.filter(item => typeValues.includes(item));
 }
 
 function getResourceValue() {
   return {
-    series: [...resourceSeriesValue.value],
-    resourceFamily: [...resourceFamiliesValue.value],
-    resourceVer: [...resourceGenerationsValue.value],
-    resourceType: [...resourceTypesValue.value],
+    resourceSeries: [...resourceSeriesValue.value],
+    resourceFamily: [...resourceFamilyValue.value],
+    resourceVer: [...resourceVerValue.value],
+    resourceType: [...resourceTypeValue.value],
   };
 }
 
 function setResourceValue(value) {
-  resourceSeriesValue.value = [...(value.series ?? [])];
-  resourceFamiliesValue.value = [...(value.resourceFamily ?? [])];
-  resourceGenerationsValue.value = [...(value.resourceVer ?? [])];
-  resourceTypesValue.value = [...(value.resourceType ?? [])];
+  resourceSeriesValue.value = [...(value.resourceSeries ?? [])];
+  resourceFamilyValue.value = [...(value.resourceFamily ?? [])];
+  resourceVerValue.value = [...(value.resourceVer ?? [])];
+  resourceTypeValue.value = [...(value.resourceType ?? [])];
 }
 
 function getSummary(value, options) {
@@ -539,17 +534,17 @@ function toggleAll(type, checked) {
   if (type === 'az') {
     azValue.value = values;
   }
-  if (type === 'series') {
+  if (type === 'resourceSeries') {
     resourceSeriesValue.value = values;
   }
-  if (type === 'family') {
-    resourceFamiliesValue.value = values;
+  if (type === 'resourceFamily') {
+    resourceFamilyValue.value = values;
   }
-  if (type === 'generation') {
-    resourceGenerationsValue.value = values;
+  if (type === 'resourceVer') {
+    resourceVerValue.value = values;
   }
-  if (type === 'type') {
-    resourceTypesValue.value = values;
+  if (type === 'resourceType') {
+    resourceTypeValue.value = values;
   }
 }
 
@@ -557,10 +552,10 @@ function getOptionsByType(type) {
   const map = {
     region: filteredRegionOptions.value,
     az: azOptions.value,
-    series: resourceSeries.value,
-    family: visibleResourceFamilies.value,
-    generation: visibleResourceGenerations.value,
-    type: visibleResourceTypes.value,
+    resourceSeries: resourceSeries.value,
+    resourceFamily: visibleResourceFamilies.value,
+    resourceVer: visibleResourceGenerations.value,
+    resourceType: visibleResourceTypes.value,
   };
   return map[type] ?? [];
 }

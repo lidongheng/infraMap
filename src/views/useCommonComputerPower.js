@@ -184,9 +184,14 @@ function toChartData(mergedList) {
 }
 
 function normalizeFilterParams(filters = {}) {
+  const toList = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string" && value) return value.split(",").filter(Boolean);
+    return [];
+  };
   return {
-    regionName: filters.regionName ?? "",
-    azName: filters.azName ?? "",
+    regionNameList: toList(filters.regionNameList),
+    azNameList: toList(filters.azNameList),
     resourceTypeList: Array.isArray(filters.resourceTypeList) ? filters.resourceTypeList : [],
   };
 }
@@ -239,8 +244,8 @@ export function useCommonComputerPower() {
     const params = {
       cloudServerName,
       month,
-      regionName: currentFilters.value.regionName,
-      azName: currentFilters.value.azName,
+      regionNameList: currentFilters.value.regionNameList,
+      azNameList: currentFilters.value.azNameList,
       resourceTypeList: currentFilters.value.resourceTypeList,
     };
 
