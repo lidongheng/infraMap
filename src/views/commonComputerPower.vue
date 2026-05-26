@@ -10,6 +10,9 @@
     :xAxisName="xAxisName"
     :showZoneLabels="false"
     :tooltipYLabel="tooltipYLabel"
+    :sizeLabel="sizeLabel"
+    :sizeValueField="sizeValueField"
+    :sizeTiers="sizeTiers"
     :trafficLights="trafficLightRules"
     :trafficLightKeys="trafficLightKeys"
     :yTicks="chartYTicks"
@@ -26,6 +29,7 @@ import { ref, computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import BubbleChart from "@/components/BubbleChart.vue";
 import { useCommonComputerPower, computeWeightedAvg } from "./useCommonComputerPower";
+import { computeWeightedAvgFromData, SIZE_TIERS } from "./commonComputerPowerConfig";
 import { useBubbleAxisRange } from "./useBubbleAxisRange";
 import { useCurrentDate } from "./useCurrentDate";
 import { useTargetNumStore } from "@/stores/targetNumStore";
@@ -49,6 +53,9 @@ const props = defineProps({
    */
   axisRangeDataPadding: { type: Number, default: null },
   tooltipYLabel: { type: String, default: "毛利率" },
+  sizeLabel: { type: String, default: "服务器规模(台)" },
+  sizeValueField: { type: String, default: "serverNum" },
+  sizeTiers: { type: Array, default: () => SIZE_TIERS },
   trafficLightKeys: { type: Object, default: null },
 });
 
@@ -71,7 +78,20 @@ function onFilterChange(filters) {
 }
 
 const avgX = computed(() => {
-  const avg = computeWeightedAvg(avgRangeList.value, visibleTiers.value);
+  const hasMatchingAvgRange = avgRangeList.value.some((item) =>
+    props.sizeTiers.some((tier) => tier.label === item.name)
+  );
+  if (!hasMatchingAvgRange) {
+    return computeWeightedAvgFromData(
+      data.value,
+      props.xField,
+      visibleTiers.value,
+      props.sizeTiers,
+      null,
+      props.sizeValueField
+    );
+  }
+  const avg = computeWeightedAvg(avgRangeList.value, visibleTiers.value, props.sizeTiers);
   return avg * 100;
 });
 

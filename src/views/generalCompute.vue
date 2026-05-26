@@ -31,6 +31,9 @@
             :yTicks="activeTabConfig.yTicks"
             :axis-range-data-padding="axisRangeDataPaddingForChart"
             :tooltipYLabel="activeTabConfig.tooltipYLabel"
+            :sizeLabel="currentSizeLabel"
+            :sizeValueField="currentSizeValueField"
+            :sizeTiers="currentSizeTiers"
             :trafficLightKeys="currentTrafficLightKeys"
             @bubble-click="onBubbleClick"
             @visible-change="onVisibleChange"
@@ -52,6 +55,7 @@ import CommonComputerPower from "./commonComputerPower.vue";
 import ResourcePoolTable from "@/components/ResourcePoolTable.vue";
 import { activeCategory } from "./useGeneralComputer";
 import { tierFilter, testData1 } from "./useCommonComputerPower";
+import { EVS_SIZE_TIERS, SIZE_TIERS } from "./commonComputerPowerConfig";
 
 function keepEnglishOnly(str) {
   const match = String(str ?? "").match(/^[a-zA-Z\s]*/);
@@ -125,10 +129,20 @@ const activeTabConfig = computed(() =>
 const currentXField = computed(() => activeTabConfig.value.xField);
 const currentXAxisName = computed(() => activeTabConfig.value.xAxisName);
 const currentTrafficLightKeys = computed(() => activeTabConfig.value.trafficLightKeys ?? null);
+const isEvsCategory = computed(() => category.value === "EVS");
+const currentSizeLabel = computed(() =>
+  isEvsCategory.value ? "磁盘总量(TB)" : "服务器规模(台)"
+);
+const currentSizeValueField = computed(() =>
+  isEvsCategory.value ? "totalDiskSpace" : "serverNum"
+);
+const currentSizeTiers = computed(() =>
+  isEvsCategory.value ? EVS_SIZE_TIERS : SIZE_TIERS
+);
 
 /** 仅 EVS 分类启用「按数据 ±padding 定轴」；ECS 等不传，避免误配 tab 字段时生效 */
 const axisRangeDataPaddingForChart = computed(() =>
-  category.value === "EVS"
+  isEvsCategory.value
     ? activeTabConfig.value.axisRangeDataPadding ?? null
     : null
 );

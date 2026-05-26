@@ -1,6 +1,6 @@
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { applyBubbleConfig, SIZE_TIERS } from "./commonComputerPowerConfig";
+import { applyBubbleConfig, EVS_SIZE_TIERS, SIZE_TIERS } from "./commonComputerPowerConfig";
 import { selectedPool } from "./useChartOption";
 import { useCurrentDate } from "./useCurrentDate";
 import { useDirectoryTree } from "./useDirectoryTree";
@@ -86,25 +86,25 @@ function mockFetchEfficiency(params = {}) {
               { name: ">1000", num: "45", val: null },
             ],
             list: [
-              { azName: "华东-上海二(AZ1)", useRate: 0, allocationRate: 0.12, serverNum: 0 },
-              { azName: "华东-北京四(AZ1)", useRate: 0.3715, allocationRate: 0.50, serverNum: 36 },
-              { azName: "华北-北京一(AZ1)-c6-mgr-2", useRate: 0.4337, allocationRate: 0.50, serverNum: 25 },
-              { azName: "华东-上海一(AZ2)-c6-mgr-1", useRate: 0, allocationRate: 0.08, serverNum: 0 },
-              { azName: "华南-深圳一(AZ1)-c6-mgr-3", useRate: 0.3123, allocationRate: 0.35, serverNum: 0 },
-              { azName: "华北-北京一(AZ2)-c6-mgr-1", useRate: 0.4251, allocationRate: 0.60, serverNum: 42 },
-              { azName: "华东-杭州一(AZ1)-c6-mgr-2", useRate: 0.0896, allocationRate: 0.10, serverNum: 556 },
-              { azName: "华南-广州一(AZ1)-c6-mgr-1", useRate: 0.168, allocationRate: 0.22, serverNum: 2 },
-              { azName: "华北-天津一(AZ1)-c6-mgr-2", useRate: 0.4197, allocationRate: 0.55, serverNum: 37 },
-              { azName: "华东-南京一(AZ2)-c6-mgr-2", useRate: 0.2033, allocationRate: 0.20, serverNum: 7777 },
-              { azName: "华南-深圳一(AZ2)-c6-mgr-1", useRate: 0.071, allocationRate: 0.15, serverNum: 176 },
-              { azName: "华北-北京一(AZ3)-c6-mgr-1", useRate: 0.1006, allocationRate: 0.18, serverNum: 240 },
-              { azName: "华东-上海一(AZ1)-c6-mgr-2", useRate: 0.4171, allocationRate: 0.45, serverNum: 107 },
-              { azName: "华南-广州一(AZ2)-c6-mgr-2", useRate: 0, allocationRate: 0.05, serverNum: 4 },
-              { azName: "华北-石家庄一(AZ1)-c6-mgr-1", useRate: 0.4123, allocationRate: 0.48, serverNum: 17 },
-              { azName: "华东-苏州一(AZ1)-c6-mgr-3", useRate: 0.0959, allocationRate: 0.12, serverNum: 3258 },
-              { azName: "华南-东莞一(AZ1)-c6-mgr-1", useRate: 0.4202, allocationRate: 0.52, serverNum: 1546 },
-              { azName: "华北-北京一(AZ4)-c6-mgr-1", useRate: 0.1943, allocationRate: 0.28, serverNum: 4646 },
-              { azName: "华东-上海一(AZ3)-c6-mgr-2", useRate: 0.3637, allocationRate: 0.40, serverNum: 88 },
+              { azName: "华东-上海二(AZ1)", useRate: 0, allocationRate: 0.12, writeBandwidthUseRate: 0.08, serverNum: 0, totalDiskSpace: 0.00 },
+              { azName: "华东-北京四(AZ1)", useRate: 0.3715, allocationRate: 0.50, writeBandwidthUseRate: 0.62, serverNum: 36, totalDiskSpace: 1800.25 },
+              { azName: "华北-北京一(AZ1)-c6-mgr-2", useRate: 0.4337, allocationRate: 0.50, writeBandwidthUseRate: 0.55, serverNum: 25, totalDiskSpace: 3200.75 },
+              { azName: "华东-上海一(AZ2)-c6-mgr-1", useRate: 0, allocationRate: 0.08, writeBandwidthUseRate: 0.12, serverNum: 0, totalDiskSpace: 0.00 },
+              { azName: "华南-深圳一(AZ1)-c6-mgr-3", useRate: 0.3123, allocationRate: 0.35, writeBandwidthUseRate: 0.48, serverNum: 0, totalDiskSpace: 2600.50 },
+              { azName: "华北-北京一(AZ2)-c6-mgr-1", useRate: 0.4251, allocationRate: 0.60, writeBandwidthUseRate: 0.78, serverNum: 42, totalDiskSpace: 5200.35 },
+              { azName: "华东-杭州一(AZ1)-c6-mgr-2", useRate: 0.0896, allocationRate: 0.10, writeBandwidthUseRate: 0.35, serverNum: 556, totalDiskSpace: 11200.80 },
+              { azName: "华南-广州一(AZ1)-c6-mgr-1", useRate: 0.168, allocationRate: 0.22, writeBandwidthUseRate: 0.24, serverNum: 2, totalDiskSpace: 1600.10 },
+              { azName: "华北-天津一(AZ1)-c6-mgr-2", useRate: 0.4197, allocationRate: 0.55, writeBandwidthUseRate: 0.68, serverNum: 37, totalDiskSpace: 7200.65 },
+              { azName: "华东-南京一(AZ2)-c6-mgr-2", useRate: 0.2033, allocationRate: 0.20, writeBandwidthUseRate: 0.44, serverNum: 7777, totalDiskSpace: 24600.45 },
+              { azName: "华南-深圳一(AZ2)-c6-mgr-1", useRate: 0.071, allocationRate: 0.15, writeBandwidthUseRate: 0.18, serverNum: 176, totalDiskSpace: 9600.20 },
+              { azName: "华北-北京一(AZ3)-c6-mgr-1", useRate: 0.1006, allocationRate: 0.18, writeBandwidthUseRate: 0.31, serverNum: 240, totalDiskSpace: 12800.95 },
+              { azName: "华东-上海一(AZ1)-c6-mgr-2", useRate: 0.4171, allocationRate: 0.45, writeBandwidthUseRate: 0.72, serverNum: 107, totalDiskSpace: 6100.40 },
+              { azName: "华南-广州一(AZ2)-c6-mgr-2", useRate: 0, allocationRate: 0.05, writeBandwidthUseRate: 0.09, serverNum: 4, totalDiskSpace: 1400.05 },
+              { azName: "华北-石家庄一(AZ1)-c6-mgr-1", useRate: 0.4123, allocationRate: 0.48, writeBandwidthUseRate: 0.59, serverNum: 17, totalDiskSpace: 3900.55 },
+              { azName: "华东-苏州一(AZ1)-c6-mgr-3", useRate: 0.0959, allocationRate: 0.12, writeBandwidthUseRate: 0.28, serverNum: 3258, totalDiskSpace: 21800.15 },
+              { azName: "华南-东莞一(AZ1)-c6-mgr-1", useRate: 0.4202, allocationRate: 0.52, writeBandwidthUseRate: 0.82, serverNum: 1546, totalDiskSpace: 17600.70 },
+              { azName: "华北-北京一(AZ4)-c6-mgr-1", useRate: 0.1943, allocationRate: 0.28, writeBandwidthUseRate: 0.39, serverNum: 4646, totalDiskSpace: 23200.30 },
+              { azName: "华东-上海一(AZ3)-c6-mgr-2", useRate: 0.3637, allocationRate: 0.40, writeBandwidthUseRate: 0.51, serverNum: 88, totalDiskSpace: 8400.85 },
             ],
           },
         }),
@@ -165,23 +165,30 @@ function mergeEfficiencyWithOperate(efficiencyList, operateMap) {
 }
 
 /** 转换为散点图所需的数据格式 */
-function toChartData(mergedList) {
-  return mergedList.map((item) => {
-    const toPercent = (v) => (v != null ? v * 100 : null);
-    return applyBubbleConfig({
-      name: item.azName,
-      regionName: item.regionName || "",
-      azName: item.azName,
-      resourcePoolTotalName: item.resourcePoolTotalName,
-      x: toPercent(item.useRate),
-      y: toPercent(item.grossProfitRate),
-      serverNum: item.serverNum ?? 0,
-      _useRate: toPercent(item.useRate),
-      _allocationRate: toPercent(item.allocationRate),
-      _grossProfitRate: toPercent(item.grossProfitRate),
-      _writeBandwidthUseRate: item.writeBandwidthUseRate != null ? Number(item.writeBandwidthUseRate) * 100 : null,
-    });
-  });
+function toChartData(mergedList, sizeTiers = SIZE_TIERS, sizeValueField = "serverNum") {
+  const toPercent = (v) => (v != null ? v * 100 : null);
+  const baseList = mergedList.map((item) => ({
+    name: item.azName,
+    regionName: item.regionName || "",
+    azName: item.azName,
+    resourcePoolTotalName: item.resourcePoolTotalName,
+    x: toPercent(item.useRate),
+    y: toPercent(item.grossProfitRate),
+    serverNum: item.serverNum ?? 0,
+    totalDiskSpace: item.totalDiskSpace ?? 0,
+    _useRate: toPercent(item.useRate),
+    _allocationRate: toPercent(item.allocationRate),
+    _grossProfitRate: toPercent(item.grossProfitRate),
+    _writeBandwidthUseRate: item.writeBandwidthUseRate != null ? Number(item.writeBandwidthUseRate) * 100 : null,
+  }));
+
+  return baseList.map((item) => applyBubbleConfig(item, sizeTiers, sizeValueField));
+}
+
+function getBubbleSizeConfig(cloudServerName) {
+  return cloudServerName === "EVS"
+    ? { tiers: EVS_SIZE_TIERS, field: "totalDiskSpace" }
+    : { tiers: SIZE_TIERS, field: "serverNum" };
 }
 
 function normalizeFilterParams(filters = {}) {
@@ -274,7 +281,8 @@ export function useCommonComputerPower() {
 
       const mergedList = mergeEfficiencyWithOperate(efficiencyList, operateMap);
       rawData.value = { avgRangeList: resAvgRangeList, list: mergedList };
-      data.value = toChartData(mergedList);
+      const sizeConfig = getBubbleSizeConfig(cloudServerName);
+      data.value = toChartData(mergedList, sizeConfig.tiers, sizeConfig.field);
     } catch (e) {
       error.value = e;
       resetState();
@@ -304,7 +312,8 @@ export const testData1 = ref([
   {
     resourcePoolTotalName: '华北-北京四(AZ1)-kc1n',
     regionName: '华北-北京四',
-    serverNum: 190
+    serverNum: 190,
+    totalDiskSpace: 12000.50
   }
 ]);
 

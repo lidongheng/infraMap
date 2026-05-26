@@ -5,7 +5,7 @@
       :key="item.key"
       class="category-btn"
       :class="{ active: activeCategory === item.key, disabled: item.disabled }"
-      @click="!item.disabled && (activeCategory = item.key)"
+      @click="onCategoryClick(item)"
     >
       {{ item.key }}
     </div>
@@ -14,6 +14,7 @@
 
 <script setup>
 import { activeCategory } from "@/views/useGeneralComputer";
+import { selectedPool } from "@/views/useChartOption";
 
 const categories = [
   { key: "ECS", disabled: false },
@@ -23,6 +24,12 @@ const categories = [
   { key: "OBS", disabled: true },
   { key: "DSS", disabled: true },
 ];
+
+function onCategoryClick(item) {
+  if (item.disabled) return;
+  activeCategory.value = item.key;
+  selectedPool.value = `${item.key}资源池`;
+}
 </script>
 
 <style lang="less" scoped>

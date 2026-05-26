@@ -41,6 +41,8 @@ const props = defineProps({
   tooltipYField: { type: String, default: "" },
   /** 气泡大小维度的标签，用于图例和 tooltip，如 "服务器规模(台)" 或 "卡数(卡)" */
   sizeLabel: { type: String, default: "服务器规模(台)" },
+  /** 气泡大小维度取数据项的哪个字段，不传则取 serverNum */
+  sizeValueField: { type: String, default: "serverNum" },
   /** 气泡大小档位数组，不传则使用默认 SIZE_TIERS */
   sizeTiers: { type: Array, default: () => SIZE_TIERS },
   /** 亮灯规则；有对应指标阈值时 tooltip x/y 行前显示灯，否则不展示圆点 */
@@ -351,8 +353,8 @@ function buildTierFilter(tiers) {
 }
 
 function passesTierFilter(item, tiers) {
-  const serverNum = Number(item.serverNum ?? 0);
-  const value = Number.isFinite(serverNum) ? serverNum : 0;
+  const sizeValue = Number(item[props.sizeValueField] ?? item.sizeValue ?? item.serverNum ?? 0);
+  const value = Number.isFinite(sizeValue) ? sizeValue : 0;
   const tierIdx = props.sizeTiers.findLastIndex((tier) => value > tier.min);
   const normalizedTierIdx = tierIdx >= 0 ? tierIdx : 0;
   return tiers[normalizedTierIdx] === true;
@@ -446,6 +448,9 @@ watch(
     props.yTicks,
     props.xAxisName,
     props.xAxisEndLabelsSide,
+    props.sizeLabel,
+    props.sizeValueField,
+    props.sizeTiers,
   ],
   () => {
     refreshChart();
@@ -502,7 +507,11 @@ const tooltipFormatter = (params) => {
   } else {
     rateStr = `${Number(yDisplay).toFixed(2)}${unit}`;
   }
-  const serverNum = (params.value || [])[2] ?? 0;
+  const sizeValue = (params.value || [])[2] ?? 0;
+  const sizeUnit = (props.sizeLabel.match(/\((.+)\)/) || [])[1] || "台";
+  const sizeValueText = sizeUnit === "TB"
+    ? Number(sizeValue).toFixed(2)
+    : sizeValue;
 
   const xVal = Number(params.value[0]);
   const yVal = Number(yDisplay);
@@ -520,7 +529,7 @@ const tooltipFormatter = (params) => {
   return `
     <div class="title value">${az}</div>
     <div class="item mgb4">
-      <div class="name">${props.sizeLabel.replace(/\(.*\)/, '')}：</div><div class="value bold">${serverNum} ${(props.sizeLabel.match(/\((.+)\)/) || [])[1] || '台'}</div>
+      <div class="name">${props.sizeLabel.replace(/\(.*\)/, '')}：</div><div class="value bold">${sizeValueText} ${sizeUnit}</div>
     </div>
     <div class="item mgb4">
       ${xMarker}<div class="name">${props.xAxisName}：</div><div class="value bold">${xVal.toFixed(2)}%</div>
@@ -541,6 +550,24 @@ function chartCanvasFont(sizePx, weight = "normal") {
   return `${weight} ${sizePx}px ${CHART_FONT_FAMILY}`;
 }
 
+function toFiniteNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeRange(range, fallback) {
+  const min = toFiniteNumber(range?.[0], fallback[0]);
+  const max = toFiniteNumber(range?.[1], fallback[1]);
+  if (max > min) return [min, max];
+  return fallback;
+}
+
+function normalizeTicks(ticks) {
+  if (!Array.isArray(ticks)) return [];
+  return [...new Set(ticks.map((tick) => Number(tick)).filter(Number.isFinite))]
+    .sort((a, b) => a - b);
+}
+
 /** x 轴末端标签在箭头右侧时，grid.right 至少需容纳箭头 + 内边距 + 文案宽度，避免溢出画布 */
 function computeGridRight() {
   const s = getChartScale(el.value);
@@ -551,7 +578,7 @@ function computeGridRight() {
   const al = 12 * s;
   const ctx = document.createElement("canvas").getContext("2d");
   ctx.font = chartCanvasFont(lblFs, "bold");
-  const xMax = props.xRange ? props.xRange[1] : 100;
+  const [, xMax] = normalizeRange(props.xRange, [0, 100]);
   const pctStr = `${Math.min(Math.round(xMax), 100)}%`;
   const tw = Math.max(
     ctx.measureText(pctStr).width,
@@ -562,6 +589,8 @@ function computeGridRight() {
 
 function buildOption() {
   const s = getChartScale(el.value);
+  const xRange = normalizeRange(props.xRange, [0, 100]);
+  const yRange = normalizeRange(props.yRange, [-200, 200]);
   const filterFn = props.dataFilter ?? defaultFilter;
   const filteredData = props.data
     .filter(filterFn)
@@ -571,10 +600,10 @@ function buildOption() {
   const seriesData = filteredData
     .slice()
     .sort((a, b) => (b.symbolSize ?? 0) - (a.symbolSize ?? 0))
-    .map(({ name, azName, x, y, serverNum, symbolSize, color, ...extra }) => ({
+    .map(({ name, azName, x, y, serverNum, sizeValue, symbolSize, color, ...extra }) => ({
       name,
       azName,
-      value: [x, y, serverNum ?? 0],
+      value: [x, y, sizeValue ?? serverNum ?? 0],
       symbolSize: symbolSize * s,
       itemStyle: {
         color,
@@ -585,15 +614,18 @@ function buildOption() {
       ...extra,
     }));
 
-  const hasCustomTicks = Array.isArray(props.yTicks) && props.yTicks.length > 0;
+  const yTickValues = normalizeTicks(props.yTicks);
+  const hasCustomTicks = yTickValues.length > 1;
   let yInterval;
   if (hasCustomTicks) {
-    const sorted = [...props.yTicks].sort((a, b) => a - b);
     const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
-    yInterval = sorted.slice(1).reduce((g, v, i) => gcd(g, Math.abs(v - sorted[i])), Math.abs(sorted[1] - sorted[0]));
+    yInterval = yTickValues
+      .slice(1)
+      .reduce((g, v, i) => gcd(g, Math.abs(v - yTickValues[i])), Math.abs(yTickValues[1] - yTickValues[0]));
   } else {
-    yInterval = (props.yRange[1] - props.yRange[0]) / 4;
+    yInterval = (yRange[1] - yRange[0]) / 4;
   }
+  if (!Number.isFinite(yInterval) || yInterval <= 0) yInterval = undefined;
 
   const dashColor = "#c8c8e8";
   const dashWidth = Math.max(1, 1.5 * s);
@@ -618,11 +650,9 @@ function buildOption() {
     },
     xAxis: {
       type: "value",
-      min: props.xRange ? props.xRange[0] : 0,
-      max: props.xRange ? props.xRange[1] : 100,
-      interval: props.xRange
-        ? (props.xRange[1] - props.xRange[0]) / 5
-        : 20,
+      min: xRange[0],
+      max: xRange[1],
+      interval: (xRange[1] - xRange[0]) / 5,
       axisLine: { show: false },
       axisTick: { show: false },
       splitLine: {
@@ -634,11 +664,11 @@ function buildOption() {
     yAxis: {
       type: "value",
       min: hasCustomTicks
-        ? Math.min(...props.yTicks)
-        : props.yRange[0],
+        ? yTickValues[0]
+        : yRange[0],
       max: hasCustomTicks
-        ? Math.max(...props.yTicks)
-        : props.yRange[1],
+        ? yTickValues[yTickValues.length - 1]
+        : yRange[1],
       interval: yInterval,
       axisLine: { show: false },
       axisTick: { show: false },
@@ -651,7 +681,7 @@ function buildOption() {
         fontFamily: CHART_FONT_FAMILY,
         fontSize: Math.round(14 * s),
         color: "#353575",
-        formatter: hasCustomTicks ? (v) => (props.yTicks.includes(v) ? v : "") : undefined,
+        formatter: hasCustomTicks ? (v) => (yTickValues.includes(v) ? v : "") : undefined,
       },
     },
     series: [
@@ -675,7 +705,7 @@ function buildOption() {
               },
             },
             {
-              xAxis: props.avgX,
+              xAxis: toFiniteNumber(props.avgX, xRange[0]),
               lineStyle: {
                 type: "dashed",
                 color: "#F8C6C7",
@@ -695,24 +725,25 @@ function updateGraphicLabels() {
   const opts = chart.getOption();
   const grid = opts.grid?.[0] || {};
   const yAxis = opts.yAxis?.[0] || {};
-  const yExtent = [
-    yAxis.min ?? props.yRange[0],
-    yAxis.max ?? props.yRange[1],
-  ];
+  const yExtent = normalizeRange(
+    [yAxis.min ?? props.yRange[0], yAxis.max ?? props.yRange[1]],
+    [-200, 200]
+  );
   const [gl, gr, gt, gb] = [
-    grid.left ?? GRID_INSET.left * s,
-    grid.right ?? GRID_INSET.right * s,
-    grid.top ?? GRID_INSET.top * s,
-    grid.bottom ?? GRID_INSET.bottom * s,
+    toFiniteNumber(grid.left, GRID_INSET.left * s),
+    toFiniteNumber(grid.right, GRID_INSET.right * s),
+    toFiniteNumber(grid.top, GRID_INSET.top * s),
+    toFiniteNumber(grid.bottom, GRID_INSET.bottom * s),
   ];
-  const w = chart.getWidth() - gl - gr;
-  const h = chart.getHeight() - gt - gb;
+  const w = Math.max(1, chart.getWidth() - gl - gr);
+  const h = Math.max(1, chart.getHeight() - gt - gb);
   const xEnd = gl + w;
   const zeroY =
     gt + (1 - (0 - yExtent[0]) / (yExtent[1] - yExtent[0])) * h;
-  const xMin = props.xRange ? props.xRange[0] : 0;
-  const xMax = props.xRange ? props.xRange[1] : 100;
-  const avgLineX = gl + ((props.avgX - xMin) / (xMax - xMin)) * w;
+  const [xMin, xMax] = normalizeRange(props.xRange, [0, 100]);
+  const xSpanForAvg = xMax - xMin;
+  const avgX = toFiniteNumber(props.avgX, xMin);
+  const avgLineX = gl + ((avgX - xMin) / xSpanForAvg) * w;
 
   const graphics = [];
   const silent = { cursor: "default", silent: true };
@@ -922,8 +953,8 @@ function updateGraphicLabels() {
 
   const aw = 6 * s;
   const al = 12 * s;
-  const _hasCustomTicks = Array.isArray(props.yTicks) && props.yTicks.length > 0;
-  const yTickMin = _hasCustomTicks ? Math.min(...props.yTicks) : props.yRange[0];
+  const yTickValues = normalizeTicks(props.yTicks);
+  const yTickMin = yTickValues.length > 1 ? yTickValues[0] : yExtent[0];
   graphics.push(
     { type: "polygon", position: [xEnd, zeroY], shape: { points: [[0, -aw], [0, aw], [al, 0]] }, style: { fill: axisColor }, z: 5, ...silent },
     { type: "polygon", position: [gl, gt], shape: { points: [[-aw, 0], [aw, 0], [0, -al]] }, style: { fill: axisColor }, z: 5, ...silent },

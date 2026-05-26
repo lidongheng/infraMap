@@ -15,6 +15,13 @@ export const SIZE_TIERS = [
   { min: 1000, max: Infinity, label: ">1000", color: "#7a7ae9", symbolSizeMin: 29, symbolSizeMax: 35 },
 ];
 
+export const EVS_SIZE_TIERS = [
+  { min: 0, max: 2000, label: "0-2000", color: "#e067ff", symbolSizeMin: 3, symbolSizeMax: 9 },
+  { min: 2000, max: 10000, label: "2000-10000", color: "#2df2ff", symbolSizeMin: 13, symbolSizeMax: 19 },
+  { min: 10000, max: 20000, label: "10000-20000", color: "#88ffae", symbolSizeMin: 21, symbolSizeMax: 27 },
+  { min: 20000, max: Infinity, label: ">20000", color: "#7a7ae9", symbolSizeMin: 29, symbolSizeMax: 35 },
+];
+
 /** 智算卡数固定档位 */
 export const AI_SIZE_TIERS = [
   { min: 0, max: 500, label: "0-500", color: "#51c7c7", symbolSizeMin: 5, symbolSizeMax: 9 },
@@ -110,14 +117,17 @@ function calcSymbolSize(serverNum, tier) {
  * 应用前端配置，为图表数据项补充 color、symbolSize
  * @param {{ name: string, x: number, y: number, serverNum: number }} item 接口转换后的基础项
  * @param {typeof SIZE_TIERS} [tiers]
+ * @param {string} [sizeValueField]
  */
-export function applyBubbleConfig(item, tiers = SIZE_TIERS) {
-  const tier = getTierByNum(item.serverNum, tiers);
+export function applyBubbleConfig(item, tiers = SIZE_TIERS, sizeValueField = "serverNum") {
+  const sizeValue = Number(item[sizeValueField] ?? item.serverNum ?? 0) || 0;
+  const tier = getTierByNum(sizeValue, tiers);
 
   return {
     ...item,
+    sizeValue,
     color: tier.color,
-    symbolSize: calcSymbolSize(item.serverNum, tier),
+    symbolSize: calcSymbolSize(sizeValue, tier),
   };
 }
 
@@ -147,15 +157,26 @@ function weightedAvg(pairs) {
  * @param {Function|null} dataFilter  业务过滤函数，计算前先过滤无效数据
  * @returns {number} 加权平均值（与 xField 同单位，已是百分比则返回百分比）
  */
-export function computeWeightedAvgFromData(dataList, xField, visibleTiers, sizeTiers = SIZE_TIERS, dataFilter = null) {
+export function computeWeightedAvgFromData(
+  dataList,
+  xField,
+  visibleTiers,
+  sizeTiers = SIZE_TIERS,
+  dataFilter = null,
+  sizeValueField = "serverNum"
+) {
   if (!dataList?.length) return 0;
   let filtered = dataList;
   if (dataFilter) filtered = filtered.filter(dataFilter);
   filtered = filtered.filter((d) => {
-    const tier = getTierByNum(d.serverNum ?? 0, sizeTiers);
+    const sizeValue = d[sizeValueField] ?? d.sizeValue ?? d.serverNum ?? 0;
+    const tier = getTierByNum(sizeValue, sizeTiers);
     const tierIdx = sizeTiers.indexOf(tier);
     return tierIdx !== -1 && visibleTiers[tierIdx];
   });
-  const pairs = filtered.map((d) => ({ val: d[xField], num: d.serverNum ?? 0 }));
+  const pairs = filtered.map((d) => ({
+    val: d[xField],
+    num: d[sizeValueField] ?? d.sizeValue ?? d.serverNum ?? 0,
+  }));
   return weightedAvg(pairs);
 }
