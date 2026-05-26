@@ -1,16 +1,5 @@
 <template>
   <div class="page-container">
-    <div class="month-picker-wrapper">
-      <el-date-picker
-        v-model="selectedMonth"
-        type="month"
-        placeholder="选择月份"
-        format="YYYY年MM月"
-        value-format="YYYY-MM"
-        :clearable="false"
-        size="small"
-      />
-    </div>
     <div class="three-col-layout">
       <!-- 左侧面板：Region 列表 -->
       <div class="panel panel-left">
@@ -73,8 +62,7 @@ import { useRegionData } from "./useRegionData";
 import { useCurrentDate } from "./useCurrentDate";
 import { storeToRefs } from "pinia";
 
-const currentDateStore = useCurrentDate();
-const { date: selectedMonth } = storeToRefs(currentDateStore);
+const { date: currentMonth } = storeToRefs(useCurrentDate());
 
 // ================================================================
 // 中国标准世界地图坐标偏移
@@ -683,7 +671,7 @@ onMounted(async () => {
   chart = echarts.init(chartEl.value);
 
   // 从后端取数
-  await fetchRegionStats(selectedMonth.value);
+  await fetchRegionStats(currentMonth.value);
   updateMap();
   // 首次 setOption 后 geo 已初始化，convertToPixel 可用，再渲染一次以添加折线引导线
   updateMap();
@@ -730,13 +718,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="less" scoped>
-.month-picker-wrapper {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-  z-index: 100;
-}
-
 .page-container {
   position: relative;
   width: 100%;
