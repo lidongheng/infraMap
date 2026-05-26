@@ -888,18 +888,18 @@ function confirmResource() {
 .panel-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 8px 14px;
+  gap: 8px;
+  padding: 6px 14px;
   border-top: 1px solid #edf0f5;
 }
 
 .plain-btn,
 .primary-btn {
-  min-width: 70px;
-  height: 32px;
-  padding: 0 16px;
+  min-width: 62px;
+  height: 28px;
+  padding: 0 12px;
   border-radius: 3px;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -910,8 +910,8 @@ function confirmResource() {
 }
 
 .primary-btn {
-  border: 1px solid #5e7ce0;
-  background: #5e7ce0;
+  border: 1px solid #4a4abd;
+  background: #4a4abd;
   color: #fff;
 }
 
