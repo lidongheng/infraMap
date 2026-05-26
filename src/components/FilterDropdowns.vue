@@ -57,7 +57,7 @@
       >
         <template #reference>
           <button class="select-trigger" type="button">
-            <span>{{ getSummary(azValue, azOptions) }}</span>
+            <span>{{ getSummary(azValue, filteredAzOptions) }}</span>
             <el-icon><ArrowDown /></el-icon>
           </button>
         </template>
@@ -65,15 +65,15 @@
           <div class="option-list">
             <label class="option-row checked-row">
               <el-checkbox
-                :model-value="isAllSelected(azValue, azOptions)"
-                :indeterminate="isIndeterminate(azValue, azOptions)"
+                :model-value="isAllSelected(azValue, filteredAzOptions)"
+                :indeterminate="isIndeterminate(azValue, filteredAzOptions)"
                 @change="checked => toggleAll('az', checked)"
               />
               <span>全部</span>
             </label>
             <el-checkbox-group v-model="azValue" class="option-group">
               <el-checkbox
-                v-for="item in azOptions"
+                v-for="item in filteredAzOptions"
                 :key="item.value"
                 :label="item.value"
                 class="option-row"
@@ -243,6 +243,7 @@ const regionKeyword = ref('');
 
 const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.regions)));
 const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azs)));
+const filteredAzOptions = computed(() => filterAzOptionsByRegions(azOptions.value, regionValue.value));
 const resourceTree = computed(() => normalizeResourceTree(props.options?.resourceTree));
 const resourceSeries = computed(() => resourceTree.value.map(toOptionMeta));
 const allResourceFamilies = computed(() => getUniqueOptions(resourceTree.value.flatMap(item => item.children ?? [])));
@@ -269,6 +270,7 @@ const activeFamily = ref('');
 const activeGeneration = ref('');
 let syncingFromModel = false;
 let syncingResourceCascade = false;
+let syncingLocationCascade = false;
 
 const filteredRegionOptions = computed(() => {
   const keyword = regionKeyword.value.trim().toLowerCase();
@@ -339,7 +341,16 @@ watch(resourceVerValue, (nextValue, oldValue) => {
   syncingResourceCascade = false;
 }, { flush: 'sync' });
 
-watch([regionValue, azValue], () => {
+watch(regionValue, () => {
+  if (syncingFromModel) return;
+  syncingLocationCascade = true;
+  azValue.value = keepValid(azValue.value, filteredAzOptions.value, []);
+  syncingLocationCascade = false;
+  emitCurrentValue();
+}, { deep: true, flush: 'sync' });
+
+watch(azValue, () => {
+  if (syncingLocationCascade) return;
   emitCurrentValue();
 }, { deep: true, flush: 'sync' });
 
@@ -432,7 +443,7 @@ function applyModelValue(value) {
   const fallback = allSelectedValue();
   const next = value ?? fallback;
   regionValue.value = keepValid(next.regionNameList, regionOptions.value, fallback.regionNameList);
-  azValue.value = keepValid(next.azNameList, azOptions.value, fallback.azNameList);
+  azValue.value = keepValid(next.azNameList, filteredAzOptions.value, fallback.azNameList);
   resourceSeriesValue.value = keepValid(next.resourceSeries, resourceSeries.value, fallback.resourceSeries);
   resourceFamilyValue.value = keepValid(next.resourceFamily, allResourceFamilies.value, fallback.resourceFamily);
   resourceVerValue.value = keepValid(next.resourceVer, allResourceGenerations.value, fallback.resourceVer);
@@ -450,6 +461,22 @@ function keepValid(values, options, fallback) {
   }
   const optionValues = new Set(options.map(item => item.value));
   return values.filter(item => optionValues.has(item));
+}
+
+function filterAzOptionsByRegions(options, selectedRegions) {
+  if (!selectedRegions?.length) {
+    return [];
+  }
+
+  const regionLabels = regionOptions.value
+    .filter(item => selectedRegions.includes(item.value))
+    .flatMap(item => [item.value, item.label])
+    .filter(Boolean);
+
+  return options.filter((item) => {
+    const azName = String(item.label ?? item.value ?? "");
+    return regionLabels.some(region => azName.startsWith(region));
+  });
 }
 
 function emitCurrentValue() {
@@ -635,7 +662,7 @@ function toggleAll(type, checked) {
 function getOptionsByType(type) {
   const map = {
     region: filteredRegionOptions.value,
-    az: azOptions.value,
+    az: filteredAzOptions.value,
     resourceSeries: resourceSeries.value,
     resourceFamily: visibleResourceFamilies.value,
     resourceVer: visibleResourceGenerations.value,
