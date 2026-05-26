@@ -341,7 +341,7 @@ const usesBackendResourceTree = computed(() => (props.filterOptions?.resourceTre
 function buildTierFilter(tiers) {
   const allChecked = tiers.every(Boolean);
   const resourcePoolNames = buildVisibleResourcePoolNames(tiers, allChecked);
-  const shouldFilterResourcePool = props.data.length > 0;
+  const shouldFilterResourcePool = filterInitialized.value && usesBackendResourceTree.value;
   return (item) => {
     return (
       (allChecked || passesTierFilter(item, tiers)) &&
