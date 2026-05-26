@@ -2,11 +2,11 @@
   <div class="app-shell">
     <div class="global-date-filter">
       <el-date-picker
-        v-model="selectedMonth"
-        type="month"
-        placeholder="选择月份"
-        format="YYYY年MM月"
-        value-format="YYYY-MM"
+        v-model="selectedDate"
+        type="date"
+        placeholder="选择日期"
+        format="YYYY年MM月DD日"
+        value-format="YYYY-MM-DD"
         :clearable="false"
         size="small"
       />
@@ -20,7 +20,7 @@ import { storeToRefs } from 'pinia';
 import { useCurrentDate } from './views/useCurrentDate';
 
 const currentDateStore = useCurrentDate();
-const { date: selectedMonth } = storeToRefs(currentDateStore);
+const { date: selectedDate } = storeToRefs(currentDateStore);
 </script>
 
 <style lang="less" scoped>

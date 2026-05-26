@@ -62,6 +62,7 @@ const props = defineProps({
   /** 是否显示 Region/AZ/资源类型筛选条 */
   showFilters: { type: Boolean, default: false },
   filterOptions: { type: Object, default: null },
+  filterResetKey: { type: [String, Number], default: 0 },
 });
 
 const emit = defineEmits(["bubble-click", "visible-change", "collapse-change", "filter-change"]);
@@ -82,6 +83,7 @@ function toggleCollapse() {
 
 const el = ref(null);
 let chart = null;
+let waitingForFilterResetData = false;
 const visibleTiers = ref([...props.initialVisibleTiers]);
 
 function option(label, value = label) {
@@ -463,6 +465,7 @@ watch(
   (data) => {
     mergeFilterItems(data ?? []);
     emitVisibleChange();
+    waitingForFilterResetData = false;
   },
   { deep: true, immediate: true }
 );
@@ -477,10 +480,23 @@ watch(
       : fillNewFilterGroups(filterValue.value, options, oldOptions);
     filterValue.value = reconcileFilterValue(nextValue, options);
     filterInitialized.value = hasOptions;
-    emitVisibleChange();
+    if (!waitingForFilterResetData) {
+      emitVisibleChange();
+    }
     refreshChart();
   },
   { deep: true }
+);
+
+watch(
+  () => props.filterResetKey,
+  () => {
+    waitingForFilterResetData = true;
+    filterValue.value = createDefaultFilterValue(filterOptions.value);
+    filterInitialized.value = hasFilterOptions(filterOptions.value);
+    emit("visible-change", null, [...visibleTiers.value]);
+    refreshChart();
+  }
 );
 
 function defaultFilter(d) {

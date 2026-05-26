@@ -1,5 +1,6 @@
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
+import dayjs from "dayjs";
 import { applyBubbleConfig, EVS_SIZE_TIERS, SIZE_TIERS } from "./commonComputerPowerConfig";
 import { selectedPool } from "./useChartOption";
 import { useCurrentDate } from "./useCurrentDate";
@@ -224,8 +225,10 @@ export function useCommonComputerPower() {
     rawData.value = null;
   }
 
-  function syncAzOptionsContext(cloudServerName, month) {
-    const nextKey = `${cloudServerName ?? ""}__${month ?? ""}`;
+  const { date } = storeToRefs(useCurrentDate());
+
+  function syncAzOptionsContext(cloudServerName, date) {
+    const nextKey = `${cloudServerName ?? ""}__${date ?? ""}`;
     if (locationOptionsContextKey.value !== nextKey) {
       locationOptionsContextKey.value = nextKey;
       regionOptions.value = [];
@@ -242,16 +245,17 @@ export function useCommonComputerPower() {
     }
   }
 
-  async function fetchData(month, filters = currentFilters.value) {
+  async function fetchData(filters = currentFilters.value) {
     loading.value = true;
     error.value = null;
     forbidden.value = false;
     currentFilters.value = normalizeFilterParams(filters);
     const cloudServerName = keepEnglishOnly(selectedPool.value);
-    syncAzOptionsContext(cloudServerName, month);
+    syncAzOptionsContext(cloudServerName, date.value);
     const params = {
       cloudServerName,
-      month,
+      month: dayjs(date.value).format("YYYYMM"),
+      date: date.value,
       regionNameList: currentFilters.value.regionNameList,
       azNameList: currentFilters.value.azNameList,
       resourceTypeList: currentFilters.value.resourceTypeList,
@@ -291,8 +295,9 @@ export function useCommonComputerPower() {
     }
   }
 
-  const { date: currentMonth } = storeToRefs(useCurrentDate());
-  watch([selectedPool, currentMonth], ([, month]) => fetchData(month, currentFilters.value));
+  watch([selectedPool, date], ([, nextDate], [, oldDate]) => {
+    fetchData(nextDate !== oldDate ? {} : currentFilters.value);
+  });
 
   return {
     data,

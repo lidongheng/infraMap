@@ -18,6 +18,7 @@
     :yTicks="chartYTicks"
     :showFilters="true"
     :filterOptions="bubbleFilterOptions"
+    :filterResetKey="filterResetKey"
     @bubble-click="(e) => emit('bubble-click', e)"
     @visible-change="onVisibleChange"
     @filter-change="onFilterChange"
@@ -25,7 +26,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { storeToRefs } from "pinia";
 import BubbleChart from "@/components/BubbleChart.vue";
 import { useCommonComputerPower, computeWeightedAvg } from "./useCommonComputerPower";
@@ -62,10 +63,11 @@ const props = defineProps({
 const emit = defineEmits(["bubble-click", "visible-change"]);
 
 const { data, avgRangeList, forbidden, regionOptions, azOptions, directoryTreeList, fetchData } = useCommonComputerPower();
-const { date: currentMonth } = storeToRefs(useCurrentDate());
+const { date: currentDate } = storeToRefs(useCurrentDate());
 
 const visibleTiers = ref([false, true, true, true]);
 const backendFilters = ref({});
+const filterResetKey = ref(0);
 
 function onVisibleChange(filterFn, tiers) {
   if (tiers) visibleTiers.value = tiers;
@@ -74,8 +76,13 @@ function onVisibleChange(filterFn, tiers) {
 
 function onFilterChange(filters) {
   backendFilters.value = { ...(filters ?? {}) };
-  fetchData(currentMonth.value, backendFilters.value);
+  fetchData(backendFilters.value);
 }
+
+watch(currentDate, () => {
+  backendFilters.value = {};
+  filterResetKey.value += 1;
+});
 
 const avgX = computed(() => {
   const hasMatchingAvgRange = avgRangeList.value.some((item) =>
@@ -115,7 +122,7 @@ const bubbleFilterOptions = computed(() => ({
 }));
 
 onMounted(() => {
-  fetchData(currentMonth.value, backendFilters.value);
+  fetchData(backendFilters.value);
 });
 
 defineExpose({ data: mappedData });
