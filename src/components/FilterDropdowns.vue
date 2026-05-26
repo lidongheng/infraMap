@@ -344,7 +344,7 @@ watch(resourceVerValue, (nextValue, oldValue) => {
 watch(regionValue, () => {
   if (syncingFromModel) return;
   syncingLocationCascade = true;
-  azValue.value = keepValid(azValue.value, filteredAzOptions.value, []);
+  azValue.value = filteredAzOptions.value.map(item => item.value);
   syncingLocationCascade = false;
   emitCurrentValue();
 }, { deep: true, flush: 'sync' });
