@@ -34,7 +34,7 @@
               <el-checkbox
                 v-for="item in filteredRegionOptions"
                 :key="item.value"
-                :label="item.value"
+                :value="item.value"
                 class="option-row"
               >
                 {{ item.label }}
@@ -75,7 +75,7 @@
               <el-checkbox
                 v-for="item in filteredAzOptions"
                 :key="item.value"
-                :label="item.value"
+                :value="item.value"
                 class="option-row"
               >
                 {{ item.label }}
@@ -126,7 +126,7 @@
                     :class="['resource-row', { active: activeSeries === item.value }]"
                     @mouseenter="activeSeries = item.value"
                   >
-                    <el-checkbox :label="item.value">{{ item.label }}</el-checkbox>
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
                     <el-icon><ArrowRight /></el-icon>
                   </label>
                 </el-checkbox-group>
@@ -152,7 +152,7 @@
                     :class="['resource-row', { active: activeFamily === item.value }]"
                     @mouseenter="activeFamily = item.value"
                   >
-                    <el-checkbox :label="item.value">{{ item.label }}</el-checkbox>
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
                     <el-icon><ArrowRight /></el-icon>
                   </label>
                 </el-checkbox-group>
@@ -178,7 +178,7 @@
                     :class="['resource-row', { active: activeGeneration === item.value }]"
                     @mouseenter="activeGeneration = item.value"
                   >
-                    <el-checkbox :label="item.value">{{ item.label }}</el-checkbox>
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
                     <el-icon><ArrowRight /></el-icon>
                   </label>
                 </el-checkbox-group>
@@ -202,7 +202,7 @@
                     :key="item.value"
                     class="resource-row"
                   >
-                    <el-checkbox :label="item.value">{{ item.label }}</el-checkbox>
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
                   </label>
                 </el-checkbox-group>
               </div>
