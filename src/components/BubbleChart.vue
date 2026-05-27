@@ -4,8 +4,7 @@
       <FilterDropdowns
         v-model="filterValue"
         :options="filterOptions"
-        :show-region-filter="showRegionFilter"
-        :show-az-filter="showAzFilter"
+        :filter-config="resolvedFilterConfig"
         :loading="filterLoading"
         @change="onFilterChange"
       />
@@ -23,7 +22,7 @@ import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue"
 import * as echarts from "echarts";
 import FilterDropdowns from "@/components/FilterDropdowns.vue";
 import { getChartScale } from "@/utils/chartScale";
-import { SIZE_TIERS, getTierByNum, getTrafficLight, trafficLightHtml } from "@/views/commonComputerPowerConfig";
+import { SIZE_TIERS, getTrafficLight, trafficLightHtml } from "@/views/commonComputerPowerConfig";
 import {
   clearBubbleTierFilter,
   getBubbleResourcePoolFilterName,
@@ -74,6 +73,7 @@ const props = defineProps({
   showAzFilter: { type: Boolean, default: true },
   filterLoading: { type: Boolean, default: false },
   filterOptions: { type: Object, default: null },
+  filterConfig: { type: Object, default: null },
   filterResetKey: { type: [String, Number], default: 0 },
 });
 
@@ -97,6 +97,31 @@ const el = ref(null);
 let chart = null;
 let waitingForFilterResetData = false;
 const visibleTiers = ref([...props.initialVisibleTiers]);
+
+// BubbleChart 是筛选值转后端参数的边界；这里补齐默认配置，保持旧调用方仍按 ECS 树形筛选工作。
+const resolvedFilterConfig = computed(() => ({
+  region: {
+    visible: props.showRegionFilter,
+    searchable: true,
+    ...(props.filterConfig?.region ?? {}),
+  },
+  az: {
+    visible: props.showAzFilter,
+    searchable: false,
+    ...(props.filterConfig?.az ?? {}),
+  },
+  resourceType: {
+    visible: true,
+    variant: "tree",
+    submitMode: "tree",
+    confirmable: true,
+    ...(props.filterConfig?.resourceType ?? {}),
+  },
+}));
+
+const showRegionFilter = computed(() => resolvedFilterConfig.value.region.visible);
+const showAzFilter = computed(() => resolvedFilterConfig.value.az.visible);
+const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
 
 function option(label, value = label) {
   return { label, value };
@@ -232,12 +257,12 @@ function getFilterOptionValue(item) {
 function createDefaultFilterValue(options) {
   const resourceTree = options.resourceTree ?? [];
   return {
-    regionNameList: (options.regions ?? []).map(getFilterOptionValue),
-    azNameList: (options.azs ?? []).map(getFilterOptionValue),
-    resourceSeries: resourceTree.map(getFilterOptionValue),
-    resourceFamily: flattenResourceFamilies(resourceTree).map(getFilterOptionValue),
-    resourceVer: flattenResourceGenerations(resourceTree).map(getFilterOptionValue),
-    resourceType: flattenResourceTypes(resourceTree).map(getFilterOptionValue),
+    regionNameList: showRegionFilter.value ? (options.regions ?? []).map(getFilterOptionValue) : [],
+    azNameList: showAzFilter.value ? (options.azs ?? []).map(getFilterOptionValue) : [],
+    resourceSeries: showResourceTypeFilter.value ? resourceTree.map(getFilterOptionValue) : [],
+    resourceFamily: showResourceTypeFilter.value ? flattenResourceFamilies(resourceTree).map(getFilterOptionValue) : [],
+    resourceVer: showResourceTypeFilter.value ? flattenResourceGenerations(resourceTree).map(getFilterOptionValue) : [],
+    resourceType: showResourceTypeFilter.value ? flattenResourceTypes(resourceTree).map(getFilterOptionValue) : [],
   };
 }
 
@@ -269,18 +294,19 @@ function getResourceTreeSignature(tree = []) {
 function fillNewFilterGroups(value, options, oldOptions = {}) {
   const fallback = createDefaultFilterValue(options);
   const withDefaults = { ...value };
-  if ((oldOptions.regions ?? []).length === 0 && (options.regions ?? []).length > 0) {
+  if (showRegionFilter.value && (oldOptions.regions ?? []).length === 0 && (options.regions ?? []).length > 0) {
     withDefaults.regionNameList = fallback.regionNameList;
   }
-  if ((oldOptions.azs ?? []).length === 0 && (options.azs ?? []).length > 0) {
+  if (showAzFilter.value && (oldOptions.azs ?? []).length === 0 && (options.azs ?? []).length > 0) {
     withDefaults.azNameList = fallback.azNameList;
   }
   const resourceTreeChanged =
     getResourceTreeSignature(oldOptions.resourceTree ?? []) !==
     getResourceTreeSignature(options.resourceTree ?? []);
   if (
-    ((oldOptions.resourceTree ?? []).length === 0 && (options.resourceTree ?? []).length > 0) ||
-    resourceTreeChanged
+    showResourceTypeFilter.value &&
+    (((oldOptions.resourceTree ?? []).length === 0 && (options.resourceTree ?? []).length > 0) ||
+      resourceTreeChanged)
   ) {
     withDefaults.resourceSeries = fallback.resourceSeries;
     withDefaults.resourceFamily = fallback.resourceFamily;
@@ -339,14 +365,15 @@ function flattenResourceTypesWithSeries(tree) {
   });
 }
 
-function buildResourceTypeList(selectedValues, resourceTree) {
+function buildResourceTypeList(selectedValues, resourceTree, submitMode) {
   const selectedSet = new Set(selectedValues ?? []);
   const oneLevelResourceTree = isOneLevelResourceTree(resourceTree);
   return flattenResourceTypesWithSeries(resourceTree)
     .filter(({ item }) => selectedSet.has(getFilterOptionValue(item)))
     .map(({ item, resourceSeries }) => {
       const obj = parseOptionObj(item) ?? {};
-      if (oneLevelResourceTree) {
+      // EVS/OBS 等一层资源类型只需要给后端 resourceType；ECS 保留四层对象结构。
+      if (submitMode === "resourceTypeOnly" || oneLevelResourceTree) {
         return {
           resourceType: obj.resourceType ?? getSubmitValue(item, ["resourceType"]),
         };
@@ -363,24 +390,33 @@ function buildResourceTypeList(selectedValues, resourceTree) {
 
 function buildBackendFilterValue(value, options) {
   const resourceTree = options.resourceTree ?? [];
+  // 未展示的筛选项提交空数组，避免隐藏项的旧选中值继续影响请求。
   return {
-    regionNameList: mapSelectedSubmitValues(value.regionNameList, options.regions ?? [], ["regionName"]),
-    azNameList: mapSelectedSubmitValues(value.azNameList, options.azs ?? [], ["azName"]),
-    resourceTypeList: buildResourceTypeList(value.resourceType, resourceTree),
+    regionNameList: showRegionFilter.value
+      ? mapSelectedSubmitValues(value.regionNameList, options.regions ?? [], ["regionName"])
+      : [],
+    azNameList: showAzFilter.value
+      ? mapSelectedSubmitValues(value.azNameList, options.azs ?? [], ["azName"])
+      : [],
+    resourceTypeList: showResourceTypeFilter.value
+      ? buildResourceTypeList(value.resourceType, resourceTree, resolvedFilterConfig.value.resourceType.submitMode)
+      : [],
   };
 }
 
 function hasFilterOptions(options) {
   return (
-    (options.regions ?? []).length > 0 ||
-    (options.azs ?? []).length > 0 ||
-    (options.resourceTree ?? []).length > 0
+    (showRegionFilter.value && (options.regions ?? []).length > 0) ||
+    (showAzFilter.value && (options.azs ?? []).length > 0) ||
+    (showResourceTypeFilter.value && (options.resourceTree ?? []).length > 0)
   );
 }
 
 const filterValue = ref(createDefaultFilterValue(filterOptions.value));
 const filterInitialized = ref(hasFilterOptions(filterOptions.value));
-const usesBackendResourceTree = computed(() => (props.filterOptions?.resourceTree ?? []).length > 0);
+const usesBackendResourceTree = computed(() =>
+  showResourceTypeFilter.value && (props.filterOptions?.resourceTree ?? []).length > 0
+);
 
 function buildTierFilterConfig(tiers) {
   const allChecked = tiers.every(Boolean);
@@ -422,8 +458,8 @@ function passesFilterControls(item) {
 
   const value = filterValue.value;
   const meta = parseFilterMeta(item);
-  const hasRegionOptions = (filterOptions.value.regions ?? []).length > 0;
-  const hasAzOptions = (filterOptions.value.azs ?? []).length > 0;
+  const hasRegionOptions = showRegionFilter.value && (filterOptions.value.regions ?? []).length > 0;
+  const hasAzOptions = showAzFilter.value && (filterOptions.value.azs ?? []).length > 0;
   const passesLocation =
     (!hasRegionOptions || value.regionNameList.includes(meta.region)) &&
     (!hasAzOptions || value.azNameList.includes(meta.az));
@@ -432,7 +468,7 @@ function passesFilterControls(item) {
     return false;
   }
 
-  const hasResourceOptions = (filterOptions.value.resourceTree ?? []).length > 0;
+  const hasResourceOptions = showResourceTypeFilter.value && (filterOptions.value.resourceTree ?? []).length > 0;
   if (!hasResourceOptions) {
     return true;
   }

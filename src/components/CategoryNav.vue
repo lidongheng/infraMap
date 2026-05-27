@@ -21,14 +21,14 @@ const categories = [
   { key: "BMS", disabled: true },
   { key: "DCC", disabled: true },
   { key: "EVS", disabled: false },
-  { key: "OBS", disabled: true },
+  { key: "OBS", disabled: false },
   { key: "DSS", disabled: true },
 ];
 
 function onCategoryClick(item) {
   if (item.disabled) return;
   activeCategory.value = item.key;
-  selectedPool.value = `${item.key}资源池`;
+  selectedPool.value = item.key;
 }
 </script>
 

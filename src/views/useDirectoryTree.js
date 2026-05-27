@@ -117,6 +117,13 @@ const mockEvsResourceTree = [
   { name: "ESSSD", children: null },
 ];
 
+const mockObsResourceTree = [
+  { name: "标准存储", children: null },
+  { name: "低频访问存储", children: null },
+  { name: "归档存储", children: null },
+  { name: "深度归档存储", children: null },
+];
+
 function getResponseData(res) {
   return res.data ?? [];
 }
@@ -136,6 +143,7 @@ function buildDirectoryTreeByCloudServerName(cloudServerName, data) {
 function getMockDirectoryTreeData(cloudServerName) {
   const mockDataMap = {
     EVS: mockEvsResourceTree,
+    OBS: mockObsResourceTree,
   };
   return mockDataMap[cloudServerName] ?? mockResourceTree;
 }

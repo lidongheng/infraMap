@@ -35,6 +35,7 @@
             :sizeValueField="currentSizeValueField"
             :sizeTiers="currentSizeTiers"
             :trafficLightKeys="currentTrafficLightKeys"
+            :filterConfig="currentFilterConfig"
             @bubble-click="onBubbleClick"
             @visible-change="onVisibleChange"
           />
@@ -60,15 +61,32 @@ import { useResourcePoolCustomer } from "./useDirectoryTree";
 
 useResourcePoolCustomer();
 
-function keepEnglishOnly(str) {
-  const match = String(str ?? "").match(/^[a-zA-Z\s]*/);
-  return match ? match[0].trimEnd() : "";
-}
+const category = computed(() => activeCategory.value);
 
-const category = computed(() => keepEnglishOnly(activeCategory.value));
+// 通算页筛选项统一在这里按资源池配置；下游组件只消费配置，不再写资源池特判。
+// variant: tree 使用 ECS 四层树面板；list 使用 AZ 同款单列面板。
+// submitMode: tree 提交四层对象；resourceTypeOnly 提交 [{ resourceType }]。
+const TREE_RESOURCE_FILTER = {
+  visible: true,
+  variant: "tree",
+  submitMode: "tree",
+  confirmable: true,
+};
+
+const LIST_RESOURCE_FILTER = {
+  visible: true,
+  variant: "list",
+  submitMode: "resourceTypeOnly",
+  confirmable: false,
+};
 
 const CATEGORY_CONFIG = {
   ECS: {
+    filters: {
+      region: { visible: true, searchable: true },
+      az: { visible: true, searchable: false },
+      resourceType: TREE_RESOURCE_FILTER,
+    },
     tabs: [
       {
         key: "allocationRate",
@@ -99,6 +117,11 @@ const CATEGORY_CONFIG = {
     ],
   },
   EVS: {
+    filters: {
+      region: { visible: false, searchable: true },
+      az: { visible: false, searchable: false },
+      resourceType: LIST_RESOURCE_FILTER,
+    },
     tabs: [
       {
         key: "useRate",
@@ -117,9 +140,33 @@ const CATEGORY_CONFIG = {
       },
     ],
   },
+  OBS: {
+    filters: {
+      region: { visible: true, searchable: true },
+      az: { visible: false, searchable: false },
+      resourceType: LIST_RESOURCE_FILTER,
+    },
+    tabs: [
+      {
+        key: "useRate",
+        label: "使用率",
+        xField: "_useRate",
+        xAxisName: "OBS使用率",
+        yField: "grossProfitRate",
+        title: "毛利率",
+        yAxisName: "%",
+        yRange: [-205, 105],
+        yTicks: [-200, -100, 0, 100],
+        axisRangeDataPadding: 5,
+        tooltipYLabel: "毛利率",
+        trafficLightKeys: { x: "OBS使用率", y: "毛利率" },
+      },
+    ],
+  },
 };
 
-const tabs = computed(() => CATEGORY_CONFIG[category.value]?.tabs ?? CATEGORY_CONFIG.ECS.tabs);
+const currentCategoryConfig = computed(() => CATEGORY_CONFIG[category.value] ?? CATEGORY_CONFIG.ECS);
+const tabs = computed(() => currentCategoryConfig.value.tabs);
 const activeTab = ref(tabs.value[0].key);
 
 watch(tabs, (newTabs) => {
@@ -132,6 +179,7 @@ const activeTabConfig = computed(() =>
 const currentXField = computed(() => activeTabConfig.value.xField);
 const currentXAxisName = computed(() => activeTabConfig.value.xAxisName);
 const currentTrafficLightKeys = computed(() => activeTabConfig.value.trafficLightKeys ?? null);
+const currentFilterConfig = computed(() => currentCategoryConfig.value.filters);
 const isEvsCategory = computed(() => category.value === "EVS");
 const currentSizeLabel = computed(() =>
   isEvsCategory.value ? "磁盘总量(TB)" : "服务器规模(台)"
@@ -143,11 +191,9 @@ const currentSizeTiers = computed(() =>
   isEvsCategory.value ? EVS_SIZE_TIERS : SIZE_TIERS
 );
 
-/** 仅 EVS 分类启用「按数据 ±padding 定轴」；ECS 等不传，避免误配 tab 字段时生效 */
+/** 仅配置了 axisRangeDataPadding 的 tab 启用「按数据 ±padding 定轴」。 */
 const axisRangeDataPaddingForChart = computed(() =>
-  isEvsCategory.value
-    ? activeTabConfig.value.axisRangeDataPadding ?? null
-    : null
+  activeTabConfig.value.axisRangeDataPadding ?? null
 );
 
 const grossProfitChartRef = ref(null);

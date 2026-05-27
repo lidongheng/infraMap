@@ -17,7 +17,7 @@
           </button>
         </template>
         <div class="dropdown-panel single">
-          <div class="search-box">
+          <div v-if="showRegionSearch" class="search-box">
             <el-icon><Search /></el-icon>
             <input v-model="regionKeyword" placeholder="请输入关键字" />
           </div>
@@ -86,7 +86,7 @@
       </el-popover>
     </div>
 
-    <div class="filter-item">
+    <div v-if="showResourceTypeFilter" class="filter-item">
       <span class="filter-label">资源类型</span>
       <el-popover
         v-model:visible="resourceVisible"
@@ -94,7 +94,7 @@
         :trigger="loading ? 'manual' : 'click'"
         width="fit-content"
         :show-arrow="false"
-        popper-class="filter-popper"
+        :popper-class="resourcePopperClass"
       >
         <template #reference>
           <button class="select-trigger resource-trigger" type="button" :disabled="loading">
@@ -102,7 +102,30 @@
             <el-icon><ArrowDown /></el-icon>
           </button>
         </template>
+        <div v-if="isResourceListFilter" class="dropdown-panel single az-panel">
+          <div class="option-list">
+            <label class="option-row checked-row">
+              <el-checkbox
+                :model-value="isAllSelected(resourceTypeValue, visibleResourceTypes)"
+                :indeterminate="isIndeterminate(resourceTypeValue, visibleResourceTypes)"
+                @change="checked => toggleAll('resourceType', checked)"
+              />
+              <span>全部</span>
+            </label>
+            <el-checkbox-group v-model="resourceTypeValue" class="option-group">
+              <el-checkbox
+                v-for="item in visibleResourceTypes"
+                :key="item.value"
+                :value="item.value"
+                class="option-row"
+              >
+                {{ item.label }}
+              </el-checkbox>
+            </el-checkbox-group>
+          </div>
+        </div>
         <div
+          v-else
           class="dropdown-panel resource-panel"
           :class="{ 'resource-panel--single': isOneLevelResourceTree }"
         >
@@ -208,7 +231,7 @@
               </div>
             </div>
           </div>
-          <div class="panel-actions">
+          <div v-if="isResourceConfirmable" class="panel-actions">
             <button class="plain-btn" type="button" @click="cancelResource">取消</button>
             <button class="primary-btn" type="button" @click="confirmResource">确定</button>
           </div>
@@ -237,6 +260,7 @@ const props = defineProps({
   },
   showRegionFilter: { type: Boolean, default: true },
   showAzFilter: { type: Boolean, default: true },
+  filterConfig: { type: Object, default: null },
   loading: { type: Boolean, default: false },
 });
 
@@ -249,8 +273,37 @@ const regionKeyword = ref('');
 
 const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.regions)));
 const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azs)));
-const showRegionFilter = computed(() => props.showRegionFilter);
-const showAzFilter = computed(() => props.showAzFilter);
+
+// FilterDropdowns 只关心展示和交互：哪些框显示、资源类型用树还是单列、是否需要确定按钮。
+// 后端字段形态在 BubbleChart 统一转换，避免 UI 组件夹带资源池判断。
+const resolvedFilterConfig = computed(() => ({
+  region: {
+    visible: props.showRegionFilter,
+    searchable: true,
+    ...(props.filterConfig?.region ?? {}),
+  },
+  az: {
+    visible: props.showAzFilter,
+    searchable: false,
+    ...(props.filterConfig?.az ?? {}),
+  },
+  resourceType: {
+    visible: true,
+    variant: "tree",
+    submitMode: "tree",
+    confirmable: true,
+    ...(props.filterConfig?.resourceType ?? {}),
+  },
+}));
+const showRegionFilter = computed(() => resolvedFilterConfig.value.region.visible);
+const showAzFilter = computed(() => resolvedFilterConfig.value.az.visible);
+const showRegionSearch = computed(() => resolvedFilterConfig.value.region.searchable);
+const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
+const isResourceListFilter = computed(() => resolvedFilterConfig.value.resourceType.variant === "list");
+const isResourceConfirmable = computed(() => resolvedFilterConfig.value.resourceType.confirmable);
+const resourcePopperClass = computed(() =>
+  isResourceListFilter.value ? "filter-popper filter-popper--single" : "filter-popper"
+);
 const loading = computed(() => props.loading);
 const filteredAzOptions = computed(() => filterAzOptionsByRegions(azOptions.value, regionValue.value));
 const resourceTree = computed(() => normalizeResourceTree(props.options?.resourceTree));
@@ -358,6 +411,13 @@ watch(resourceVerValue, (nextValue, oldValue) => {
   syncingResourceCascade = false;
 }, { flush: 'sync' });
 
+watch(resourceTypeValue, () => {
+  if (syncingFromModel) return;
+  // list 型资源类型和 AZ 一样即时提交；tree 型仍等用户点击“确定”。
+  if (!isResourceListFilter.value) return;
+  emitCurrentValue();
+}, { deep: true, flush: 'sync' });
+
 watch(regionValue, () => {
   if (syncingFromModel) return;
   syncingLocationCascade = true;
@@ -374,6 +434,9 @@ watch(azValue, () => {
 watch(resourceVisible, (visible) => {
   if (loading.value) {
     resourceVisible.value = false;
+    return;
+  }
+  if (!isResourceConfirmable.value) {
     return;
   }
   if (visible) {

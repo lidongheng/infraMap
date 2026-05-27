@@ -20,12 +20,6 @@ import {
  * color、symbolSize 由前端 commonComputerPowerConfig 配置
  */
 
-/** 提取字符串开头的英文部分，用于接口参数 cloudServerName */
-function keepEnglishOnly(str) {
-  const match = String(str ?? "").match(/^[a-zA-Z\s]*/);
-  return match ? match[0].trimEnd() : "";
-}
-
 /** 模拟 operate 接口（白名单控制，仅返回 azName + grossProfitRate） */
 function mockFetchOperate(params = {}) {
   return new Promise((resolve) => {
@@ -193,26 +187,14 @@ function getBubbleSizeConfig(cloudServerName) {
     : { tiers: SIZE_TIERS, field: "serverNum" };
 }
 
-function normalizeFilterParams(filters = {}, cloudServerName = "") {
+function normalizeFilterParams(filters = {}) {
   const toList = (value) => {
     if (Array.isArray(value)) return value;
     if (typeof value === "string" && value) return value.split(",").filter(Boolean);
     return [];
   };
   const normalizeResourceTypeList = (value) => {
-    if (!Array.isArray(value)) return [];
-    if (cloudServerName !== "EVS") return value;
-    return value
-      .map((item) => {
-        if (typeof item === "string") {
-          return { resourceType: item };
-        }
-        if (item?.resourceType) {
-          return { resourceType: item.resourceType };
-        }
-        return null;
-      })
-      .filter(Boolean);
+    return Array.isArray(value) ? value : [];
   };
   return {
     regionNameList: toList(filters.regionNameList),
@@ -270,11 +252,6 @@ export function useCommonComputerPower() {
   }
 
   function cacheInitialLocationOptions(efficiencyList) {
-    if (keepEnglishOnly(selectedPool.value) === "EVS") {
-      regionOptions.value = [];
-      azOptions.value = [];
-      return;
-    }
     const listWithRegion = withFallbackRegionName(efficiencyList);
     if (!regionOptions.value.length) {
       regionOptions.value = buildRegionOptionsFromEfficiencyList(listWithRegion, ["regionName"]);
@@ -289,13 +266,9 @@ export function useCommonComputerPower() {
     loading.value = true;
     error.value = null;
     forbidden.value = false;
-    const cloudServerName = keepEnglishOnly(selectedPool.value);
-    currentFilters.value = normalizeFilterParams(filters, cloudServerName);
+    const cloudServerName = selectedPool.value;
+    currentFilters.value = normalizeFilterParams(filters);
     syncAzOptionsContext(cloudServerName, date.value);
-    if (cloudServerName === "EVS") {
-      currentFilters.value.regionNameList = [];
-      currentFilters.value.azNameList = [];
-    }
     const params = {
       cloudServerName,
       month: dayjs(date.value).format("YYYYMM"),
@@ -308,7 +281,7 @@ export function useCommonComputerPower() {
     try {
       // TODO: 替换为真实接口
       const efficiencyRes = await mockFetchEfficiency(params);
-      if (requestId !== fetchDataRequestId || keepEnglishOnly(selectedPool.value) !== cloudServerName) {
+      if (requestId !== fetchDataRequestId || selectedPool.value !== cloudServerName) {
         return;
       }
       const parsed = parseEfficiencyResponse(efficiencyRes);
@@ -322,7 +295,7 @@ export function useCommonComputerPower() {
 
       // TODO: 替换为真实接口
       const operateRes = await mockFetchOperate(params);
-      if (requestId !== fetchDataRequestId || keepEnglishOnly(selectedPool.value) !== cloudServerName) {
+      if (requestId !== fetchDataRequestId || selectedPool.value !== cloudServerName) {
         return;
       }
       const { forbidden: isForbidden, map: operateMap, avgRangeList: resAvgRangeList } = buildOperateMap(operateRes);
@@ -334,13 +307,13 @@ export function useCommonComputerPower() {
       const sizeConfig = getBubbleSizeConfig(cloudServerName);
       data.value = toChartData(mergedList, sizeConfig.tiers, sizeConfig.field);
     } catch (e) {
-      if (requestId !== fetchDataRequestId || keepEnglishOnly(selectedPool.value) !== cloudServerName) {
+      if (requestId !== fetchDataRequestId || selectedPool.value !== cloudServerName) {
         return;
       }
       error.value = e;
       resetState();
     } finally {
-      if (requestId === fetchDataRequestId && keepEnglishOnly(selectedPool.value) === cloudServerName) {
+      if (requestId === fetchDataRequestId && selectedPool.value === cloudServerName) {
         loading.value = false;
       }
     }

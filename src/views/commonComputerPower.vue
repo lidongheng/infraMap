@@ -17,10 +17,9 @@
     :trafficLightKeys="trafficLightKeys"
     :yTicks="chartYTicks"
     :showFilters="true"
-    :showRegionFilter="showLocationFilters"
-    :showAzFilter="showLocationFilters"
     :filterLoading="directoryTreeLoading"
     :filterOptions="bubbleFilterOptions"
+    :filterConfig="filterConfig"
     :filterResetKey="filterResetKey"
     @bubble-click="(e) => emit('bubble-click', e)"
     @visible-change="onVisibleChange"
@@ -63,6 +62,8 @@ const props = defineProps({
   sizeValueField: { type: String, default: "serverNum" },
   sizeTiers: { type: Array, default: () => SIZE_TIERS },
   trafficLightKeys: { type: Object, default: null },
+  /** 由通算页按资源池传入，控制筛选项显示、资源类型面板形态和提交结构。 */
+  filterConfig: { type: Object, required: true },
 });
 
 const emit = defineEmits(["bubble-click", "visible-change"]);
@@ -132,9 +133,6 @@ const { chartXRange, chartYRange, chartYTicks } = useBubbleAxisRange(
   props,
   mappedData
 );
-
-const isEvsCategory = computed(() => selectedPool.value === "EVS资源池");
-const showLocationFilters = computed(() => !isEvsCategory.value);
 
 const bubbleFilterOptions = computed(() => ({
   regions: regionOptions.value,

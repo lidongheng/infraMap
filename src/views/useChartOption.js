@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { cloneDeep } from '@/utils';
 
-export const selectedPool = ref('ECS资源池');
+export const selectedPool = ref('ECS');
 
 export const legend = {
   orient: 'horizontal',
