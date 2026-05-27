@@ -12,6 +12,7 @@ export const tableDataSummary = ref({});
 export const inforData = ref({});
 
 export const directoryTreeList = ref([]);
+export const directoryTreeLoading = ref(false);
 let directoryTreeRequestId = 0;
 
 function createResourceTypes(prefix, sizes) {
@@ -211,11 +212,16 @@ export const useResourcePoolCustomer = () => {
       cloudServerName,
     };
     directoryTreeList.value = [];
+    directoryTreeLoading.value = true;
     mockFetchDirectoryTree(params).then((res) => {
       if (requestId !== directoryTreeRequestId || activeCategory.value !== cloudServerName) {
         return;
       }
       directoryTreeList.value = buildDirectoryTreeByCloudServerName(cloudServerName, getResponseData(res));
+    }).finally(() => {
+      if (requestId === directoryTreeRequestId) {
+        directoryTreeLoading.value = false;
+      }
     })
   }
 

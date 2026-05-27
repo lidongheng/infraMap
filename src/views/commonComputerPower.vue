@@ -19,6 +19,7 @@
     :showFilters="true"
     :showRegionFilter="showLocationFilters"
     :showAzFilter="showLocationFilters"
+    :filterLoading="directoryTreeLoading"
     :filterOptions="bubbleFilterOptions"
     :filterResetKey="filterResetKey"
     @bubble-click="(e) => emit('bubble-click', e)"
@@ -36,6 +37,7 @@ import { computeWeightedAvgFromData, SIZE_TIERS } from "./commonComputerPowerCon
 import { useBubbleAxisRange } from "./useBubbleAxisRange";
 import { useCurrentDate } from "./useCurrentDate";
 import { selectedPool } from "./useChartOption";
+import { directoryTreeLoading } from "./useDirectoryTree";
 import { useTargetNumStore } from "@/stores/targetNumStore";
 
 const targetNumStore = useTargetNumStore();

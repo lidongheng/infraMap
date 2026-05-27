@@ -6,6 +6,7 @@
         :options="filterOptions"
         :show-region-filter="showRegionFilter"
         :show-az-filter="showAzFilter"
+        :loading="filterLoading"
         @change="onFilterChange"
       />
     </div>
@@ -71,6 +72,7 @@ const props = defineProps({
   showFilters: { type: Boolean, default: false },
   showRegionFilter: { type: Boolean, default: true },
   showAzFilter: { type: Boolean, default: true },
+  filterLoading: { type: Boolean, default: false },
   filterOptions: { type: Object, default: null },
   filterResetKey: { type: [String, Number], default: 0 },
 });

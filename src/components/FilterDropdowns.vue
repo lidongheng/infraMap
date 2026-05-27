@@ -1,17 +1,17 @@
 <template>
-  <div class="filter-bar">
+  <div class="filter-bar" :class="{ 'is-loading': loading }">
     <div v-if="showRegionFilter" class="filter-item">
       <span class="filter-label">Region</span>
       <el-popover
         v-model:visible="regionVisible"
         placement="bottom-start"
-        trigger="click"
+        :trigger="loading ? 'manual' : 'click'"
         width="fit-content"
         :show-arrow="false"
         popper-class="filter-popper filter-popper--single"
       >
         <template #reference>
-          <button class="select-trigger" type="button">
+          <button class="select-trigger" type="button" :disabled="loading">
             <span>{{ getSummary(regionValue, regionOptions) }}</span>
             <el-icon><ArrowDown /></el-icon>
           </button>
@@ -50,13 +50,13 @@
       <el-popover
         v-model:visible="azVisible"
         placement="bottom-start"
-        trigger="click"
+        :trigger="loading ? 'manual' : 'click'"
         width="fit-content"
         :show-arrow="false"
         popper-class="filter-popper filter-popper--single"
       >
         <template #reference>
-          <button class="select-trigger" type="button">
+          <button class="select-trigger" type="button" :disabled="loading">
             <span>{{ getSummary(azValue, filteredAzOptions) }}</span>
             <el-icon><ArrowDown /></el-icon>
           </button>
@@ -91,14 +91,14 @@
       <el-popover
         v-model:visible="resourceVisible"
         placement="bottom-start"
-        trigger="click"
+        :trigger="loading ? 'manual' : 'click'"
         width="fit-content"
         :show-arrow="false"
         popper-class="filter-popper"
       >
         <template #reference>
-          <button class="select-trigger resource-trigger" type="button">
-            <span>{{ resourceSummary }}</span>
+          <button class="select-trigger resource-trigger" type="button" :disabled="loading">
+            <span>{{ loading ? '加载中' : resourceSummary }}</span>
             <el-icon><ArrowDown /></el-icon>
           </button>
         </template>
@@ -237,6 +237,7 @@ const props = defineProps({
   },
   showRegionFilter: { type: Boolean, default: true },
   showAzFilter: { type: Boolean, default: true },
+  loading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:modelValue', 'change']);
@@ -250,6 +251,7 @@ const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props
 const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azs)));
 const showRegionFilter = computed(() => props.showRegionFilter);
 const showAzFilter = computed(() => props.showAzFilter);
+const loading = computed(() => props.loading);
 const filteredAzOptions = computed(() => filterAzOptionsByRegions(azOptions.value, regionValue.value));
 const resourceTree = computed(() => normalizeResourceTree(props.options?.resourceTree));
 const isOneLevelResourceTree = computed(() =>
@@ -370,6 +372,10 @@ watch(azValue, () => {
 }, { deep: true, flush: 'sync' });
 
 watch(resourceVisible, (visible) => {
+  if (loading.value) {
+    resourceVisible.value = false;
+    return;
+  }
   if (visible) {
     resourceSnapshot.value = getResourceValue();
     return;
@@ -395,6 +401,13 @@ watch(
   },
   { deep: true }
 );
+
+watch(loading, (value) => {
+  if (!value) return;
+  regionVisible.value = false;
+  azVisible.value = false;
+  resourceVisible.value = false;
+});
 
 function normalizeOptions(options) {
   return (options ?? []).map(item => {
@@ -724,6 +737,10 @@ function confirmResource() {
   border-radius: 4px;
 }
 
+.filter-bar.is-loading {
+  cursor: progress;
+}
+
 .filter-item {
   display: flex;
   align-items: center;
@@ -759,6 +776,12 @@ function confirmResource() {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+.select-trigger:disabled {
+  cursor: not-allowed;
+  background: #f5f7fb;
+  color: #9095a3;
 }
 
 .resource-trigger {
