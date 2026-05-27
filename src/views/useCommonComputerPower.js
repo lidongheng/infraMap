@@ -249,6 +249,7 @@ export function useCommonComputerPower() {
   const locationOptionsContextKey = ref("");
   const currentFilters = ref({});
   const { directoryTreeList } = useDirectoryTree();
+  let fetchDataRequestId = 0;
 
   function resetState() {
     data.value = [];
@@ -283,6 +284,7 @@ export function useCommonComputerPower() {
   }
 
   async function fetchData(filters = currentFilters.value) {
+    const requestId = ++fetchDataRequestId;
     loading.value = true;
     error.value = null;
     forbidden.value = false;
@@ -305,6 +307,9 @@ export function useCommonComputerPower() {
     try {
       // TODO: 替换为真实接口
       const efficiencyRes = await mockFetchEfficiency(params);
+      if (requestId !== fetchDataRequestId || keepEnglishOnly(selectedPool.value) !== cloudServerName) {
+        return;
+      }
       const parsed = parseEfficiencyResponse(efficiencyRes);
       if (!parsed) {
         resetState();
@@ -316,6 +321,9 @@ export function useCommonComputerPower() {
 
       // TODO: 替换为真实接口
       const operateRes = await mockFetchOperate(params);
+      if (requestId !== fetchDataRequestId || keepEnglishOnly(selectedPool.value) !== cloudServerName) {
+        return;
+      }
       const { forbidden: isForbidden, map: operateMap, avgRangeList: resAvgRangeList } = buildOperateMap(operateRes);
       forbidden.value = isForbidden;
       avgRangeList.value = resAvgRangeList;
@@ -325,10 +333,15 @@ export function useCommonComputerPower() {
       const sizeConfig = getBubbleSizeConfig(cloudServerName);
       data.value = toChartData(mergedList, sizeConfig.tiers, sizeConfig.field);
     } catch (e) {
+      if (requestId !== fetchDataRequestId || keepEnglishOnly(selectedPool.value) !== cloudServerName) {
+        return;
+      }
       error.value = e;
       resetState();
     } finally {
-      loading.value = false;
+      if (requestId === fetchDataRequestId && keepEnglishOnly(selectedPool.value) === cloudServerName) {
+        loading.value = false;
+      }
     }
   }
 
