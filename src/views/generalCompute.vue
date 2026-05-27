@@ -56,6 +56,9 @@ import ResourcePoolTable from "@/components/ResourcePoolTable.vue";
 import { activeCategory } from "./useGeneralComputer";
 import { tierFilter, testData1 } from "./useCommonComputerPower";
 import { EVS_SIZE_TIERS, SIZE_TIERS } from "./commonComputerPowerConfig";
+import { useResourcePoolCustomer } from "./useDirectoryTree";
+
+useResourcePoolCustomer();
 
 function keepEnglishOnly(str) {
   const match = String(str ?? "").match(/^[a-zA-Z\s]*/);

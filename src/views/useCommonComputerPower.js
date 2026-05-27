@@ -192,17 +192,48 @@ function getBubbleSizeConfig(cloudServerName) {
     : { tiers: SIZE_TIERS, field: "serverNum" };
 }
 
-function normalizeFilterParams(filters = {}) {
+function normalizeFilterParams(filters = {}, cloudServerName = "") {
   const toList = (value) => {
     if (Array.isArray(value)) return value;
     if (typeof value === "string" && value) return value.split(",").filter(Boolean);
     return [];
   };
+  const normalizeResourceTypeList = (value) => {
+    if (!Array.isArray(value)) return [];
+    if (cloudServerName !== "EVS") return value;
+    return value
+      .map((item) => {
+        if (typeof item === "string") {
+          return { resourceType: item };
+        }
+        if (item?.resourceType) {
+          return { resourceType: item.resourceType };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  };
   return {
     regionNameList: toList(filters.regionNameList),
     azNameList: toList(filters.azNameList),
-    resourceTypeList: Array.isArray(filters.resourceTypeList) ? filters.resourceTypeList : [],
+    resourceTypeList: normalizeResourceTypeList(filters.resourceTypeList),
   };
+}
+
+function getRegionNameFromAzName(azName) {
+  const text = String(azName ?? "");
+  const azIndex = text.search(/\(AZ\d+\)/i);
+  if (azIndex > 0) {
+    return text.slice(0, azIndex);
+  }
+  return "";
+}
+
+function withFallbackRegionName(list = []) {
+  return list.map((item) => ({
+    ...item,
+    regionName: item.regionName || getRegionNameFromAzName(item.azName),
+  }));
 }
 
 /** 通用算力数据 Hook */
@@ -217,7 +248,7 @@ export function useCommonComputerPower() {
   const azOptions = ref([]);
   const locationOptionsContextKey = ref("");
   const currentFilters = ref({});
-  const { directoryTreeList, fetchDirectoryTree } = useDirectoryTree();
+  const { directoryTreeList } = useDirectoryTree();
 
   function resetState() {
     data.value = [];
@@ -237,11 +268,17 @@ export function useCommonComputerPower() {
   }
 
   function cacheInitialLocationOptions(efficiencyList) {
+    if (keepEnglishOnly(selectedPool.value) === "EVS") {
+      regionOptions.value = [];
+      azOptions.value = [];
+      return;
+    }
+    const listWithRegion = withFallbackRegionName(efficiencyList);
     if (!regionOptions.value.length) {
-      regionOptions.value = buildRegionOptionsFromEfficiencyList(efficiencyList, ["regionName"]);
+      regionOptions.value = buildRegionOptionsFromEfficiencyList(listWithRegion, ["regionName"]);
     }
     if (!azOptions.value.length) {
-      azOptions.value = buildAzOptionsFromEfficiencyList(efficiencyList, ["azName"]);
+      azOptions.value = buildAzOptionsFromEfficiencyList(listWithRegion, ["azName"]);
     }
   }
 
@@ -249,9 +286,13 @@ export function useCommonComputerPower() {
     loading.value = true;
     error.value = null;
     forbidden.value = false;
-    currentFilters.value = normalizeFilterParams(filters);
     const cloudServerName = keepEnglishOnly(selectedPool.value);
+    currentFilters.value = normalizeFilterParams(filters, cloudServerName);
     syncAzOptionsContext(cloudServerName, date.value);
+    if (cloudServerName === "EVS") {
+      currentFilters.value.regionNameList = [];
+      currentFilters.value.azNameList = [];
+    }
     const params = {
       cloudServerName,
       month: dayjs(date.value).format("YYYYMM"),
@@ -262,10 +303,6 @@ export function useCommonComputerPower() {
     };
 
     try {
-      if (!directoryTreeList.value.length) {
-        await fetchDirectoryTree({ cloudServerName });
-      }
-
       // TODO: 替换为真实接口
       const efficiencyRes = await mockFetchEfficiency(params);
       const parsed = parseEfficiencyResponse(efficiencyRes);
@@ -295,8 +332,12 @@ export function useCommonComputerPower() {
     }
   }
 
-  watch([selectedPool, date], ([, nextDate], [, oldDate]) => {
-    fetchData(nextDate !== oldDate ? {} : currentFilters.value);
+  watch([selectedPool, date], ([nextPool, nextDate], [oldPool, oldDate]) => {
+    if (nextDate !== oldDate || nextPool !== oldPool) {
+      fetchData({});
+    } else {
+      fetchData(currentFilters.value);
+    }
   });
 
   return {

@@ -1,4 +1,15 @@
-import { ref } from "vue";
+import { ref, watch } from "vue";
+import { activeCategory } from "./useGeneralComputer";
+import { useCurrentDate } from "./useCurrentDate";
+
+export const rangeLevel = ref('全部');
+export const resourceLevel = ref('资源族');
+export const customerLevel = ref('全部');
+export const resourceTypeList = ref([]);
+
+export const customerData = ref({ detailList: [] });
+export const tableDataSummary = ref({});
+export const inforData = ref({});
 
 export const directoryTreeList = ref([]);
 
@@ -97,12 +108,42 @@ const mockResourceTree = [
   ]),
 ];
 
+const mockEvsResourceTree = [
+  { name: "ESSD", children: null },
+  { name: "SSD", children: null },
+  { name: "SAS", children: null },
+  { name: "ESSSD", children: null },
+];
+
+function getResponseData(res) {
+  return res.data ?? [];
+}
+
+function buildDirectoryTreeByCloudServerName(cloudServerName, data) {
+  if (cloudServerName === "EVS") {
+    return applyRootResourceTypeLevel(data);
+  }
+
+  if (cloudServerName === "OBS") {
+    return applyRootResourceTypeLevel(data);
+  }
+
+  return applyLevel(data);
+}
+
+function getMockDirectoryTreeData(cloudServerName) {
+  const mockDataMap = {
+    EVS: mockEvsResourceTree,
+  };
+  return mockDataMap[cloudServerName] ?? mockResourceTree;
+}
+
 export async function mockFetchDirectoryTree(params = {}) {
   await new Promise((resolve) => setTimeout(resolve, 200));
   return {
     status: 200,
     massage: "success",
-    data: mockResourceTree,
+    data: getMockDirectoryTreeData(params.cloudServerName),
   };
 }
 
@@ -139,15 +180,46 @@ const applyLevel = (arr = [], pitem = {}, plevel = 0) => {
   });
 };
 
-export async function fetchDirectoryTree(params = {}) {
-  const res = await mockFetchDirectoryTree(params);
-  directoryTreeList.value = applyLevel(res.data ?? []);
-  return res;
+function applyRootResourceTypeLevel(arr = []) {
+  return arr.map((item) => {
+    const obj = {
+      resourceType: item.name,
+    };
+    const newItem = {
+      ...item,
+      level: 0,
+      obj,
+      objStr: JSON.stringify(obj),
+    };
+
+    if (item.children && item.children.length > 0) {
+      newItem.children = applyLevel(item.children, newItem, 1);
+    }
+    return newItem;
+  });
+}
+
+export const useResourcePoolCustomer = () => {
+  const currentStore = useCurrentDate();
+  const loadTreeData = () => {
+    const cloudServerName = activeCategory.value;
+    const params = {
+      month: currentStore.month,
+      date: currentStore.date,
+      cloudServerName,
+    };
+    mockFetchDirectoryTree(params).then((res) => {
+      directoryTreeList.value = buildDirectoryTreeByCloudServerName(cloudServerName, getResponseData(res));
+    })
+  }
+
+  watch(activeCategory, loadTreeData);
+
+  loadTreeData();
 }
 
 export function useDirectoryTree() {
   return {
     directoryTreeList,
-    fetchDirectoryTree,
   };
 }

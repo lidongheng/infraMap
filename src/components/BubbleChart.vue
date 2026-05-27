@@ -4,6 +4,8 @@
       <FilterDropdowns
         v-model="filterValue"
         :options="filterOptions"
+        :show-region-filter="showRegionFilter"
+        :show-az-filter="showAzFilter"
         @change="onFilterChange"
       />
     </div>
@@ -67,6 +69,8 @@ const props = defineProps({
   collapsible: { type: Boolean, default: false },
   /** 是否显示 Region/AZ/资源类型筛选条 */
   showFilters: { type: Boolean, default: false },
+  showRegionFilter: { type: Boolean, default: true },
+  showAzFilter: { type: Boolean, default: true },
   filterOptions: { type: Object, default: null },
   filterResetKey: { type: [String, Number], default: 0 },
 });
@@ -210,7 +214,12 @@ function flattenResourceFamilies(tree) {
   return tree.flatMap((series) => series.children ?? []);
 }
 
+function isOneLevelResourceTree(tree) {
+  return (tree ?? []).length > 0 && (tree ?? []).every((item) => !(item.children ?? []).length);
+}
+
 function flattenResourceTypes(tree) {
+  if (isOneLevelResourceTree(tree)) return tree;
   return flattenResourceGenerations(tree).flatMap((generation) => generation.children ?? []);
 }
 
@@ -251,6 +260,10 @@ function reconcileFilterValue(value, options) {
   };
 }
 
+function getResourceTreeSignature(tree = []) {
+  return flattenResourceTypes(tree).map(getFilterOptionValue).join("|");
+}
+
 function fillNewFilterGroups(value, options, oldOptions = {}) {
   const fallback = createDefaultFilterValue(options);
   const withDefaults = { ...value };
@@ -260,7 +273,13 @@ function fillNewFilterGroups(value, options, oldOptions = {}) {
   if ((oldOptions.azs ?? []).length === 0 && (options.azs ?? []).length > 0) {
     withDefaults.azNameList = fallback.azNameList;
   }
-  if ((oldOptions.resourceTree ?? []).length === 0 && (options.resourceTree ?? []).length > 0) {
+  const resourceTreeChanged =
+    getResourceTreeSignature(oldOptions.resourceTree ?? []) !==
+    getResourceTreeSignature(options.resourceTree ?? []);
+  if (
+    ((oldOptions.resourceTree ?? []).length === 0 && (options.resourceTree ?? []).length > 0) ||
+    resourceTreeChanged
+  ) {
     withDefaults.resourceSeries = fallback.resourceSeries;
     withDefaults.resourceFamily = fallback.resourceFamily;
     withDefaults.resourceVer = fallback.resourceVer;
@@ -298,6 +317,13 @@ function mapSelectedSubmitValues(selectedValues, optionItems, keys) {
 }
 
 function flattenResourceTypesWithSeries(tree) {
+  if (isOneLevelResourceTree(tree)) {
+    return (tree ?? []).map((item) => ({
+      item,
+      resourceSeries: "",
+    }));
+  }
+
   return (tree ?? []).flatMap((series) => {
     const resourceSeries = getSubmitValue(series, ["resourceSeries", "level0"]);
     return (series.children ?? []).flatMap((family) =>
@@ -313,10 +339,16 @@ function flattenResourceTypesWithSeries(tree) {
 
 function buildResourceTypeList(selectedValues, resourceTree) {
   const selectedSet = new Set(selectedValues ?? []);
+  const oneLevelResourceTree = isOneLevelResourceTree(resourceTree);
   return flattenResourceTypesWithSeries(resourceTree)
     .filter(({ item }) => selectedSet.has(getFilterOptionValue(item)))
     .map(({ item, resourceSeries }) => {
       const obj = parseOptionObj(item) ?? {};
+      if (oneLevelResourceTree) {
+        return {
+          resourceType: obj.resourceType ?? getSubmitValue(item, ["resourceType"]),
+        };
+      }
       return {
         resourceSeries,
         resourceFamily: obj.resourceFamily ?? "",

@@ -1,6 +1,6 @@
 <template>
   <div class="filter-bar">
-    <div class="filter-item">
+    <div v-if="showRegionFilter" class="filter-item">
       <span class="filter-label">Region</span>
       <el-popover
         v-model:visible="regionVisible"
@@ -45,7 +45,7 @@
       </el-popover>
     </div>
 
-    <div class="filter-item">
+    <div v-if="showAzFilter" class="filter-item">
       <span class="filter-label">AZ</span>
       <el-popover
         v-model:visible="azVisible"
@@ -102,9 +102,12 @@
             <el-icon><ArrowDown /></el-icon>
           </button>
         </template>
-        <div class="dropdown-panel resource-panel">
-          <div class="resource-columns">
-            <div class="resource-column">
+        <div
+          class="dropdown-panel resource-panel"
+          :class="{ 'resource-panel--single': isOneLevelResourceTree }"
+        >
+          <div class="resource-columns" :class="{ 'resource-columns--single': isOneLevelResourceTree }">
+            <div v-if="!isOneLevelResourceTree" class="resource-column">
               <div class="column-title">资源系列</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
@@ -130,7 +133,7 @@
               </div>
             </div>
 
-            <div class="resource-column">
+            <div v-if="!isOneLevelResourceTree" class="resource-column">
               <div class="column-title">资源族</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
@@ -156,7 +159,7 @@
               </div>
             </div>
 
-            <div class="resource-column">
+            <div v-if="!isOneLevelResourceTree" class="resource-column">
               <div class="column-title">资源代数</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
@@ -232,6 +235,8 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  showRegionFilter: { type: Boolean, default: true },
+  showAzFilter: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update:modelValue', 'change']);
@@ -243,18 +248,25 @@ const regionKeyword = ref('');
 
 const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.regions)));
 const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azs)));
+const showRegionFilter = computed(() => props.showRegionFilter);
+const showAzFilter = computed(() => props.showAzFilter);
 const filteredAzOptions = computed(() => filterAzOptionsByRegions(azOptions.value, regionValue.value));
 const resourceTree = computed(() => normalizeResourceTree(props.options?.resourceTree));
+const isOneLevelResourceTree = computed(() =>
+  resourceTree.value.length > 0 && resourceTree.value.every(item => !(item.children ?? []).length)
+);
 const resourceSeries = computed(() => resourceTree.value.map(toOptionMeta));
 const allResourceFamilies = computed(() => getUniqueOptions(resourceTree.value.flatMap(item => item.children ?? [])));
 const allResourceGenerations = computed(() => getUniqueOptions(
   resourceTree.value.flatMap(item => item.children ?? []).flatMap(item => item.children ?? []),
 ));
 const allResourceTypes = computed(() => getUniqueOptions(
-  resourceTree.value
-    .flatMap(item => item.children ?? [])
-    .flatMap(item => item.children ?? [])
-    .flatMap(item => item.children ?? []),
+  isOneLevelResourceTree.value
+    ? resourceTree.value
+    : resourceTree.value
+      .flatMap(item => item.children ?? [])
+      .flatMap(item => item.children ?? [])
+      .flatMap(item => item.children ?? []),
 ));
 
 const regionValue = ref([]);
@@ -300,6 +312,9 @@ const visibleResourceGenerations = computed(() => {
 });
 
 const visibleResourceTypes = computed(() => {
+  if (isOneLevelResourceTree.value) {
+    return allResourceTypes.value;
+  }
   const seriesSet = new Set(resourceSeriesValue.value);
   const familySet = new Set(resourceFamilyValue.value);
   const generationSet = new Set(resourceVerValue.value);
@@ -464,6 +479,9 @@ function keepValid(values, options, fallback) {
 }
 
 function filterAzOptionsByRegions(options, selectedRegions) {
+  if (!regionOptions.value.length) {
+    return options;
+  }
   if (!selectedRegions?.length) {
     return [];
   }
@@ -550,6 +568,9 @@ function pruneResourceSelections() {
 }
 
 function collectFamiliesBySeries(seriesValues) {
+  if (isOneLevelResourceTree.value) {
+    return [];
+  }
   const seriesSet = new Set(seriesValues);
   const families = resourceTree.value
     .filter(item => seriesSet.has(item.value))
@@ -558,6 +579,9 @@ function collectFamiliesBySeries(seriesValues) {
 }
 
 function collectGenerationsByFamilies(seriesValues, familyValues) {
+  if (isOneLevelResourceTree.value) {
+    return [];
+  }
   const seriesSet = new Set(seriesValues);
   const familySet = new Set(familyValues);
   const generations = resourceTree.value
@@ -569,6 +593,9 @@ function collectGenerationsByFamilies(seriesValues, familyValues) {
 }
 
 function collectTypesByGenerations(seriesValues, familyValues, generationValues) {
+  if (isOneLevelResourceTree.value) {
+    return allResourceTypes.value;
+  }
   const seriesSet = new Set(seriesValues);
   const familySet = new Set(familyValues);
   const generationSet = new Set(generationValues);
@@ -847,11 +874,19 @@ function confirmResource() {
   width: 940px;
 }
 
+.resource-panel--single {
+  width: 260px;
+}
+
 .resource-columns {
   display: grid;
   grid-template-columns: repeat(4, minmax(190px, 1fr));
   gap: 12px;
   padding: 10px 14px 8px;
+}
+
+.resource-columns--single {
+  grid-template-columns: minmax(210px, 1fr);
 }
 
 .resource-column {

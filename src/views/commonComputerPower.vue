@@ -17,6 +17,8 @@
     :trafficLightKeys="trafficLightKeys"
     :yTicks="chartYTicks"
     :showFilters="true"
+    :showRegionFilter="showLocationFilters"
+    :showAzFilter="showLocationFilters"
     :filterOptions="bubbleFilterOptions"
     :filterResetKey="filterResetKey"
     @bubble-click="(e) => emit('bubble-click', e)"
@@ -33,6 +35,7 @@ import { useCommonComputerPower, computeWeightedAvg } from "./useCommonComputerP
 import { computeWeightedAvgFromData, SIZE_TIERS } from "./commonComputerPowerConfig";
 import { useBubbleAxisRange } from "./useBubbleAxisRange";
 import { useCurrentDate } from "./useCurrentDate";
+import { selectedPool } from "./useChartOption";
 import { useTargetNumStore } from "@/stores/targetNumStore";
 
 const targetNumStore = useTargetNumStore();
@@ -62,7 +65,15 @@ const props = defineProps({
 
 const emit = defineEmits(["bubble-click", "visible-change"]);
 
-const { data, avgRangeList, forbidden, regionOptions, azOptions, directoryTreeList, fetchData } = useCommonComputerPower();
+const {
+  data,
+  avgRangeList,
+  forbidden,
+  regionOptions,
+  azOptions,
+  directoryTreeList,
+  fetchData,
+} = useCommonComputerPower();
 const { date: currentDate } = storeToRefs(useCurrentDate());
 
 const visibleTiers = ref([false, true, true, true]);
@@ -80,6 +91,11 @@ function onFilterChange(filters) {
 }
 
 watch(currentDate, () => {
+  backendFilters.value = {};
+  filterResetKey.value += 1;
+});
+
+watch(selectedPool, () => {
   backendFilters.value = {};
   filterResetKey.value += 1;
 });
@@ -114,6 +130,9 @@ const { chartXRange, chartYRange, chartYTicks } = useBubbleAxisRange(
   props,
   mappedData
 );
+
+const isEvsCategory = computed(() => selectedPool.value === "EVS资源池");
+const showLocationFilters = computed(() => !isEvsCategory.value);
 
 const bubbleFilterOptions = computed(() => ({
   regions: regionOptions.value,
