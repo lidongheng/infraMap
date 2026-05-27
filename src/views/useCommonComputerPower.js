@@ -322,4 +322,4 @@ export const testData1 = ref([
   }
 ]);
 
-export const tierFilter = ref(null);
+export { tierFilter } from "./useBubbleTierFilter";

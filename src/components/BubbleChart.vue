@@ -21,6 +21,12 @@ import * as echarts from "echarts";
 import FilterDropdowns from "@/components/FilterDropdowns.vue";
 import { getChartScale } from "@/utils/chartScale";
 import { SIZE_TIERS, getTierByNum, getTrafficLight, trafficLightHtml } from "@/views/commonComputerPowerConfig";
+import {
+  clearBubbleTierFilter,
+  getBubbleResourcePoolFilterName,
+  passesBubbleTierFilter,
+  setBubbleTierFilter,
+} from "@/views/useBubbleTierFilter";
 
 const props = defineProps({
   data: { type: Array, default: () => [] },
@@ -342,47 +348,38 @@ const filterValue = ref(createDefaultFilterValue(filterOptions.value));
 const filterInitialized = ref(hasFilterOptions(filterOptions.value));
 const usesBackendResourceTree = computed(() => (props.filterOptions?.resourceTree ?? []).length > 0);
 
-function buildTierFilter(tiers) {
+function buildTierFilterConfig(tiers) {
   const allChecked = tiers.every(Boolean);
   const resourcePoolNames = buildVisibleResourcePoolNames(tiers, allChecked);
-  const shouldFilterResourcePool = filterInitialized.value && usesBackendResourceTree.value;
-  return (item) => {
-    return (
-      (allChecked || passesTierFilter(item, tiers)) &&
-      passesResourcePoolNameFilter(item, resourcePoolNames, shouldFilterResourcePool)
-    );
+  return {
+    tiers: [...tiers],
+    sizeTiers: props.sizeTiers,
+    sizeValueField: props.sizeValueField,
+    resourcePoolNames,
+    shouldFilterResourcePool: filterInitialized.value && usesBackendResourceTree.value,
   };
-}
-
-function passesTierFilter(item, tiers) {
-  const sizeValue = Number(item[props.sizeValueField] ?? item.sizeValue ?? item.serverNum ?? 0);
-  const value = Number.isFinite(sizeValue) ? sizeValue : 0;
-  const tierIdx = props.sizeTiers.findLastIndex((tier) => value > tier.min);
-  const normalizedTierIdx = tierIdx >= 0 ? tierIdx : 0;
-  return tiers[normalizedTierIdx] === true;
-}
-
-function getResourcePoolFilterName(item) {
-  return String(item.resourcePoolTotalName ?? item.azName ?? item.name ?? "").trim();
 }
 
 function buildVisibleResourcePoolNames(tiers, allChecked = tiers.every(Boolean)) {
   const filterFn = props.dataFilter ?? defaultFilter;
+  const config = {
+    tiers,
+    sizeTiers: props.sizeTiers,
+    sizeValueField: props.sizeValueField,
+  };
   return props.data
     .filter(filterFn)
-    .filter((item) => allChecked || passesTierFilter(item, tiers))
-    .map(getResourcePoolFilterName)
+    .filter((item) => allChecked || passesBubbleTierFilter(item, config))
+    .map(getBubbleResourcePoolFilterName)
     .filter(Boolean);
 }
 
-function passesResourcePoolNameFilter(item, resourcePoolNames, shouldFilter) {
-  if (!shouldFilter) return true;
-  if (resourcePoolNames.length === 0) return false;
-
-  const targetName = getResourcePoolFilterName(item);
-  return resourcePoolNames.some(
-    (name) => targetName.includes(name) || name.includes(targetName)
-  );
+function passesCurrentTierFilter(item) {
+  return passesBubbleTierFilter(item, {
+    tiers: visibleTiers.value,
+    sizeTiers: props.sizeTiers,
+    sizeValueField: props.sizeValueField,
+  });
 }
 
 function passesFilterControls(item) {
@@ -415,7 +412,8 @@ function passesFilterControls(item) {
 }
 
 function emitVisibleChange() {
-  emit("visible-change", buildTierFilter(visibleTiers.value), [...visibleTiers.value]);
+  const filterFn = setBubbleTierFilter(buildTierFilterConfig(visibleTiers.value));
+  emit("visible-change", filterFn, [...visibleTiers.value]);
 }
 
 function refreshChart() {
@@ -435,6 +433,7 @@ function toggleTier(tierIdx) {
 function onFilterChange(value) {
   filterValue.value = reconcileFilterValue(value, filterOptions.value);
   filterInitialized.value = true;
+  clearBubbleTierFilter();
   emit("visible-change", null, [...visibleTiers.value]);
   emit("filter-change", buildBackendFilterValue(filterValue.value, filterOptions.value));
   refreshChart();
@@ -494,6 +493,7 @@ watch(
     waitingForFilterResetData = true;
     filterValue.value = createDefaultFilterValue(filterOptions.value);
     filterInitialized.value = hasFilterOptions(filterOptions.value);
+    clearBubbleTierFilter();
     emit("visible-change", null, [...visibleTiers.value]);
     refreshChart();
   }
@@ -611,7 +611,7 @@ function buildOption() {
   const filteredData = props.data
     .filter(filterFn)
     .filter(passesFilterControls)
-    .filter((d) => passesTierFilter(d, visibleTiers.value));
+    .filter(passesCurrentTierFilter);
 
   const seriesData = filteredData
     .slice()
