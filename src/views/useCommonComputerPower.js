@@ -180,6 +180,7 @@ function toChartData(mergedList, sizeTiers = SIZE_TIERS, sizeValueField = "serve
     _useRate: toPercent(item.useRate),
     _allocationRate: toPercent(item.allocationRate),
     _grossProfitRate: toPercent(item.grossProfitRate),
+    grossProfitRate: toPercent(item.grossProfitRate),
     _writeBandwidthUseRate: item.writeBandwidthUseRate != null ? Number(item.writeBandwidthUseRate) * 100 : null,
   }));
 
