@@ -103,6 +103,13 @@ watch(selectedPool, () => {
   filterResetKey.value += 1;
 });
 
+const avgValueField = computed(() => {
+  // 后端 avgRangeList 按指标拆分平均值，平均线必须跟随当前 X 轴字段切换。
+  if (props.xField === "_allocationRate" || props.xField === "allocationRate") return "allocationVal";
+  if (props.xField === "_useRate" || props.xField === "useRate") return "useRateVal";
+  return "val";
+});
+
 const avgX = computed(() => {
   const hasMatchingAvgRange = avgRangeList.value.some((item) =>
     props.sizeTiers.some((tier) => tier.label === item.name)
@@ -117,7 +124,7 @@ const avgX = computed(() => {
       props.sizeValueField
     );
   }
-  const avg = computeWeightedAvg(avgRangeList.value, visibleTiers.value, props.sizeTiers);
+  const avg = computeWeightedAvg(avgRangeList.value, visibleTiers.value, props.sizeTiers, avgValueField.value);
   return avg * 100;
 });
 

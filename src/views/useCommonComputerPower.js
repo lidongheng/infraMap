@@ -16,7 +16,7 @@ import {
  * efficiency 接口（无权限控制）：list 含 azName、useRate、allocationRate、serverNum
  *   avgRangeList 的 val 为 null（不涉及毛利率）
  * 两个接口通过 azName 匹配合并
- * 平均值由前端根据用户勾选的档位动态加权计算：(v1*n1+…+vn*nn)/(n1+…+nn)
+ * 平均值使用后端 avgRangeList 中对应指标字段，再根据用户勾选的档位动态加权计算：(v1*n1+…+vn*nn)/(n1+…+nn)
  * color、symbolSize 由前端 commonComputerPowerConfig 配置
  */
 
@@ -51,10 +51,10 @@ function mockFetchOperate(params = {}) {
               { azName: "华东-上海一(AZ3)-c6-mgr-2", grossProfitRate: 0.2441 },
             ],
             avgRangeList: [
-              { name: "0-100", num: "323", val: 0.6499 },
-              { name: "100-500", num: "156", val: 0.7234 },
-              { name: "500-1000", num: "89", val: 0.5612 },
-              { name: ">1000", num: "45", val: 0.8123 },
+              { name: "0-100", num: "323", val: 0.6499, allocationVal: 0.1865, useRateVal: 0.2742 },
+              { name: "100-500", num: "156", val: 0.7234, allocationVal: 0.4821, useRateVal: 0.3688 },
+              { name: "500-1000", num: "89", val: 0.5612, allocationVal: 0.3564, useRateVal: 0.1926 },
+              { name: ">1000", num: "45", val: 0.8123, allocationVal: 0.6127, useRateVal: 0.4385 },
             ],
           },
         }),
@@ -128,21 +128,23 @@ function buildOperateMap(operateRes) {
 
 /**
  * 根据选中的档位计算加权平均值
- * @param {Array} avgRangeList  后端返回的 [{ name, num, val }]
+ * @param {Array} avgRangeList  后端返回的 [{ name, num, val, allocationVal, useRateVal }]
  * @param {boolean[]} visibleTiers  各档位是否选中，下标对应 sizeTiers
  * @param {Array} sizeTiers  档位配置数组，用 label 与 avgRangeList.name 匹配
+ * @param {string} valueField  平均值字段，ECS 分配率用 allocationVal，使用率用 useRateVal
  * @returns {number} 加权平均值（原始比率，未乘 100）
  */
-export function computeWeightedAvg(avgRangeList, visibleTiers, sizeTiers = SIZE_TIERS) {
+export function computeWeightedAvg(avgRangeList, visibleTiers, sizeTiers = SIZE_TIERS, valueField = "val") {
   if (!avgRangeList?.length) return 0;
   let sumWeighted = 0;
   let sumNum = 0;
   for (const item of avgRangeList) {
-    if (item.val == null) continue;
+    const val = item[valueField];
+    if (val == null) continue;
     const tierIdx = sizeTiers.findIndex((t) => t.label === item.name);
     if (tierIdx === -1 || !visibleTiers[tierIdx]) continue;
     const num = Number(item.num) || 0;
-    sumWeighted += Number(item.val) * num;
+    sumWeighted += Number(val) * num;
     sumNum += num;
   }
   return sumNum > 0 ? sumWeighted / sumNum : 0;
