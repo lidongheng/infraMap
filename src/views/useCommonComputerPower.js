@@ -1,7 +1,7 @@
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import dayjs from "dayjs";
-import { applyBubbleConfig, EVS_SIZE_TIERS, SIZE_TIERS } from "./commonComputerPowerConfig";
+import { applyBubbleConfig, SIZE_TIERS } from "./commonComputerPowerConfig";
 import { selectedPool } from "./useChartOption";
 import { useCurrentDate } from "./useCurrentDate";
 import { useDirectoryTree } from "./useDirectoryTree";
@@ -181,12 +181,6 @@ function toChartData(mergedList, sizeTiers = SIZE_TIERS, sizeValueField = "serve
   return baseList.map((item) => applyBubbleConfig(item, sizeTiers, sizeValueField));
 }
 
-function getBubbleSizeConfig(cloudServerName) {
-  return cloudServerName === "EVS"
-    ? { tiers: EVS_SIZE_TIERS, field: "totalDiskSpace" }
-    : { tiers: SIZE_TIERS, field: "serverNum" };
-}
-
 function normalizeFilterParams(filters = {}) {
   const toList = (value) => {
     if (Array.isArray(value)) return value;
@@ -304,8 +298,7 @@ export function useCommonComputerPower() {
 
       const mergedList = mergeEfficiencyWithOperate(efficiencyList, operateMap);
       rawData.value = { avgRangeList: resAvgRangeList, list: mergedList };
-      const sizeConfig = getBubbleSizeConfig(cloudServerName);
-      data.value = toChartData(mergedList, sizeConfig.tiers, sizeConfig.field);
+      data.value = toChartData(mergedList, SIZE_TIERS, "serverNum");
     } catch (e) {
       if (requestId !== fetchDataRequestId || selectedPool.value !== cloudServerName) {
         return;

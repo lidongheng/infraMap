@@ -56,7 +56,7 @@ import CommonComputerPower from "./commonComputerPower.vue";
 import ResourcePoolTable from "@/components/ResourcePoolTable.vue";
 import { activeCategory } from "./useGeneralComputer";
 import { tierFilter, testData1 } from "./useCommonComputerPower";
-import { EVS_SIZE_TIERS, SIZE_TIERS } from "./commonComputerPowerConfig";
+import { SIZE_TIERS } from "./commonComputerPowerConfig";
 import { useResourcePoolCustomer } from "./useDirectoryTree";
 
 useResourcePoolCustomer();
@@ -133,8 +133,6 @@ const CATEGORY_CONFIG = {
         yAxisName: "%",
         yRange: [-205, 105],
         yTicks: [-200, -100, 0, 100],
-        /** 由 commonComputerPower 按数据 [min−5, max+5] 标定轴范围 */
-        axisRangeDataPadding: 5,
         tooltipYLabel: "毛利率",
         trafficLightKeys: { x: "EVS使用率", y: "毛利率" },
       },
@@ -157,7 +155,6 @@ const CATEGORY_CONFIG = {
         yAxisName: "%",
         yRange: [-205, 105],
         yTicks: [-200, -100, 0, 100],
-        axisRangeDataPadding: 5,
         tooltipYLabel: "毛利率",
         trafficLightKeys: { x: "OBS使用率", y: "毛利率" },
       },
@@ -180,15 +177,14 @@ const currentXField = computed(() => activeTabConfig.value.xField);
 const currentXAxisName = computed(() => activeTabConfig.value.xAxisName);
 const currentTrafficLightKeys = computed(() => activeTabConfig.value.trafficLightKeys ?? null);
 const currentFilterConfig = computed(() => currentCategoryConfig.value.filters);
-const isEvsCategory = computed(() => category.value === "EVS");
 const currentSizeLabel = computed(() =>
-  isEvsCategory.value ? "磁盘总量(TB)" : "服务器规模(台)"
+  "服务器规模(台)"
 );
 const currentSizeValueField = computed(() =>
-  isEvsCategory.value ? "totalDiskSpace" : "serverNum"
+  "serverNum"
 );
 const currentSizeTiers = computed(() =>
-  isEvsCategory.value ? EVS_SIZE_TIERS : SIZE_TIERS
+  SIZE_TIERS
 );
 
 /** 仅配置了 axisRangeDataPadding 的 tab 启用「按数据 ±padding 定轴」。 */
