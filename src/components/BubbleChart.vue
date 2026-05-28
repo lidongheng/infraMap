@@ -439,9 +439,13 @@ function buildVisibleResourcePoolNames(tiers, allChecked = tiers.every(Boolean))
   // 这里生成的是给外部组件消费的 tierFilter 名单，不能套图表内的坐标/趋势过滤；
   // 表格等外部组件需要保留 x/y 异常但同属可见档位和用户筛选项的资源池数据。
   return props.data
+    // 只保留符合当前 Region/AZ/资源类型用户筛选项的数据，不过滤 x/y 异常。
     .filter(passesFilterControls)
+    // 只保留右上角图例当前可见档位的数据；图例全选时不额外过滤档位。
     .filter((item) => allChecked || passesBubbleTierFilter(item, config))
+    // 提取外部表格用于匹配的资源池名称，固定使用 resourcePoolTotalName。
     .map(getBubbleResourcePoolFilterName)
+    // 去掉没有资源池名称的数据，避免空字符串参与外部匹配。
     .filter(Boolean);
 }
 
