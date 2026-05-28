@@ -431,14 +431,15 @@ function buildTierFilterConfig(tiers) {
 }
 
 function buildVisibleResourcePoolNames(tiers, allChecked = tiers.every(Boolean)) {
-  const filterFn = props.dataFilter ?? defaultFilter;
   const config = {
     tiers,
     sizeTiers: props.sizeTiers,
     sizeValueField: props.sizeValueField,
   };
+  // 这里生成的是给外部组件消费的 tierFilter 名单，不能套图表内的坐标/趋势过滤；
+  // 表格等外部组件需要保留 x/y 异常但同属可见档位和用户筛选项的资源池数据。
   return props.data
-    .filter(filterFn)
+    .filter(passesFilterControls)
     .filter((item) => allChecked || passesBubbleTierFilter(item, config))
     .map(getBubbleResourcePoolFilterName)
     .filter(Boolean);
