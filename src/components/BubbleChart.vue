@@ -815,11 +815,6 @@ function updateGraphicLabels() {
   const s = getChartScale(el.value);
   const opts = chart.getOption();
   const grid = opts.grid?.[0] || {};
-  const yAxis = opts.yAxis?.[0] || {};
-  const yExtent = normalizeRange(
-    [yAxis.min ?? props.yRange[0], yAxis.max ?? props.yRange[1]],
-    [-200, 200]
-  );
   const [gl, gr, gt, gb] = [
     toFiniteNumber(grid.left, GRID_INSET.left * s),
     toFiniteNumber(grid.right, GRID_INSET.right * s),
@@ -829,12 +824,27 @@ function updateGraphicLabels() {
   const w = Math.max(1, chart.getWidth() - gl - gr);
   const h = Math.max(1, chart.getHeight() - gt - gb);
   const xEnd = gl + w;
-  const zeroY =
-    gt + (1 - (0 - yExtent[0]) / (yExtent[1] - yExtent[0])) * h;
-  const [xMin, xMax] = normalizeRange(props.xRange, [0, 100]);
-  const xSpanForAvg = xMax - xMin;
-  const avgX = toFiniteNumber(props.avgX, xMin);
-  const avgLineX = gl + ((avgX - xMin) / xSpanForAvg) * w;
+  // dataZoom 会改变坐标系的可视窗口，graphic 手绘元素需要从当前像素反推实时轴范围。
+  const visibleXValues = [
+    chart.convertFromPixel({ xAxisIndex: 0 }, gl),
+    chart.convertFromPixel({ xAxisIndex: 0 }, xEnd),
+  ].map(Number);
+  const visibleYValues = [
+    chart.convertFromPixel({ yAxisIndex: 0 }, gt + h),
+    chart.convertFromPixel({ yAxisIndex: 0 }, gt),
+  ].map(Number);
+  if (!visibleXValues.every(Number.isFinite) || !visibleYValues.every(Number.isFinite)) return;
+  const [xMin, xMax] = [Math.min(...visibleXValues), Math.max(...visibleXValues)];
+  const yExtent = [Math.min(...visibleYValues), Math.max(...visibleYValues)];
+  const zeroYRaw = chart.convertToPixel({ yAxisIndex: 0 }, 0);
+  if (!Number.isFinite(zeroYRaw)) return;
+  const zeroY = Math.min(gt + h, Math.max(gt, zeroYRaw));
+  const avgX = Number(props.avgX);
+  const avgLineXRaw = chart.convertToPixel({ xAxisIndex: 0 }, avgX);
+  const avgLineX = Number.isFinite(avgLineXRaw)
+    ? Math.min(xEnd, Math.max(gl, avgLineXRaw))
+    : avgX < xMin ? gl : xEnd;
+  const showAvgLabel = Number.isFinite(avgLineXRaw) && avgLineXRaw >= gl && avgLineXRaw <= xEnd;
 
   const graphics = [];
   const silent = { cursor: "default", silent: true };
@@ -1044,13 +1054,11 @@ function updateGraphicLabels() {
 
   const aw = 6 * s;
   const al = 12 * s;
-  const yTickValues = normalizeTicks(props.yTicks);
-  const yTickMin = yTickValues.length > 1 ? yTickValues[0] : yExtent[0];
   graphics.push(
     { type: "polygon", position: [xEnd, zeroY], shape: { points: [[0, -aw], [0, aw], [al, 0]] }, style: { fill: axisColor }, z: 5, ...silent },
     { type: "polygon", position: [gl, gt], shape: { points: [[-aw, 0], [aw, 0], [0, -al]] }, style: { fill: axisColor }, z: 5, ...silent },
   );
-  if (yTickMin < 0) {
+  if (yExtent[0] < 0) {
     graphics.push(
       { type: "polygon", position: [gl, gt + h], shape: { points: [[-aw, 0], [aw, 0], [0, al]] }, style: { fill: axisColor }, z: 5, ...silent }
     );
@@ -1065,7 +1073,7 @@ function updateGraphicLabels() {
   const endLabelAlign = endLabelsRight ? "left" : "right";
   const lblStyle = { fontSize: lblFs, fill: "#353575", fontWeight: "bold", fontFamily: CHART_FONT_FAMILY };
   graphics.push(
-    { type: "text", position: [txEndLabel, zeroY - 10 * s], style: { text: Math.min(Math.round(xMax), 100) + "%", ...lblStyle, align: endLabelAlign, verticalAlign: "middle" }, z: 999, ...silent },
+    { type: "text", position: [txEndLabel, zeroY - 10 * s], style: { text: Math.round(xMax) + "%", ...lblStyle, align: endLabelAlign, verticalAlign: "middle" }, z: 999, ...silent },
     { type: "text", position: [txEndLabel, zeroY + 10 * s], style: { text: props.xAxisName, ...lblStyle, align: endLabelAlign, verticalAlign: "middle" }, z: 999, ...silent }
   );
 
@@ -1073,25 +1081,30 @@ function updateGraphicLabels() {
   const xTickFs = Math.round(14 * s);
   const xTickGap = 6 * s;
   const xTickCount = 5;
-  const xTickStep = xSpan / xTickCount;
-  for (let i = 1; i < xTickCount; i++) {
-    const val = xMin + xTickStep * i;
-    const tx = gl + ((val - xMin) / xSpan) * w;
-    graphics.push({
-      type: "text",
-      position: [tx, zeroY + xTickGap],
-      style: { text: Math.round(val) + "%", fontSize: xTickFs, fontFamily: CHART_FONT_FAMILY, fill: "#353575", align: "center", verticalAlign: "top" },
-      z: 5, ...silent,
-    });
+  if (xSpan > 0) {
+    const xTickStep = xSpan / xTickCount;
+    for (let i = 1; i < xTickCount; i++) {
+      const val = xMin + xTickStep * i;
+      const tx = chart.convertToPixel({ xAxisIndex: 0 }, val);
+      if (!Number.isFinite(tx)) continue;
+      graphics.push({
+        type: "text",
+        position: [tx, zeroY + xTickGap],
+        style: { text: Math.round(val) + "%", fontSize: xTickFs, fontFamily: CHART_FONT_FAMILY, fill: "#353575", align: "center", verticalAlign: "top" },
+        z: 5, ...silent,
+      });
+    }
   }
 
   // ── 平均值标签 ──
-  graphics.push({
-    type: "text",
-    position: [avgLineX, gt - 6 * s],
-    style: { text: "平均值", fontSize: Math.round(16 * s), fontWeight: "bold", fontFamily: CHART_FONT_FAMILY, fill: "#353575", align: "center", verticalAlign: "bottom" },
-    z: 10, ...silent,
-  });
+  if (showAvgLabel) {
+    graphics.push({
+      type: "text",
+      position: [avgLineX, gt - 6 * s],
+      style: { text: "平均值", fontSize: Math.round(16 * s), fontWeight: "bold", fontFamily: CHART_FONT_FAMILY, fill: "#353575", align: "center", verticalAlign: "bottom" },
+      z: 10, ...silent,
+    });
+  }
 
   chart.setOption({ graphic: graphics }, { replaceMerge: ["graphic"] });
 }
