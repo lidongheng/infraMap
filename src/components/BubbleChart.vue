@@ -767,13 +767,7 @@ function buildOption() {
         show: true,
         lineStyle: { type: "dashed", color: dashColor, width: dashWidth },
       },
-      axisLabel: {
-        show: true,
-        fontFamily: CHART_FONT_FAMILY,
-        fontSize: Math.round(14 * s),
-        color: "#353575",
-        formatter: hasCustomTicks ? (v) => (yTickValues.includes(v) ? v : "") : undefined,
-      },
+      axisLabel: { show: false },
     },
     series: [
       {
@@ -1062,6 +1056,26 @@ function updateGraphicLabels() {
     graphics.push(
       { type: "polygon", position: [gl, gt + h], shape: { points: [[-aw, 0], [aw, 0], [0, al]] }, style: { fill: axisColor }, z: 5, ...silent }
     );
+  }
+
+  // ── Y 轴刻度标签：跟随 dataZoom 后的实时可视范围 ──
+  const yTickFs = Math.round(14 * s);
+  const yTickGap = 8 * s;
+  const yTickCount = 4;
+  const ySpan = yExtent[1] - yExtent[0];
+  if (ySpan > 0) {
+    const yTickStep = ySpan / yTickCount;
+    for (let i = 0; i <= yTickCount; i++) {
+      const val = yExtent[0] + yTickStep * i;
+      const ty = chart.convertToPixel({ yAxisIndex: 0 }, val);
+      if (!Number.isFinite(ty)) continue;
+      graphics.push({
+        type: "text",
+        position: [gl - yTickGap, ty],
+        style: { text: String(Math.round(val)), fontSize: yTickFs, fontFamily: CHART_FONT_FAMILY, fill: "#353575", align: "right", verticalAlign: "middle" },
+        z: 5, ...silent,
+      });
+    }
   }
 
   // ── X 轴右端标签（相对箭头左侧或尖端右侧）──
