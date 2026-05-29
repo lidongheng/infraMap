@@ -6,6 +6,7 @@ import PLAnalysis from '../views/P&LAnalysis.vue'
 import { ROUTE_CONFIG, checkRouteRedirect, getRouteConfig } from '../config/routes'
 import profitLossTrendPage from '../views/profitLossTrendPage.vue'
 import aiComputeView from '../views/aiComputeView.vue'
+import lifecycleTrend from '../views/lifecycleTrend.vue'
 
 const routes = [
   {
@@ -57,6 +58,11 @@ const routes = [
     path: '/aiCompute',
     name: 'aiCompute',
     component: aiComputeView
+  },
+  {
+    path: '/lifecycleTrend',
+    name: 'lifecycleTrend',
+    component: lifecycleTrend
   },
   // 路由守卫测试路由
   {

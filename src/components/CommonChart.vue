@@ -8,26 +8,32 @@ import * as echarts from 'echarts';
 import { changeValueByScale } from '@/composables/autoLayout';
 
 const props = defineProps({
+  // 图表配置选项
   options: {
     type: Object,
     required: true,
   },
+  // 是否自动调整大小
   autoResize: {
     type: Boolean,
     default: true,
   },
+  // 固定高度
   fixHeight: {
     type: Number,
     default: null,
   },
+  // 自定义样式
   style: {
     type: Object,
     default: () => ({}),
   },
+  // 图表主题
   theme: {
     type: String,
     default: '',
   },
+  // 是否延迟自动化
   lazyInit: {
     type: Boolean,
     default: false,
@@ -40,26 +46,24 @@ const chartContainer = ref(null);
 let myChart = null;
 let isInitialized = false;
 
-// 计算容器样式（优先使用 style 中的 width/height，支持数字或百分比）
+// 计算容器样式
 const containerStyle = computed(() => {
-  const w = props.width ?? props.style?.width ?? 160;
-  const h = props.height ?? props.style?.height ?? 86;
-  const widthVal = typeof w === 'string' ? w : `${changeValueByScale(w)}px`;
-  const heightVal = typeof h === 'string' ? h : `${changeValueByScale(h)}px`;
   const styleValue = {
     ...props.style,
-    width: widthVal,
-    height: heightVal,
+    width: `${changeValueByScale(props.style.width || 160)}px`,
+    height: `${changeValueByScale(props.style.height || 160)}px`,
   };
   return styleValue;
-});
+})
 
 // 初始化图表
 const initChart = () => {
   if (!chartContainer.value || isInitialized) return;
 
   try {
-    myChart = echarts.init(chartContainer.value, props.theme);
+    myChart = echarts.init(chartContainer.value, props.theme, {
+      renderer: 'svg',
+    });
     isInitialized = true;
 
     // 设置初始配置
@@ -74,8 +78,8 @@ const initChart = () => {
     if (props.autoResize) {
       window.addEventListener('resize', resize);
     }
-
   } catch (error) {
+    console.error('图表初始化失败:', error);
     emit('chartError', error);
   }
 };
@@ -88,6 +92,7 @@ const updateChart = (newOptions) => {
     myChart.setOption(newOptions, true);
     emit('chartUpdated', myChart);
   } catch (error) {
+    console.error('图表更新失败:', error);
     emit('chartError', error);
   }
 };
@@ -115,22 +120,29 @@ const getInstance = () => {
 };
 
 // 监听 options 变化
-watch(() => props.options, (newOptions) => {
-  if (isInitialized && newOptions) {
-    updateChart(newOptions);
-  }
-}, { deep: true });
+watch(
+  () => props.options,
+  (newOptions) => {
+    if (isInitialized && newOptions) {
+      updateChart(newOptions);
+    }
+  },
+  { deep: true }
+);
 
+// 组件挂载时初始化
 onMounted(() => {
   if (!props.lazyInit) {
     initChart();
   }
 });
 
+// 组件卸载时清理
 onUnmounted(() => {
   dispose();
 });
 
+// 暴露方法给父组件
 defineExpose({
   initChart,
   updateChart,
