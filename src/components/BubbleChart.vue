@@ -835,9 +835,14 @@ function updateGraphicLabels() {
   const zeroY = Math.min(gt + h, Math.max(gt, zeroYRaw));
   const avgX = Number(props.avgX);
   const avgLineXRaw = chart.convertToPixel({ xAxisIndex: 0 }, avgX);
-  const avgLineX = Number.isFinite(avgLineXRaw)
-    ? Math.min(xEnd, Math.max(gl, avgLineXRaw))
-    : avgX < xMin ? gl : xEnd;
+  let avgLineX;
+  if (Number.isFinite(avgLineXRaw)) {
+    avgLineX = Math.min(xEnd, Math.max(gl, avgLineXRaw));
+  } else if (avgX < xMin) {
+    avgLineX = gl;
+  } else {
+    avgLineX = xEnd;
+  }
   const showAvgLabel = Number.isFinite(avgLineXRaw) && avgLineXRaw >= gl && avgLineXRaw <= xEnd;
 
   const graphics = [];
