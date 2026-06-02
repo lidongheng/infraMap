@@ -4,8 +4,8 @@
       v-for="item in categories"
       :key="item.key"
       class="category-btn"
-      :class="{ active: activeAICategory === item.key, disabled: item.disabled }"
-      @click="!item.disabled && (activeAICategory = item.key)"
+      :class="{ active: selectedResourceType === item.key, disabled: item.disabled }"
+      @click="!item.disabled && (selectedResourceType = item.key)"
     >
       {{ item.key }}
     </div>
@@ -13,7 +13,7 @@
 </template>
 
 <script setup>
-import { activeAICategory } from "@/views/useAIComputer";
+import { selectedResourceType } from "@/views/useAIComputer";
 
 const categories = [
   { key: "A3", disabled: false },

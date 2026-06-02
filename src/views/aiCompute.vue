@@ -19,27 +19,52 @@
             {{ tab.label }}
           </div>
         </div>
-        <div class="chart-area" :class="{ 'chart-area--collapsed': chartCollapsed }">
-          <AIComputerPower
-            v-if="activeTab !== 'superNode'"
-            ref="chartRef"
-            :xField="currentConfig.xField"
-            :yField="currentConfig.yField"
-            :xAxisName="currentConfig.xAxisName"
-            :title="currentConfig.title"
-            :yAxisName="currentConfig.yAxisName"
-            :yRange="bubbleChartYRange"
-            :y-ticks="bubbleChartYTicks"
-            :axis-range-data-padding="bubbleChartAxisPadding"
-            :tooltipYLabel="currentConfig.tooltipYLabel"
-            :avgXField="currentConfig.xField"
-            :trafficLightKeys="currentConfig.trafficLightKeys"
-            :dataFilter="currentConfig.dataFilter ?? null"
-            @bubble-click="onBubbleClick"
-            @visible-change="onVisibleChange"
+        <template v-if="!isSuperNode">
+          <SwitchTableOrChart
+            v-if="parentName !== '地域'"
+            class="switch-btn"
+            v-model="tableRadio"
           />
+          <div v-show="tableRadio === 'chart'" class="trend trend-upSuperNode">
+            <div class="ai-computer-power">
+              <div class="trend-header">
+                {{ activeTabYTitle }}
+              </div>
+              <div class="trend-chart">
+                <AIComputerPower
+                  ref="chartRef"
+                  :xField="currentConfig.xField"
+                  :yField="currentConfig.yField"
+                  :xAxisName="currentConfig.xAxisName"
+                  :title="currentConfig.title"
+                  :yAxisName="currentConfig.yAxisName"
+                  :yRange="bubbleChartYRange"
+                  :y-ticks="bubbleChartYTicks"
+                  :axis-range-data-padding="bubbleChartAxisPadding"
+                  :tooltipYLabel="currentConfig.tooltipYLabel"
+                  :avgXField="currentConfig.xField"
+                  :trafficLightKeys="currentConfig.trafficLightKeys"
+                  :dataFilter="currentConfig.dataFilter ?? null"
+                  @bubble-click="onBubbleClick"
+                  @visible-change="onVisibleChange"
+                />
+              </div>
+            </div>
+            <ResourcePoolTable
+              ref="tableRef"
+              :data="chartData"
+            />
+          </div>
+          <div v-if="tableRadio === 'table'" class="ai-table">
+            Other Table
+          </div>
+        </template>
+        
+        <div v-else class="trend common-card-style2 trend-superNode">
+          <div class="trend-header">
+            NPU卡时使用率
+          </div>
           <SuperNodeChart
-            v-else
             ref="superNodeChartRef"
             :data="superNodeData"
             :avgRangeList="superNodeAvgRangeList"
@@ -48,11 +73,11 @@
             @visible-change="onVisibleChange"
             @collapse-change="onCollapseChange"
           />
+          <ResourcePoolTable
+            ref="tableRef"
+            :data="chartData"
+          />
         </div>
-        <ResourcePoolTable
-          ref="tableRef"
-          :data="chartData"
-        />
       </section>
     </section>
   </div>
@@ -65,37 +90,42 @@ import AICategoryNav from "@/components/AICategoryNav.vue";
 import AIComputerPower from "./aiComputerPower.vue";
 import SuperNodeChart from "./superNodeChart.vue";
 import ResourcePoolTable from "@/components/ResourcePoolTable.vue";
-import { activeAICategory } from "./useAIComputer";
+import { selectedResourceType, parentName, isCustomer } from "./useAIComputer";
 import { mockFetchEfficiency2, toSuperNodeChartData } from "./useSuperNodeChart";
 import { useCurrentDate } from "./useCurrentDate";
+import SwitchTableOrChart from "@/components/SwitchTableOrChart.vue";
 
-const CATEGORY_CONFIG = {
-  A3: {
-    tabs: [
-      {
-        key: "npuUsage",
-        label: "资源池",
-        xField: "_npuUseRate",
-        yField: "_allocationRate",
-        xAxisName: "NPU使用率",
-        title: "分配率",
-        yAxisName: "%",
-        /** 未启用 axisRangeDataPadding 时使用 */
-        yRange: [0, 100],
-        /** 设为数字则与 commonComputerPower 相同：按 yField 数据驱动 Y 轴刻度；null 表示关闭 */
-        axisRangeDataPadding: 5,
-        yTicks: [0, 25, 50, 75, 100],
-        tooltipYLabel: "A3分配率",
-        trafficLightKeys: { x: "NPU使用率", y: "A3分配率" },
-        dataFilter: (d) => d.x != null && d.y != null && d._npuUseRate > 0,
-      },
-      {
-        key: "superNode",
-        label: "超节点",
-        avgXFromFrontend: true,
-      },
-    ],
-  },
+const NPU_USEAGE_FOR_GENERATION = {
+  key: "npuUsage",
+  label: "资源池",
+  xField: "_npuUseRate",
+  yField: "_allocationRate",
+  xAxisName: "NPU使用率",
+  title: "分配率",
+  yAxisName: "%",
+  yRange: [0, 100],
+  tooltipYLabel: "分配率",
+  trafficLightKeys: { x: "NPU使用率", y: "A3分配率" },
+  dataFilter: (d) => d.x != null && d.y != null && d._npuUseRate > 0,
+};
+const NPU_USEAGE_FOR_CUSTOMER = {
+  key: "npuUsage",
+  label: "资源池",
+  xField: "_npuUseRate",
+  yField: "_npuCardTimeUseRate",
+  xAxisName: "NPU使用率",
+  title: "NPU卡时使用率",
+  yAxisName: "%",
+  axisRangeDataPadding: 5,
+  yTicks: [0, 10, 20, 30],
+  tooltipYLabel: "NPU卡时使用率",
+  trafficLightKeys: { x: "NPU使用率", y: "NPU卡时使用率" },
+  dataFilter: (d) => d.x != null && d.y != null && d._npuUseRate > 0,
+};
+const SUPER_NODE_CONFIG = {
+  key: "superNode",
+  label: "超节点",
+  avgXFromFrontend: true,
 };
 
 const { date: currentMonth } = storeToRefs(useCurrentDate());
@@ -114,8 +144,18 @@ const superNodeAvgRangeList = computed(() =>
   xpodDetailData.value?.quadrantVo?.avgRangeList ?? []
 );
 
-const tabs = computed(() => CATEGORY_CONFIG[activeAICategory.value]?.tabs ?? CATEGORY_CONFIG.A3.tabs);
+const tabs = computed(() => {
+  if (['A3'].includes(selectedResourceType.value) ||
+    ['代次'].includes(parentName.value) && !selectedResourceType.value) {
+      return [NPU_USEAGE_FOR_GENERATION, SUPER_NODE_CONFIG];
+  } else if (isCustomer.value) {
+    return [NPU_USEAGE_FOR_CUSTOMER];
+  } else {
+    return [NPU_USEAGE_FOR_GENERATION];
+  }
+});
 const activeTab = ref(tabs.value[0].key);
+const activeTabYTitle = ref(tabs.value[0].title);
 
 const chartRef = ref(null);
 const superNodeChartRef = ref(null);
@@ -126,6 +166,7 @@ const isSuperNode = computed(() => activeTab.value === "superNode");
 
 watch(tabs, (newTabs) => {
   activeTab.value = newTabs[0].key;
+  activeTabYTitle.value = newTabs[0].title;
 });
 
 watch(isSuperNode, () => {
@@ -211,6 +252,9 @@ function onBubbleClick(detail) {
   const azName = detail.azName || detail.name;
   tableRef.value?.scrollToByName(azName);
 }
+
+
+const tableRadio = ref('chart');
 </script>
 
 <style scoped lang="less">
@@ -290,6 +334,62 @@ function onBubbleClick(detail) {
         &.chart-area--collapsed {
           height: 255px;
         }
+      }
+
+      .switch-btn {
+        align-self: flex-end;
+        margin: 8px 0 14px;
+      }
+
+      .trend {
+        flex: 1;
+        min-height: 0;
+        padding: 18px 20px;
+        border-radius: 14px;
+        background: rgba(246, 248, 252, 0.9);
+        box-sizing: border-box;
+      }
+
+      .trend-upSuperNode {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .trend-superNode {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .ai-computer-power {
+        flex-shrink: 0;
+      }
+
+      .trend-header {
+        height: 32px;
+        display: flex;
+        align-items: flex-start;
+        color: #16183d;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 28px;
+      }
+
+      .trend-chart {
+        height: 380px;
+      }
+
+      .ai-table {
+        flex: 1;
+        min-height: 460px;
+        padding: 24px;
+        border-radius: 14px;
+        background: rgba(246, 248, 252, 0.9);
+        color: #353575;
+        font-size: 16px;
+        font-weight: 600;
+        box-sizing: border-box;
       }
     }
   }
