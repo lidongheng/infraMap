@@ -1,4 +1,4 @@
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { activeCategory } from "./useGeneralComputer";
 import { useCurrentDate } from "./useCurrentDate";
 
@@ -209,6 +209,66 @@ function applyRootResourceTypeLevel(arr = []) {
   });
 }
 
+function walkDirectoryTree(tree, visitor) {
+  (tree ?? []).forEach((item) => {
+    visitor(item);
+    if ((item.children ?? []).length > 0) {
+      walkDirectoryTree(item.children, visitor);
+    }
+  });
+}
+
+function parseNodeObj(item) {
+  if (item?.obj) return item.obj;
+  if (!item?.objStr) return null;
+  try {
+    return JSON.parse(item.objStr);
+  } catch {
+    return null;
+  }
+}
+
+function createSubmitOption(key, rawValue) {
+  const value = String(rawValue);
+  const obj = { [key]: value };
+  const objStr = JSON.stringify(obj);
+  return {
+    label: value,
+    value: objStr,
+    name: value,
+    obj,
+    objStr,
+  };
+}
+
+function getNodeSubmitValue(item, key) {
+  if (item?.[key]) return item[key];
+  const obj = parseNodeObj(item);
+  if (obj?.[key]) return obj[key];
+  return "";
+}
+
+function collectSubmitOptions(tree, key) {
+  const optionMap = new Map();
+  walkDirectoryTree(tree, (item) => {
+    const submitValue = getNodeSubmitValue(item, key);
+    if (submitValue && !optionMap.has(submitValue)) {
+      optionMap.set(submitValue, createSubmitOption(key, submitValue));
+    }
+  });
+  return Array.from(optionMap.values());
+}
+
+export const regionOptions = computed(() =>
+  collectSubmitOptions(directoryTreeList.value, "regionName")
+);
+
+export const azOptions = computed(() =>
+  collectSubmitOptions(directoryTreeList.value, "azName")
+);
+
+export const resourceTree = computed(() => directoryTreeList.value);
+
 export const useResourcePoolCustomer = () => {
   const currentStore = useCurrentDate();
   const loadTreeData = () => {
@@ -241,5 +301,9 @@ export const useResourcePoolCustomer = () => {
 export function useDirectoryTree() {
   return {
     directoryTreeList,
+    directoryTreeLoading,
+    regionOptions,
+    azOptions,
+    resourceTree,
   };
 }
