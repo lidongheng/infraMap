@@ -275,7 +275,7 @@ const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props
 const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azs)));
 
 // FilterDropdowns 只关心展示和交互：哪些框显示、资源类型用树还是单列、是否需要确定按钮。
-// 后端字段形态在 BubbleChart 统一转换，避免 UI 组件夹带资源池判断。
+// 后端字段形态由通算筛选 composable 统一转换，避免 UI 组件夹带资源池判断。
 const resolvedFilterConfig = computed(() => ({
   region: {
     visible: props.showRegionFilter,

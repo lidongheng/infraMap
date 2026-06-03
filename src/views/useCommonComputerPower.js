@@ -1,14 +1,9 @@
-import { ref, watch } from "vue";
+import { ref } from "vue";
 import { storeToRefs } from "pinia";
 import dayjs from "dayjs";
 import { applyBubbleConfig, SIZE_TIERS } from "./commonComputerPowerConfig";
 import { selectedPool } from "./useChartOption";
 import { useCurrentDate } from "./useCurrentDate";
-import { useDirectoryTree } from "./useDirectoryTree";
-import {
-  buildAzOptionsFromEfficiencyList,
-  buildRegionOptionsFromEfficiencyList,
-} from "./bubbleFilterOptions";
 
 /**
  * 通用算力散点图 Hook
@@ -200,22 +195,6 @@ function normalizeFilterParams(filters = {}) {
   };
 }
 
-function getRegionNameFromAzName(azName) {
-  const text = String(azName ?? "");
-  const azIndex = text.search(/\(AZ\d+\)/i);
-  if (azIndex > 0) {
-    return text.slice(0, azIndex);
-  }
-  return "";
-}
-
-function withFallbackRegionName(list = []) {
-  return list.map((item) => ({
-    ...item,
-    regionName: item.regionName || getRegionNameFromAzName(item.azName),
-  }));
-}
-
 /** 通用算力数据 Hook */
 export function useCommonComputerPower() {
   const data = ref([]);
@@ -224,11 +203,7 @@ export function useCommonComputerPower() {
   const error = ref(null);
   const forbidden = ref(false);
   const rawData = ref(null);
-  const regionOptions = ref([]);
-  const azOptions = ref([]);
-  const locationOptionsContextKey = ref("");
   const currentFilters = ref({});
-  const { directoryTreeList } = useDirectoryTree();
   let fetchDataRequestId = 0;
 
   function resetState() {
@@ -239,25 +214,6 @@ export function useCommonComputerPower() {
 
   const { date } = storeToRefs(useCurrentDate());
 
-  function syncAzOptionsContext(cloudServerName, date) {
-    const nextKey = `${cloudServerName ?? ""}__${date ?? ""}`;
-    if (locationOptionsContextKey.value !== nextKey) {
-      locationOptionsContextKey.value = nextKey;
-      regionOptions.value = [];
-      azOptions.value = [];
-    }
-  }
-
-  function cacheInitialLocationOptions(efficiencyList) {
-    const listWithRegion = withFallbackRegionName(efficiencyList);
-    if (!regionOptions.value.length) {
-      regionOptions.value = buildRegionOptionsFromEfficiencyList(listWithRegion, ["regionName"]);
-    }
-    if (!azOptions.value.length) {
-      azOptions.value = buildAzOptionsFromEfficiencyList(listWithRegion, ["azName"]);
-    }
-  }
-
   async function fetchData(filters = currentFilters.value) {
     const requestId = ++fetchDataRequestId;
     loading.value = true;
@@ -265,7 +221,6 @@ export function useCommonComputerPower() {
     forbidden.value = false;
     const cloudServerName = selectedPool.value;
     currentFilters.value = normalizeFilterParams(filters);
-    syncAzOptionsContext(cloudServerName, date.value);
     const params = {
       cloudServerName,
       month: dayjs(date.value).format("YYYYMM"),
@@ -288,7 +243,6 @@ export function useCommonComputerPower() {
       }
 
       const { list: efficiencyList } = parsed;
-      cacheInitialLocationOptions(efficiencyList);
 
       // TODO: 替换为真实接口
       const operateRes = await mockFetchOperate(params);
@@ -315,14 +269,6 @@ export function useCommonComputerPower() {
     }
   }
 
-  watch([selectedPool, date], ([nextPool, nextDate], [oldPool, oldDate]) => {
-    if (nextDate !== oldDate || nextPool !== oldPool) {
-      fetchData({});
-    } else {
-      fetchData(currentFilters.value);
-    }
-  });
-
   return {
     data,
     avgRangeList,
@@ -330,9 +276,6 @@ export function useCommonComputerPower() {
     error,
     forbidden,
     rawData,
-    regionOptions,
-    azOptions,
-    directoryTreeList,
     fetchData,
   };
 }

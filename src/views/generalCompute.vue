@@ -35,7 +35,6 @@
             :sizeValueField="currentSizeValueField"
             :sizeTiers="currentSizeTiers"
             :trafficLightKeys="currentTrafficLightKeys"
-            :filterConfig="currentFilterConfig"
             @bubble-click="onBubbleClick"
             @visible-change="onVisibleChange"
           />
@@ -51,17 +50,25 @@
 
 <script setup>
 import { ref, computed, watch } from "vue";
+import { storeToRefs } from "pinia";
 import CategoryNav from "@/components/CategoryNav.vue";
 import CommonComputerPower from "./commonComputerPower.vue";
 import ResourcePoolTable from "@/components/ResourcePoolTable.vue";
 import { activeCategory } from "./useGeneralComputer";
-import { tierFilter, testData1 } from "./useCommonComputerPower";
+import { testData1 } from "./useCommonComputerPower";
 import { SIZE_TIERS } from "./commonComputerPowerConfig";
 import { useResourcePoolCustomer } from "./useDirectoryTree";
+import { useCurrentDate } from "./useCurrentDate";
+import {
+  resetGeneralComputeFilter,
+  setGeneralComputeFilterConfig,
+  tierFilter,
+} from "./useGeneralComputeFilter";
 
 useResourcePoolCustomer();
 
 const category = computed(() => activeCategory.value);
+const { date: currentDate } = storeToRefs(useCurrentDate());
 
 // 通算页筛选项统一在这里按资源池配置；下游组件只消费配置，不再写资源池特判。
 // variant: tree 使用 ECS 四层树面板；list 使用 AZ 同款单列面板。
@@ -197,6 +204,18 @@ const grossProfitTableRef = ref(null);
 const filteredTestData1 = computed(() =>
   tierFilter.value ? testData1.value.filter(tierFilter.value) : testData1.value
 );
+
+watch(
+  currentFilterConfig,
+  (config) => {
+    setGeneralComputeFilterConfig(config);
+  },
+  { immediate: true }
+);
+
+watch(currentDate, () => {
+  resetGeneralComputeFilter();
+});
 
 function onVisibleChange(filterFn) {
   tierFilter.value = filterFn;

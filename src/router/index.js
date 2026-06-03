@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import Index from '../views/Index.vue'
 import commonComputerPower from '../views/commonComputerPower.vue'
 import generalComputeView from '../views/generalComputeView.vue'
 import PLAnalysis from '../views/P&LAnalysis.vue'
@@ -12,7 +12,7 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    component: HomeView
+    component: Index
   },
   {
     path: '/commonComputerPower',

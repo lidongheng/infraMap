@@ -14,7 +14,7 @@
 
 <script setup>
 import { activeCategory } from "@/views/useGeneralComputer";
-import { selectedPool } from "@/views/useChartOption";
+import { resetGeneralComputeFilter } from "@/views/useGeneralComputeFilter";
 
 const categories = [
   { key: "ECS", disabled: false },
@@ -28,7 +28,7 @@ const categories = [
 function onCategoryClick(item) {
   if (item.disabled) return;
   activeCategory.value = item.key;
-  selectedPool.value = item.key;
+  resetGeneralComputeFilter();
 }
 </script>
 

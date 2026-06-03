@@ -1,37 +1,40 @@
 <template>
-  <div class="app-shell">
-    <div class="global-date-filter">
-      <el-date-picker
-        v-model="selectedDate"
-        type="date"
-        placeholder="选择日期"
-        format="YYYY年MM月DD日"
-        value-format="YYYY-MM-DD"
-        :clearable="false"
-        size="small"
+  <el-config-provider :locale="zhCn">
+    <div v-if="showGeneralComputeFilter" class="global-filter">
+      <FilterDropdowns
+        v-model="filterValue"
+        :options="filterOptions"
+        :filter-config="filterConfig"
+        :loading="directoryTreeLoading"
+        @change="onFilterChange"
       />
     </div>
     <router-view />
-  </div>
+  </el-config-provider>
 </template>
 
 <script setup>
-import { storeToRefs } from 'pinia';
-import { useCurrentDate } from './views/useCurrentDate';
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import zhCn from 'element-plus/es/locale/lang/zh-cn';
+import FilterDropdowns from '@/components/FilterDropdowns.vue';
+import { directoryTreeLoading } from './views/useDirectoryTree';
+import {
+  filterConfig,
+  filterOptions,
+  filterValue,
+  onFilterChange,
+} from './views/useGeneralComputeFilter';
 
-const currentDateStore = useCurrentDate();
-const { date: selectedDate } = storeToRefs(currentDateStore);
+const route = useRoute();
+
+const showGeneralComputeFilter = computed(() => route.name === 'generalCompute');
 </script>
 
 <style lang="less" scoped>
 @import './styles/themes.less';
 
-.app-shell {
-  position: relative;
-  min-height: 100vh;
-}
-
-.global-date-filter {
+.global-filter {
   position: fixed;
   top: 16px;
   right: 20px;

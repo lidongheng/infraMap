@@ -1,14 +1,5 @@
 <template>
   <div class="bubble-chart-wrap">
-    <div v-if="showFilters" class="bubble-chart-toolbar">
-      <FilterDropdowns
-        v-model="filterValue"
-        :options="filterOptions"
-        :filter-config="resolvedFilterConfig"
-        :loading="filterLoading"
-        @change="onFilterChange"
-      />
-    </div>
     <div ref="el" class="bubble-chart"></div>
     <div v-if="collapsible" class="collapse-toggle" @click="toggleCollapse">
       <span class="collapse-text">{{ collapsed ? '展开' : '收起' }}</span>
@@ -20,7 +11,6 @@
 <script setup>
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import * as echarts from "echarts";
-import FilterDropdowns from "@/components/FilterDropdowns.vue";
 import { getChartScale } from "@/utils/chartScale";
 import { SIZE_TIERS, getTrafficLight, trafficLightHtml } from "@/views/commonComputerPowerConfig";
 import {
@@ -67,17 +57,12 @@ const props = defineProps({
   initialVisibleTiers: { type: Array, default: () => [false, true, true, true] },
   /** 是否显示收起/展开按钮 */
   collapsible: { type: Boolean, default: false },
-  /** 是否显示 Region/AZ/资源类型筛选条 */
-  showFilters: { type: Boolean, default: false },
-  showRegionFilter: { type: Boolean, default: true },
-  showAzFilter: { type: Boolean, default: true },
-  filterLoading: { type: Boolean, default: false },
-  filterOptions: { type: Object, default: null },
-  filterConfig: { type: Object, default: null },
+  /** 是否用当前图表可见资源池名单约束外部 tierFilter。 */
+  resourcePoolTierFilter: { type: Boolean, default: false },
   filterResetKey: { type: [String, Number], default: 0 },
 });
 
-const emit = defineEmits(["bubble-click", "visible-change", "collapse-change", "filter-change"]);
+const emit = defineEmits(["bubble-click", "visible-change", "collapse-change"]);
 
 const collapsed = ref(false);
 
@@ -95,328 +80,7 @@ function toggleCollapse() {
 
 const el = ref(null);
 let chart = null;
-let waitingForFilterResetData = false;
 const visibleTiers = ref([...props.initialVisibleTiers]);
-
-// BubbleChart 是筛选值转后端参数的边界；这里补齐默认配置，保持旧调用方仍按 ECS 树形筛选工作。
-const resolvedFilterConfig = computed(() => ({
-  region: {
-    visible: props.showRegionFilter,
-    searchable: true,
-    ...(props.filterConfig?.region ?? {}),
-  },
-  az: {
-    visible: props.showAzFilter,
-    searchable: false,
-    ...(props.filterConfig?.az ?? {}),
-  },
-  resourceType: {
-    visible: true,
-    variant: "tree",
-    submitMode: "tree",
-    confirmable: true,
-    ...(props.filterConfig?.resourceType ?? {}),
-  },
-}));
-
-const showRegionFilter = computed(() => resolvedFilterConfig.value.region.visible);
-const showAzFilter = computed(() => resolvedFilterConfig.value.az.visible);
-const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
-
-function option(label, value = label) {
-  return { label, value };
-}
-
-function getResourceFamily(resourceType) {
-  if (!resourceType) return "";
-  const match = String(resourceType).match(/^[a-zA-Z]+/);
-  return match ? match[0] : resourceType;
-}
-
-function getResourceSeries(resourceType) {
-  return getResourceFamily(resourceType);
-}
-
-function getResourceGeneration(resourceType) {
-  if (!resourceType) return "";
-  const parts = String(resourceType).split("-");
-  return parts.length > 1 ? parts.slice(0, -1).join("-") : resourceType;
-}
-
-function parseFilterMeta(item) {
-  const rawName = String(item.azName || item.name || "").trim();
-  const azMatch = rawName.match(/\bAZ\d+\b/i);
-  const az = rawName;
-  const region = item.regionName || "";
-  let resourceType = "";
-
-  if (azMatch) {
-    const rest = rawName
-      .slice(azMatch.index + azMatch[0].length)
-      .replace(/^\)+/, "")
-      .replace(/^[-\s]+/, "")
-      .trim();
-    resourceType = rest;
-  }
-
-  return {
-    region,
-    az,
-    resourceSeries: getResourceSeries(resourceType),
-    resourceFamily: getResourceFamily(resourceType),
-    resourceGeneration: getResourceGeneration(resourceType),
-    resourceType,
-  };
-}
-
-function buildResourceTree(items) {
-  const seriesMap = new Map();
-  items.forEach((item) => {
-    const meta = parseFilterMeta(item);
-    if (!seriesMap.has(meta.resourceSeries)) {
-      seriesMap.set(meta.resourceSeries, new Map());
-    }
-    const familyMap = seriesMap.get(meta.resourceSeries);
-    if (!familyMap.has(meta.resourceFamily)) {
-      familyMap.set(meta.resourceFamily, new Map());
-    }
-    const generationMap = familyMap.get(meta.resourceFamily);
-    if (!generationMap.has(meta.resourceGeneration)) {
-      generationMap.set(meta.resourceGeneration, new Map());
-    }
-    generationMap.get(meta.resourceGeneration).set(meta.resourceType, option(meta.resourceType));
-  });
-
-  return Array.from(seriesMap.entries()).map(([series, familyMap]) => ({
-    ...option(series),
-    children: Array.from(familyMap.entries()).map(([family, generationMap]) => ({
-      ...option(family),
-      children: Array.from(generationMap.entries()).map(([generation, typeMap]) => ({
-        ...option(generation),
-        children: Array.from(typeMap.values()),
-      })),
-    })),
-  }));
-}
-
-function uniqueOptions(items, getter) {
-  const map = new Map();
-  items.forEach((item) => {
-    const value = getter(item);
-    if (value && !map.has(value)) {
-      map.set(value, option(value));
-    }
-  });
-  return Array.from(map.values());
-}
-
-const collectedFilterItems = ref([]);
-
-function mergeFilterItems(items) {
-  const map = new Map();
-  [...collectedFilterItems.value, ...items].forEach((item) => {
-    const key = item.azName || item.name;
-    if (key) map.set(key, item);
-  });
-  collectedFilterItems.value = Array.from(map.values());
-}
-
-const internalFilterOptions = computed(() => ({
-  regions: uniqueOptions(collectedFilterItems.value, (item) => parseFilterMeta(item).region),
-  azs: uniqueOptions(collectedFilterItems.value, (item) => parseFilterMeta(item).az),
-  resourceTree: buildResourceTree(collectedFilterItems.value),
-}));
-
-const filterOptions = computed(() => ({
-  regions: props.filterOptions?.regions ?? internalFilterOptions.value.regions,
-  azs: props.filterOptions?.azs ?? internalFilterOptions.value.azs,
-  resourceTree: props.filterOptions?.resourceTree ?? internalFilterOptions.value.resourceTree,
-}));
-
-function flattenResourceGenerations(tree) {
-  return flattenResourceFamilies(tree).flatMap((family) => family.children ?? []);
-}
-
-function flattenResourceFamilies(tree) {
-  return tree.flatMap((series) => series.children ?? []);
-}
-
-function isOneLevelResourceTree(tree) {
-  return (tree ?? []).length > 0 && (tree ?? []).every((item) => !(item.children ?? []).length);
-}
-
-function flattenResourceTypes(tree) {
-  if (isOneLevelResourceTree(tree)) return tree;
-  return flattenResourceGenerations(tree).flatMap((generation) => generation.children ?? []);
-}
-
-function getFilterOptionValue(item) {
-  return item?.objStr ?? item?.value ?? item?.name ?? item?.label ?? "";
-}
-
-function createDefaultFilterValue(options) {
-  const resourceTree = options.resourceTree ?? [];
-  return {
-    regionNameList: showRegionFilter.value ? (options.regions ?? []).map(getFilterOptionValue) : [],
-    azNameList: showAzFilter.value ? (options.azs ?? []).map(getFilterOptionValue) : [],
-    resourceSeries: showResourceTypeFilter.value ? resourceTree.map(getFilterOptionValue) : [],
-    resourceFamily: showResourceTypeFilter.value ? flattenResourceFamilies(resourceTree).map(getFilterOptionValue) : [],
-    resourceVer: showResourceTypeFilter.value ? flattenResourceGenerations(resourceTree).map(getFilterOptionValue) : [],
-    resourceType: showResourceTypeFilter.value ? flattenResourceTypes(resourceTree).map(getFilterOptionValue) : [],
-  };
-}
-
-function reconcileFilterValue(value, options) {
-  const fallback = createDefaultFilterValue(options);
-  if (!value) return fallback;
-  const keep = (items, optionItems, defaultItems) => {
-    const validValues = new Set(optionItems.map(getFilterOptionValue));
-    const valid = (items ?? []).filter((item) => validValues.has(item));
-    return Array.isArray(items) ? valid : defaultItems;
-  };
-  const families = flattenResourceFamilies(options.resourceTree ?? []);
-  const generations = flattenResourceGenerations(options.resourceTree ?? []);
-  const types = flattenResourceTypes(options.resourceTree ?? []);
-  return {
-    regionNameList: keep(value.regionNameList, options.regions ?? [], fallback.regionNameList),
-    azNameList: keep(value.azNameList, options.azs ?? [], fallback.azNameList),
-    resourceSeries: keep(value.resourceSeries, options.resourceTree ?? [], fallback.resourceSeries),
-    resourceFamily: keep(value.resourceFamily, families, fallback.resourceFamily),
-    resourceVer: keep(value.resourceVer, generations, fallback.resourceVer),
-    resourceType: keep(value.resourceType, types, fallback.resourceType),
-  };
-}
-
-function getResourceTreeSignature(tree = []) {
-  return flattenResourceTypes(tree).map(getFilterOptionValue).join("|");
-}
-
-function fillNewFilterGroups(value, options, oldOptions = {}) {
-  const fallback = createDefaultFilterValue(options);
-  const withDefaults = { ...value };
-  if (showRegionFilter.value && (oldOptions.regions ?? []).length === 0 && (options.regions ?? []).length > 0) {
-    withDefaults.regionNameList = fallback.regionNameList;
-  }
-  if (showAzFilter.value && (oldOptions.azs ?? []).length === 0 && (options.azs ?? []).length > 0) {
-    withDefaults.azNameList = fallback.azNameList;
-  }
-  const resourceTreeChanged =
-    getResourceTreeSignature(oldOptions.resourceTree ?? []) !==
-    getResourceTreeSignature(options.resourceTree ?? []);
-  if (
-    showResourceTypeFilter.value &&
-    (((oldOptions.resourceTree ?? []).length === 0 && (options.resourceTree ?? []).length > 0) ||
-      resourceTreeChanged)
-  ) {
-    withDefaults.resourceSeries = fallback.resourceSeries;
-    withDefaults.resourceFamily = fallback.resourceFamily;
-    withDefaults.resourceVer = fallback.resourceVer;
-    withDefaults.resourceType = fallback.resourceType;
-  }
-  return withDefaults;
-}
-
-function parseOptionObj(item) {
-  if (item?.obj) return item.obj;
-  if (!item?.objStr) return null;
-  try {
-    return JSON.parse(item.objStr);
-  } catch {
-    return null;
-  }
-}
-
-function getSubmitValue(item, keys) {
-  const obj = parseOptionObj(item);
-  for (const key of keys) {
-    if (obj?.[key]) {
-      return obj[key];
-    }
-  }
-  return item?.name ?? item?.label ?? item?.value ?? "";
-}
-
-function mapSelectedSubmitValues(selectedValues, optionItems, keys) {
-  const selectedSet = new Set(selectedValues ?? []);
-  return optionItems
-    .filter((item) => selectedSet.has(getFilterOptionValue(item)))
-    .map((item) => getSubmitValue(item, keys))
-    .filter(Boolean);
-}
-
-function flattenResourceTypesWithSeries(tree) {
-  if (isOneLevelResourceTree(tree)) {
-    return (tree ?? []).map((item) => ({
-      item,
-      resourceSeries: "",
-    }));
-  }
-
-  return (tree ?? []).flatMap((series) => {
-    const resourceSeries = getSubmitValue(series, ["resourceSeries", "level0"]);
-    return (series.children ?? []).flatMap((family) =>
-      (family.children ?? []).flatMap((generation) =>
-        (generation.children ?? []).map((type) => ({
-          item: type,
-          resourceSeries,
-        })),
-      ),
-    );
-  });
-}
-
-function buildResourceTypeList(selectedValues, resourceTree, submitMode) {
-  const selectedSet = new Set(selectedValues ?? []);
-  const oneLevelResourceTree = isOneLevelResourceTree(resourceTree);
-  return flattenResourceTypesWithSeries(resourceTree)
-    .filter(({ item }) => selectedSet.has(getFilterOptionValue(item)))
-    .map(({ item, resourceSeries }) => {
-      const obj = parseOptionObj(item) ?? {};
-      // EVS/OBS 等一层资源类型只需要给后端 resourceType；ECS 保留四层对象结构。
-      if (submitMode === "resourceTypeOnly" || oneLevelResourceTree) {
-        return {
-          resourceType: obj.resourceType ?? getSubmitValue(item, ["resourceType"]),
-        };
-      }
-      return {
-        resourceSeries,
-        resourceFamily: obj.resourceFamily ?? "",
-        resourceVer: obj.resourceVer ?? "",
-        resourceType: obj.resourceType ?? getSubmitValue(item, ["resourceType"]),
-      };
-    })
-    .filter((item) => item.resourceType);
-}
-
-function buildBackendFilterValue(value, options) {
-  const resourceTree = options.resourceTree ?? [];
-  // 未展示的筛选项提交空数组，避免隐藏项的旧选中值继续影响请求。
-  return {
-    regionNameList: showRegionFilter.value
-      ? mapSelectedSubmitValues(value.regionNameList, options.regions ?? [], ["regionName"])
-      : [],
-    azNameList: showAzFilter.value
-      ? mapSelectedSubmitValues(value.azNameList, options.azs ?? [], ["azName"])
-      : [],
-    resourceTypeList: showResourceTypeFilter.value
-      ? buildResourceTypeList(value.resourceType, resourceTree, resolvedFilterConfig.value.resourceType.submitMode)
-      : [],
-  };
-}
-
-function hasFilterOptions(options) {
-  return (
-    (showRegionFilter.value && (options.regions ?? []).length > 0) ||
-    (showAzFilter.value && (options.azs ?? []).length > 0) ||
-    (showResourceTypeFilter.value && (options.resourceTree ?? []).length > 0)
-  );
-}
-
-const filterValue = ref(createDefaultFilterValue(filterOptions.value));
-const filterInitialized = ref(hasFilterOptions(filterOptions.value));
-const usesBackendResourceTree = computed(() =>
-  showResourceTypeFilter.value && (props.filterOptions?.resourceTree ?? []).length > 0
-);
 
 function buildTierFilterConfig(tiers) {
   const allChecked = tiers.every(Boolean);
@@ -426,7 +90,7 @@ function buildTierFilterConfig(tiers) {
     sizeTiers: props.sizeTiers,
     sizeValueField: props.sizeValueField,
     resourcePoolNames,
-    shouldFilterResourcePool: filterInitialized.value && usesBackendResourceTree.value,
+    shouldFilterResourcePool: props.resourcePoolTierFilter,
   };
 }
 
@@ -439,8 +103,6 @@ function buildVisibleResourcePoolNames(tiers, allChecked = tiers.every(Boolean))
   // 这里生成的是给外部组件消费的 tierFilter 名单，不能套图表内的坐标/趋势过滤；
   // 表格等外部组件需要保留 x/y 异常但同属可见档位和用户筛选项的资源池数据。
   return props.data
-    // 只保留符合当前 Region/AZ/资源类型用户筛选项的数据，不过滤 x/y 异常。
-    .filter(passesFilterControls)
     // 只保留右上角图例当前可见档位的数据；图例全选时不额外过滤档位。
     .filter((item) => allChecked || passesBubbleTierFilter(item, config))
     // 提取外部表格用于匹配的资源池名称，固定使用 resourcePoolTotalName。
@@ -455,35 +117,6 @@ function passesCurrentTierFilter(item) {
     sizeTiers: props.sizeTiers,
     sizeValueField: props.sizeValueField,
   });
-}
-
-function passesFilterControls(item) {
-  if (!filterInitialized.value) return true;
-  if (usesBackendResourceTree.value) return true;
-
-  const value = filterValue.value;
-  const meta = parseFilterMeta(item);
-  const hasRegionOptions = showRegionFilter.value && (filterOptions.value.regions ?? []).length > 0;
-  const hasAzOptions = showAzFilter.value && (filterOptions.value.azs ?? []).length > 0;
-  const passesLocation =
-    (!hasRegionOptions || value.regionNameList.includes(meta.region)) &&
-    (!hasAzOptions || value.azNameList.includes(meta.az));
-
-  if (!passesLocation) {
-    return false;
-  }
-
-  const hasResourceOptions = showResourceTypeFilter.value && (filterOptions.value.resourceTree ?? []).length > 0;
-  if (!hasResourceOptions) {
-    return true;
-  }
-
-  return (
-    value.resourceSeries.includes(meta.resourceSeries) &&
-    value.resourceFamily.includes(meta.resourceFamily) &&
-    value.resourceVer.includes(meta.resourceGeneration) &&
-    value.resourceType.includes(meta.resourceType)
-  );
 }
 
 function emitVisibleChange() {
@@ -502,15 +135,6 @@ function toggleTier(tierIdx) {
   visibleTiers.value[tierIdx] = !visibleTiers.value[tierIdx];
   visibleTiers.value = [...visibleTiers.value];
   emitVisibleChange();
-  refreshChart();
-}
-
-function onFilterChange(value) {
-  filterValue.value = reconcileFilterValue(value, filterOptions.value);
-  filterInitialized.value = true;
-  clearBubbleTierFilter();
-  emit("visible-change", null, [...visibleTiers.value]);
-  emit("filter-change", buildBackendFilterValue(filterValue.value, filterOptions.value));
   refreshChart();
 }
 
@@ -536,38 +160,15 @@ watch(
 
 watch(
   () => props.data,
-  (data) => {
-    mergeFilterItems(data ?? []);
+  () => {
     emitVisibleChange();
-    waitingForFilterResetData = false;
   },
   { deep: true, immediate: true }
 );
 
 watch(
-  filterOptions,
-  (options, oldOptions) => {
-    const hadOptions = hasFilterOptions(oldOptions ?? {});
-    const hasOptions = hasFilterOptions(options);
-    const nextValue = !hadOptions && hasOptions
-      ? createDefaultFilterValue(options)
-      : fillNewFilterGroups(filterValue.value, options, oldOptions);
-    filterValue.value = reconcileFilterValue(nextValue, options);
-    filterInitialized.value = hasOptions;
-    if (!waitingForFilterResetData) {
-      emitVisibleChange();
-    }
-    refreshChart();
-  },
-  { deep: true }
-);
-
-watch(
   () => props.filterResetKey,
   () => {
-    waitingForFilterResetData = true;
-    filterValue.value = createDefaultFilterValue(filterOptions.value);
-    filterInitialized.value = hasFilterOptions(filterOptions.value);
     clearBubbleTierFilter();
     emit("visible-change", null, [...visibleTiers.value]);
     refreshChart();
@@ -685,7 +286,6 @@ function buildOption() {
   const filterFn = props.dataFilter ?? defaultFilter;
   const filteredData = props.data
     .filter(filterFn)
-    .filter(passesFilterControls)
     .filter(passesCurrentTierFilter);
 
   const seriesData = filteredData

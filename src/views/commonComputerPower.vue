@@ -16,14 +16,10 @@
     :trafficLights="trafficLightRules"
     :trafficLightKeys="trafficLightKeys"
     :yTicks="chartYTicks"
-    :showFilters="true"
-    :filterLoading="directoryTreeLoading"
-    :filterOptions="bubbleFilterOptions"
-    :filterConfig="filterConfig"
+    :resourcePoolTierFilter="true"
     :filterResetKey="filterResetKey"
     @bubble-click="(e) => emit('bubble-click', e)"
     @visible-change="onVisibleChange"
-    @filter-change="onFilterChange"
   />
 </template>
 
@@ -34,9 +30,7 @@ import BubbleChart from "@/components/BubbleChart.vue";
 import { useCommonComputerPower, computeWeightedAvg } from "./useCommonComputerPower";
 import { computeWeightedAvgFromData, SIZE_TIERS } from "./commonComputerPowerConfig";
 import { useBubbleAxisRange } from "./useBubbleAxisRange";
-import { useCurrentDate } from "./useCurrentDate";
-import { selectedPool } from "./useChartOption";
-import { directoryTreeLoading } from "./useDirectoryTree";
+import { backendFilters, filterResetKey } from "./useGeneralComputeFilter";
 import { useTargetNumStore } from "@/stores/targetNumStore";
 
 const targetNumStore = useTargetNumStore();
@@ -62,8 +56,6 @@ const props = defineProps({
   sizeValueField: { type: String, default: "serverNum" },
   sizeTiers: { type: Array, default: () => SIZE_TIERS },
   trafficLightKeys: { type: Object, default: null },
-  /** 由通算页按资源池传入，控制筛选项显示、资源类型面板形态和提交结构。 */
-  filterConfig: { type: Object, required: true },
 });
 
 const emit = defineEmits(["bubble-click", "visible-change"]);
@@ -72,36 +64,15 @@ const {
   data,
   avgRangeList,
   forbidden,
-  regionOptions,
-  azOptions,
-  directoryTreeList,
   fetchData,
 } = useCommonComputerPower();
-const { date: currentDate } = storeToRefs(useCurrentDate());
 
 const visibleTiers = ref([false, true, true, true]);
-const backendFilters = ref({});
-const filterResetKey = ref(0);
 
 function onVisibleChange(filterFn, tiers) {
   if (tiers) visibleTiers.value = tiers;
   emit("visible-change", filterFn);
 }
-
-function onFilterChange(filters) {
-  backendFilters.value = { ...(filters ?? {}) };
-  fetchData(backendFilters.value);
-}
-
-watch(currentDate, () => {
-  backendFilters.value = {};
-  filterResetKey.value += 1;
-});
-
-watch(selectedPool, () => {
-  backendFilters.value = {};
-  filterResetKey.value += 1;
-});
 
 const avgValueField = computed(() => {
   // 后端 avgRangeList 按指标拆分平均值，平均线必须跟随当前 X 轴字段切换。
@@ -141,11 +112,13 @@ const { chartXRange, chartYRange, chartYTicks } = useBubbleAxisRange(
   mappedData
 );
 
-const bubbleFilterOptions = computed(() => ({
-  regions: regionOptions.value,
-  azs: azOptions.value,
-  resourceTree: directoryTreeList.value,
-}));
+watch(
+  backendFilters,
+  (filters) => {
+    fetchData(filters);
+  },
+  { deep: true }
+);
 
 onMounted(() => {
   fetchData(backendFilters.value);

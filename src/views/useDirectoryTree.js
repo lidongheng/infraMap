@@ -14,6 +14,7 @@ export const inforData = ref({});
 export const directoryTreeList = ref([]);
 export const directoryTreeLoading = ref(false);
 let directoryTreeRequestId = 0;
+let resourcePoolCustomerStarted = false;
 
 function createResourceTypes(prefix, sizes) {
   return sizes.map((size) => ({
@@ -292,6 +293,11 @@ export const useResourcePoolCustomer = () => {
       }
     })
   }
+
+  if (resourcePoolCustomerStarted) {
+    return;
+  }
+  resourcePoolCustomerStarted = true;
 
   watch(activeCategory, loadTreeData);
 
