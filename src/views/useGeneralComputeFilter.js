@@ -1,5 +1,9 @@
 import { computed, ref, watch } from "vue";
-import { directoryTreeList } from "./useDirectoryTree";
+import {
+  azNameList,
+  directoryTreeList,
+  regionNameList,
+} from "./useDirectoryTree";
 import {
   clearBubbleTierFilter,
   setBubbleTierFilter,
@@ -38,19 +42,32 @@ const showRegionFilter = computed(() => resolvedFilterConfig.value.region.visibl
 const showAzFilter = computed(() => resolvedFilterConfig.value.az.visible);
 const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
 
-export const regionOptions = computed(() =>
-  collectSubmitOptions(directoryTreeList.value, "regionName")
+function createSubmitOption(key, rawValue) {
+  const value = String(rawValue);
+  const obj = { [key]: value };
+  const objStr = JSON.stringify(obj);
+  return {
+    label: value,
+    value: objStr,
+    name: value,
+    obj,
+    objStr,
+  };
+}
+
+const regionFilterOptions = computed(() =>
+  regionNameList.value.map((name) => createSubmitOption("regionName", name))
 );
 
-export const azOptions = computed(() =>
-  collectSubmitOptions(directoryTreeList.value, "azName")
+const azFilterOptions = computed(() =>
+  azNameList.value.map((name) => createSubmitOption("azName", name))
 );
 
 export const resourceTree = computed(() => directoryTreeList.value);
 
 export const filterOptions = computed(() => ({
-  regions: regionOptions.value,
-  azs: azOptions.value,
+  regions: regionFilterOptions.value,
+  azs: azFilterOptions.value,
   resourceTree: resourceTree.value,
 }));
 
@@ -69,19 +86,6 @@ function walkTree(tree, visitor) {
       walkTree(item.children, visitor);
     }
   });
-}
-
-function createSubmitOption(key, rawValue) {
-  const value = String(rawValue);
-  const obj = { [key]: value };
-  const objStr = JSON.stringify(obj);
-  return {
-    label: value,
-    value: objStr,
-    name: value,
-    obj,
-    objStr,
-  };
 }
 
 function parseOptionObj(item) {

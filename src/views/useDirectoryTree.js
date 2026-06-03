@@ -12,6 +12,8 @@ export const tableDataSummary = ref({});
 export const inforData = ref({});
 
 export const directoryTreeList = ref([]);
+export const regionNameList = ref([]);
+export const azNameList = ref([]);
 export const directoryTreeLoading = ref(false);
 let directoryTreeRequestId = 0;
 let resourcePoolCustomerStarted = false;
@@ -125,8 +127,8 @@ const mockObsResourceTree = [
   { name: "深度归档存储", children: null },
 ];
 
-function getResponseData(res) {
-  return res.data ?? [];
+function getResponsePayload(res, cloudServerName) {
+  return res.data.find((item) => item.cloudServerType === cloudServerName);
 }
 
 function buildDirectoryTreeByCloudServerName(cloudServerName, data) {
@@ -154,7 +156,14 @@ export async function mockFetchDirectoryTree(params = {}) {
   return {
     status: 200,
     massage: "success",
-    data: getMockDirectoryTreeData(params.cloudServerName),
+    data: [
+      {
+        cloudServerType: params.cloudServerName,
+        azNameList: ["非洲-开罗(AZ1)"],
+        regionNameList: ["非洲-开罗"],
+        dirTreeList: getMockDirectoryTreeData(params.cloudServerName),
+      },
+    ],
   };
 }
 
@@ -210,64 +219,6 @@ function applyRootResourceTypeLevel(arr = []) {
   });
 }
 
-function walkDirectoryTree(tree, visitor) {
-  (tree ?? []).forEach((item) => {
-    visitor(item);
-    if ((item.children ?? []).length > 0) {
-      walkDirectoryTree(item.children, visitor);
-    }
-  });
-}
-
-function parseNodeObj(item) {
-  if (item?.obj) return item.obj;
-  if (!item?.objStr) return null;
-  try {
-    return JSON.parse(item.objStr);
-  } catch {
-    return null;
-  }
-}
-
-function createSubmitOption(key, rawValue) {
-  const value = String(rawValue);
-  const obj = { [key]: value };
-  const objStr = JSON.stringify(obj);
-  return {
-    label: value,
-    value: objStr,
-    name: value,
-    obj,
-    objStr,
-  };
-}
-
-function getNodeSubmitValue(item, key) {
-  if (item?.[key]) return item[key];
-  const obj = parseNodeObj(item);
-  if (obj?.[key]) return obj[key];
-  return "";
-}
-
-function collectSubmitOptions(tree, key) {
-  const optionMap = new Map();
-  walkDirectoryTree(tree, (item) => {
-    const submitValue = getNodeSubmitValue(item, key);
-    if (submitValue && !optionMap.has(submitValue)) {
-      optionMap.set(submitValue, createSubmitOption(key, submitValue));
-    }
-  });
-  return Array.from(optionMap.values());
-}
-
-export const regionOptions = computed(() =>
-  collectSubmitOptions(directoryTreeList.value, "regionName")
-);
-
-export const azOptions = computed(() =>
-  collectSubmitOptions(directoryTreeList.value, "azName")
-);
-
 export const resourceTree = computed(() => directoryTreeList.value);
 
 export const useResourcePoolCustomer = () => {
@@ -281,12 +232,17 @@ export const useResourcePoolCustomer = () => {
       cloudServerName,
     };
     directoryTreeList.value = [];
+    regionNameList.value = [];
+    azNameList.value = [];
     directoryTreeLoading.value = true;
     mockFetchDirectoryTree(params).then((res) => {
       if (requestId !== directoryTreeRequestId || activeCategory.value !== cloudServerName) {
         return;
       }
-      directoryTreeList.value = buildDirectoryTreeByCloudServerName(cloudServerName, getResponseData(res));
+      const payload = getResponsePayload(res, cloudServerName);
+      regionNameList.value = payload.regionNameList;
+      azNameList.value = payload.azNameList;
+      directoryTreeList.value = buildDirectoryTreeByCloudServerName(cloudServerName, payload.dirTreeList);
     }).finally(() => {
       if (requestId === directoryTreeRequestId) {
         directoryTreeLoading.value = false;
@@ -308,8 +264,8 @@ export function useDirectoryTree() {
   return {
     directoryTreeList,
     directoryTreeLoading,
-    regionOptions,
-    azOptions,
+    regionNameList,
+    azNameList,
     resourceTree,
   };
 }
