@@ -1,93 +1,87 @@
 <template>
   <div class="filter-bar" :class="{ 'is-loading': loading }">
-    <div v-if="showRegionFilter" class="filter-item">
-      <span class="filter-label">Region</span>
+    <div v-if="showRangeFilter" class="filter-item">
+      <span class="filter-label">范围粒度</span>
       <el-popover
-        v-model:visible="regionVisible"
+        v-model:visible="rangeVisible"
         placement="bottom-start"
         :trigger="loading ? 'manual' : 'click'"
         width="fit-content"
         :show-arrow="false"
-        popper-class="filter-popper filter-popper--single"
+        popper-class="filter-popper filter-popper--range"
       >
         <template #reference>
           <button class="select-trigger" type="button" :disabled="loading">
-            <span>{{ getSummary(regionValue, regionOptions) }}</span>
+            <span>{{ rangeSummary }}</span>
             <el-icon><ArrowDown /></el-icon>
           </button>
         </template>
-        <div class="dropdown-panel single">
-          <div v-if="showRegionSearch" class="search-box">
+        <div class="dropdown-panel range-panel">
+          <div v-if="showRegionSearch" class="search-box range-search">
             <el-icon><Search /></el-icon>
             <input v-model="regionKeyword" placeholder="请输入关键字" />
           </div>
-          <div class="option-list">
-            <label class="option-row checked-row">
-              <el-checkbox
-                :model-value="isAllSelected(regionValue, filteredRegionOptions)"
-                :indeterminate="isIndeterminate(regionValue, filteredRegionOptions)"
-                @change="checked => toggleAll('region', checked)"
-              />
-              <span>全部</span>
-            </label>
-            <el-checkbox-group v-model="regionValue" class="option-group">
-              <el-checkbox
-                v-for="item in filteredRegionOptions"
-                :key="item.value"
-                :value="item.value"
-                class="option-row"
-              >
-                {{ item.label }}
-              </el-checkbox>
-            </el-checkbox-group>
-          </div>
-        </div>
-      </el-popover>
-    </div>
+          <div class="range-columns" :class="{ 'range-columns--single': !showRegionFilter || !showAzFilter }">
+            <div v-if="showRegionFilter" class="range-column">
+              <div class="column-title">Region</div>
+              <div class="option-list">
+                <label class="option-row checked-row">
+                  <el-checkbox
+                    :model-value="isAllSelected(regionValue, filteredRegionOptions)"
+                    :indeterminate="isIndeterminate(regionValue, filteredRegionOptions)"
+                    @change="checked => toggleAll('region', checked)"
+                  />
+                  <span>全部</span>
+                  <el-icon><ArrowRight /></el-icon>
+                </label>
+                <el-checkbox-group v-model="regionValue" class="option-group">
+                  <label
+                    v-for="item in filteredRegionOptions"
+                    :key="item.value"
+                    class="option-row"
+                  >
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+                    <el-icon><ArrowRight /></el-icon>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
 
-    <div v-if="showAzFilter" class="filter-item">
-      <span class="filter-label">AZ</span>
-      <el-popover
-        v-model:visible="azVisible"
-        placement="bottom-start"
-        :trigger="loading ? 'manual' : 'click'"
-        width="fit-content"
-        :show-arrow="false"
-        popper-class="filter-popper filter-popper--single"
-      >
-        <template #reference>
-          <button class="select-trigger" type="button" :disabled="loading">
-            <span>{{ getSummary(azValue, filteredAzOptions) }}</span>
-            <el-icon><ArrowDown /></el-icon>
-          </button>
-        </template>
-        <div class="dropdown-panel single az-panel">
-          <div class="option-list">
-            <label class="option-row checked-row">
-              <el-checkbox
-                :model-value="isAllSelected(azValue, filteredAzOptions)"
-                :indeterminate="isIndeterminate(azValue, filteredAzOptions)"
-                @change="checked => toggleAll('az', checked)"
-              />
-              <span>全部</span>
-            </label>
-            <el-checkbox-group v-model="azValue" class="option-group">
-              <el-checkbox
-                v-for="item in filteredAzOptions"
-                :key="item.value"
-                :value="item.value"
-                class="option-row"
-              >
-                {{ item.label }}
-              </el-checkbox>
-            </el-checkbox-group>
+            <div v-if="showAzFilter" class="range-column">
+              <div class="column-title">AZ</div>
+              <div class="option-list">
+                <label class="option-row checked-row">
+                  <el-checkbox
+                    :model-value="isAllSelected(azValue, filteredAzOptions)"
+                    :indeterminate="isIndeterminate(azValue, filteredAzOptions)"
+                    @change="checked => toggleAll('az', checked)"
+                  />
+                  <span>全部</span>
+                  <el-icon><ArrowRight /></el-icon>
+                </label>
+                <el-checkbox-group v-model="azValue" class="option-group">
+                  <label
+                    v-for="item in filteredAzOptions"
+                    :key="item.value"
+                    class="option-row"
+                  >
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+                    <el-icon><ArrowRight /></el-icon>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="plain-btn" type="button" @click="cancelRange">取消</button>
+            <button class="primary-btn" type="button" @click="confirmRange">确定</button>
           </div>
         </div>
       </el-popover>
     </div>
 
     <div v-if="showResourceTypeFilter" class="filter-item">
-      <span class="filter-label">资源类型</span>
+      <span class="filter-label">资源粒度</span>
       <el-popover
         v-model:visible="resourceVisible"
         placement="bottom-start"
@@ -249,8 +243,8 @@ const props = defineProps({
   options: {
     type: Object,
     default: () => ({
-      regions: [],
-      azs: [],
+      regionNameList: [],
+      azNameList: [],
       resourceTree: [],
     }),
   },
@@ -266,13 +260,12 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'change']);
 
-const regionVisible = ref(false);
-const azVisible = ref(false);
+const rangeVisible = ref(false);
 const resourceVisible = ref(false);
 const regionKeyword = ref('');
 
-const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.regions)));
-const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azs)));
+const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.regionNameList)));
+const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azNameList)));
 
 // FilterDropdowns 只关心展示和交互：哪些框显示、资源类型用树还是单列、是否需要确定按钮。
 // 后端字段形态由通算筛选 composable 统一转换，避免 UI 组件夹带资源池判断。
@@ -297,6 +290,7 @@ const resolvedFilterConfig = computed(() => ({
 }));
 const showRegionFilter = computed(() => resolvedFilterConfig.value.region.visible);
 const showAzFilter = computed(() => resolvedFilterConfig.value.az.visible);
+const showRangeFilter = computed(() => showRegionFilter.value || showAzFilter.value);
 const showRegionSearch = computed(() => resolvedFilterConfig.value.region.searchable);
 const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
 const isResourceListFilter = computed(() => resolvedFilterConfig.value.resourceType.variant === "list");
@@ -330,6 +324,7 @@ const resourceSeriesValue = ref([]);
 const resourceFamilyValue = ref([]);
 const resourceVerValue = ref([]);
 const resourceTypeValue = ref([]);
+const rangeSnapshot = ref(getRangeValue());
 const resourceSnapshot = ref(getResourceValue());
 
 const activeSeries = ref('');
@@ -387,6 +382,21 @@ const resourceSummary = computed(() => {
   return `已选 ${resourceTypeValue.value.length} 项`;
 });
 
+const rangeSummary = computed(() => {
+  const regionComplete = !showRegionFilter.value || isAllSelected(regionValue.value, regionOptions.value);
+  const azComplete = !showAzFilter.value || isAllSelected(azValue.value, filteredAzOptions.value);
+  if (regionComplete && azComplete) {
+    return '全部';
+  }
+  if (showRegionFilter.value && !showAzFilter.value) {
+    return getSummary(regionValue.value, regionOptions.value);
+  }
+  if (!showRegionFilter.value && showAzFilter.value) {
+    return getSummary(azValue.value, filteredAzOptions.value);
+  }
+  return `已选 ${regionValue.value.length + azValue.value.length} 项`;
+});
+
 watch(resourceSeriesValue, (nextValue, oldValue) => {
   if (syncingFromModel) return;
   if (syncingResourceCascade) return;
@@ -413,7 +423,7 @@ watch(resourceVerValue, (nextValue, oldValue) => {
 
 watch(resourceTypeValue, () => {
   if (syncingFromModel) return;
-  // list 型资源类型和 AZ 一样即时提交；tree 型仍等用户点击“确定”。
+  // list 型资源类型保持即时提交；tree 型仍等用户点击“确定”。
   if (!isResourceListFilter.value) return;
   emitCurrentValue();
 }, { deep: true, flush: 'sync' });
@@ -423,13 +433,31 @@ watch(regionValue, () => {
   syncingLocationCascade = true;
   azValue.value = filteredAzOptions.value.map(item => item.value);
   syncingLocationCascade = false;
+  if (rangeVisible.value) return;
   emitCurrentValue();
 }, { deep: true, flush: 'sync' });
 
 watch(azValue, () => {
+  if (syncingFromModel) return;
   if (syncingLocationCascade) return;
+  if (rangeVisible.value) return;
   emitCurrentValue();
 }, { deep: true, flush: 'sync' });
+
+watch(rangeVisible, (visible) => {
+  if (loading.value) {
+    rangeVisible.value = false;
+    return;
+  }
+  if (visible) {
+    rangeSnapshot.value = getRangeValue();
+    return;
+  }
+
+  syncingFromModel = true;
+  setRangeValue(rangeSnapshot.value);
+  syncingFromModel = false;
+});
 
 watch(resourceVisible, (visible) => {
   if (loading.value) {
@@ -467,8 +495,7 @@ watch(
 
 watch(loading, (value) => {
   if (!value) return;
-  regionVisible.value = false;
-  azVisible.value = false;
+  rangeVisible.value = false;
   resourceVisible.value = false;
 });
 
@@ -539,6 +566,7 @@ function applyModelValue(value) {
   resourceFamilyValue.value = keepValid(next.resourceFamily, allResourceFamilies.value, fallback.resourceFamily);
   resourceVerValue.value = keepValid(next.resourceVer, allResourceGenerations.value, fallback.resourceVer);
   resourceTypeValue.value = keepValid(next.resourceType, allResourceTypes.value, fallback.resourceType);
+  rangeSnapshot.value = getRangeValue();
   resourceSnapshot.value = getResourceValue();
   activeSeries.value = resourceSeries.value[0]?.value ?? '';
   activeFamily.value = allResourceFamilies.value[0]?.value ?? '';
@@ -719,6 +747,18 @@ function setResourceValue(value) {
   resourceTypeValue.value = [...(value.resourceType ?? [])];
 }
 
+function getRangeValue() {
+  return {
+    regionNameList: [...regionValue.value],
+    azNameList: [...azValue.value],
+  };
+}
+
+function setRangeValue(value) {
+  regionValue.value = [...value.regionNameList];
+  azValue.value = [...value.azNameList];
+}
+
 function getSummary(value, options) {
   if (value.length === options.length && options.length > 0) {
     return '全部';
@@ -772,6 +812,19 @@ function getOptionsByType(type) {
     resourceType: visibleResourceTypes.value,
   };
   return map[type] ?? [];
+}
+
+function cancelRange() {
+  syncingFromModel = true;
+  setRangeValue(rangeSnapshot.value);
+  syncingFromModel = false;
+  rangeVisible.value = false;
+}
+
+function confirmRange() {
+  rangeSnapshot.value = getRangeValue();
+  rangeVisible.value = false;
+  emitCurrentValue();
 }
 
 function cancelResource() {
@@ -868,6 +921,11 @@ function confirmResource() {
   padding: 10px;
 }
 
+:global(.filter-popper--range) {
+  box-sizing: border-box;
+  padding: 10px;
+}
+
 .az-panel {
   padding-top: 12px;
 }
@@ -908,6 +966,55 @@ function confirmResource() {
 .option-group {
   display: flex;
   flex-direction: column;
+}
+
+.range-panel {
+  width: 720px;
+}
+
+.range-search {
+  margin: 0 10px 8px;
+}
+
+.range-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 0 10px 8px;
+}
+
+.range-columns--single {
+  grid-template-columns: minmax(260px, 1fr);
+}
+
+.range-column {
+  min-width: 0;
+
+  .option-list {
+    max-height: 330px;
+  }
+
+  .option-row {
+    justify-content: space-between;
+    cursor: pointer;
+  }
+
+  .option-row :deep(.el-checkbox) {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .option-row :deep(.el-checkbox__label) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .option-row .el-icon {
+    flex: 0 0 auto;
+    margin-left: 8px;
+  }
 }
 
 .option-row,

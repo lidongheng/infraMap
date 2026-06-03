@@ -55,19 +55,11 @@ function createSubmitOption(key, rawValue) {
   };
 }
 
-const regionFilterOptions = computed(() =>
-  regionNameList.value.map((name) => createSubmitOption("regionName", name))
-);
-
-const azFilterOptions = computed(() =>
-  azNameList.value.map((name) => createSubmitOption("azName", name))
-);
-
 export const resourceTree = computed(() => directoryTreeList.value);
 
 export const filterOptions = computed(() => ({
-  regions: regionFilterOptions.value,
-  azs: azFilterOptions.value,
+  regionNameList: regionNameList.value.map((name) => createSubmitOption("regionName", name)),
+  azNameList: azNameList.value.map((name) => createSubmitOption("azName", name)),
   resourceTree: resourceTree.value,
 }));
 
@@ -140,8 +132,8 @@ function getFilterOptionValue(item) {
 function createDefaultFilterValue(options) {
   const tree = options.resourceTree ?? [];
   return {
-    regionNameList: showRegionFilter.value ? (options.regions ?? []).map(getFilterOptionValue) : [],
-    azNameList: showAzFilter.value ? (options.azs ?? []).map(getFilterOptionValue) : [],
+    regionNameList: showRegionFilter.value ? (options.regionNameList ?? []).map(getFilterOptionValue) : [],
+    azNameList: showAzFilter.value ? (options.azNameList ?? []).map(getFilterOptionValue) : [],
     resourceSeries: showResourceTypeFilter.value ? tree.map(getFilterOptionValue) : [],
     resourceFamily: showResourceTypeFilter.value ? flattenResourceFamilies(tree).map(getFilterOptionValue) : [],
     resourceVer: showResourceTypeFilter.value ? flattenResourceGenerations(tree).map(getFilterOptionValue) : [],
@@ -159,8 +151,8 @@ function reconcileFilterValue(value, options) {
   if (!value) return createDefaultFilterValue(options);
   const tree = options.resourceTree ?? [];
   return {
-    regionNameList: keepValidValues(value.regionNameList, options.regions ?? []),
-    azNameList: keepValidValues(value.azNameList, options.azs ?? []),
+    regionNameList: keepValidValues(value.regionNameList, options.regionNameList ?? []),
+    azNameList: keepValidValues(value.azNameList, options.azNameList ?? []),
     resourceSeries: keepValidValues(value.resourceSeries, tree),
     resourceFamily: keepValidValues(value.resourceFamily, flattenResourceFamilies(tree)),
     resourceVer: keepValidValues(value.resourceVer, flattenResourceGenerations(tree)),
@@ -175,10 +167,18 @@ function getResourceTreeSignature(tree) {
 function fillNewFilterGroups(value, options, oldOptions) {
   const nextValue = { ...(value ?? {}) };
   const defaultValue = createDefaultFilterValue(options);
-  if (showRegionFilter.value && (oldOptions.regions ?? []).length === 0 && (options.regions ?? []).length > 0) {
+  if (
+    showRegionFilter.value
+    && (oldOptions.regionNameList ?? []).length === 0
+    && (options.regionNameList ?? []).length > 0
+  ) {
     nextValue.regionNameList = defaultValue.regionNameList;
   }
-  if (showAzFilter.value && (oldOptions.azs ?? []).length === 0 && (options.azs ?? []).length > 0) {
+  if (
+    showAzFilter.value
+    && (oldOptions.azNameList ?? []).length === 0
+    && (options.azNameList ?? []).length > 0
+  ) {
     nextValue.azNameList = defaultValue.azNameList;
   }
   const resourceTreeChanged =
@@ -256,10 +256,10 @@ function buildBackendFilterValue(value, options) {
   // 未展示的筛选项提交空数组，避免隐藏项的旧选中值继续影响请求。
   return {
     regionNameList: showRegionFilter.value
-      ? mapSelectedSubmitValues(value.regionNameList, options.regions ?? [], ["regionName"])
+      ? mapSelectedSubmitValues(value.regionNameList, options.regionNameList ?? [], ["regionName"])
       : [],
     azNameList: showAzFilter.value
-      ? mapSelectedSubmitValues(value.azNameList, options.azs ?? [], ["azName"])
+      ? mapSelectedSubmitValues(value.azNameList, options.azNameList ?? [], ["azName"])
       : [],
     resourceTypeList: showResourceTypeFilter.value
       ? buildResourceTypeList(value.resourceType, tree, resolvedFilterConfig.value.resourceType.submitMode)
