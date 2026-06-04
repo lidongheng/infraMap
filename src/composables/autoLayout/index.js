@@ -20,5 +20,9 @@ export const setDocumentFontSize = () => {
 
 window.addEventListener('resize', setDocumentFontSize);
 export const changeValueByScale = (value) => {
-  return value * scale.value;
+  let sValue = scale.value;
+  if (scale.value < 0.5) {
+    sValue = Math.max(scale.value - 0.05, 0.1)
+  }
+  return value * sValue;
 };

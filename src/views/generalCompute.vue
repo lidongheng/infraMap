@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <header class="header">
-      <CommonTitle title="xxxxxxxxx" sub-title="" />
+      <CommonTitle title="通算" icon-name="type" />
     </header>
     <section class="main flex-center">
       <section class="main-left">
