@@ -846,11 +846,7 @@ function confirmResource() {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px 18px;
-  padding: 16px 18px;
-  background: #fff;
-  border: 1px solid #e5e8ef;
-  border-radius: 4px;
+  gap: 8px 12px;
 }
 
 .filter-bar.is-loading {
@@ -866,15 +862,15 @@ function confirmResource() {
 
 .filter-label {
   flex: 0 0 auto;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   color: #6262a8;
 }
 
 .select-trigger {
-  width: 150px;
-  height: 32px;
-  padding: 0 10px 0 14px;
+  width: 116px;
+  height: 28px;
+  padding: 0 8px 0 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -882,7 +878,7 @@ function confirmResource() {
   border-radius: 4px;
   background: #fff;
   color: #252b3a;
-  font-size: 14px;
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
 
@@ -901,7 +897,7 @@ function confirmResource() {
 }
 
 .resource-trigger {
-  width: 170px;
+  width: 126px;
 }
 
 .dropdown-panel {
@@ -957,7 +953,7 @@ function confirmResource() {
 }
 
 .option-list {
-  max-height: 250px;
+  max-height: 220px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -969,7 +965,7 @@ function confirmResource() {
 }
 
 .range-panel {
-  width: 720px;
+  width: 520px;
 }
 
 .range-search {
@@ -978,20 +974,20 @@ function confirmResource() {
 
 .range-columns {
   display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(210px, 1fr));
+  gap: 8px;
   padding: 0 10px 8px;
 }
 
 .range-columns--single {
-  grid-template-columns: minmax(260px, 1fr);
+  grid-template-columns: minmax(210px, 1fr);
 }
 
 .range-column {
   min-width: 0;
 
   .option-list {
-    max-height: 330px;
+    max-height: 240px;
   }
 
   .option-row {
@@ -1019,13 +1015,13 @@ function confirmResource() {
 
 .option-row,
 .resource-row {
-  min-height: 32px;
+  min-height: 28px;
   display: flex;
   align-items: center;
   border-radius: 4px;
   box-sizing: border-box;
   color: #33336b;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .option-row {
@@ -1064,22 +1060,22 @@ function confirmResource() {
 }
 
 .resource-panel {
-  width: 940px;
+  width: 720px;
 }
 
 .resource-panel--single {
-  width: 260px;
+  width: 220px;
 }
 
 .resource-columns {
   display: grid;
-  grid-template-columns: repeat(4, minmax(190px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 8px;
   padding: 10px 14px 8px;
 }
 
 .resource-columns--single {
-  grid-template-columns: minmax(210px, 1fr);
+  grid-template-columns: minmax(180px, 1fr);
 }
 
 .resource-column {
@@ -1087,16 +1083,16 @@ function confirmResource() {
 }
 
 .column-title {
-  height: 26px;
-  line-height: 26px;
+  height: 24px;
+  line-height: 24px;
   margin-bottom: 6px;
   border-bottom: 1px solid #dfe1e6;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .resource-scroll {
-  height: 174px;
+  height: 150px;
   overflow-y: auto;
   padding-right: 4px;
   overflow-x: hidden;
@@ -1145,7 +1141,7 @@ function confirmResource() {
 
 :deep(.el-checkbox) {
   width: 100%;
-  height: 32px;
+  height: 28px;
   margin-right: 0;
 }
 
