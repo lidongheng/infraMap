@@ -9,6 +9,7 @@ import {
   setBubbleTierFilter,
   tierFilter,
 } from "./useBubbleTierFilter";
+import { activeCategory } from "./useGeneralComputer";
 
 export { tierFilter };
 
@@ -239,10 +240,12 @@ function buildResourceTypeList(selectedValues, tree, submitMode) {
       const obj = parseOptionObj(item);
       if (submitMode === "resourceTypeOnly" || oneLevelTree) {
         return {
+          cloudServerName: activeCategory.value,
           resourceType: obj?.resourceType,
         };
       }
       return {
+        cloudServerName: activeCategory.value,
         resourceSeries,
         resourceFamily: obj?.resourceFamily,
         resourceVer: obj?.resourceVer,

@@ -995,10 +995,20 @@ function confirmResource() {
     cursor: pointer;
   }
 
+  .checked-row {
+    justify-content: flex-start;
+  }
+
   .option-row :deep(.el-checkbox) {
     width: auto;
     flex: 1;
     min-width: 0;
+  }
+
+  .checked-row > :deep(.el-checkbox) {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    min-width: auto !important;
   }
 
   .option-row :deep(.el-checkbox__label) {
@@ -1010,6 +1020,10 @@ function confirmResource() {
   .option-row .el-icon {
     flex: 0 0 auto;
     margin-left: 8px;
+  }
+
+  .checked-row .el-icon {
+    margin-left: auto;
   }
 }
 
