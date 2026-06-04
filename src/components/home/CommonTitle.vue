@@ -5,6 +5,14 @@
       <span class="sub-title">{{ subTitle }}</span>
     </div>
     <div class="title-actions">
+      <FilterDropdowns
+        v-if="showGeneralComputeFilter"
+        v-model="filterValue"
+        :options="filterOptions"
+        :filter-config="filterConfig"
+        :loading="directoryTreeLoading"
+        @change="onFilterChange"
+      />
       <el-date-picker
         v-model="selectedDate"
         type="date"
@@ -19,15 +27,27 @@
 </template>
 
 <script setup>
+import { computed } from "vue";
 import { storeToRefs } from "pinia";
+import { useRoute } from "vue-router";
+import FilterDropdowns from "@/components/FilterDropdowns.vue";
+import { directoryTreeLoading } from "@/views/useDirectoryTree";
 import { useCurrentDate } from "@/views/useCurrentDate";
+import {
+  filterConfig,
+  filterOptions,
+  filterValue,
+  onFilterChange,
+} from "@/views/useGeneralComputeFilter";
 
 defineProps({
   title: { type: String, required: true },
   subTitle: { type: String, required: true },
 });
 
+const route = useRoute();
 const { date: selectedDate } = storeToRefs(useCurrentDate());
+const showGeneralComputeFilter = computed(() => route.name === "generalCompute");
 </script>
 
 <style lang="less" scoped>
@@ -64,5 +84,7 @@ const { date: selectedDate } = storeToRefs(useCurrentDate());
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 </style>

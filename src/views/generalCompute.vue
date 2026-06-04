@@ -1,7 +1,7 @@
 <template>
   <div class="container">
-    <header class="header flex-center">
-      <span class="title">xxxxxxxxx</span>
+    <header class="header">
+      <CommonTitle title="xxxxxxxxx" sub-title="" />
     </header>
     <section class="main flex-center">
       <section class="main-left">
@@ -52,6 +52,7 @@
 import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
 import CategoryNav from "@/components/CategoryNav.vue";
+import CommonTitle from "@/components/home/CommonTitle.vue";
 import CommonComputerPower from "./commonComputerPower.vue";
 import ResourcePoolTable from "@/components/ResourcePoolTable.vue";
 import { activeCategory } from "./useGeneralComputer";
@@ -235,6 +236,8 @@ function onBubbleClick(detail) {
 
 .container {
   width: 1872px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   border-radius: 16px;
   background-color: rgba(221, 227, 246, 0.4);
   box-shadow: 0 4px 4px 0 rgba(33, 48, 92, 0.2);
@@ -244,13 +247,8 @@ function onBubbleClick(detail) {
   justify-content: space-between;
 
   .header {
-    column-gap: 8px;
-    .title {
-      font-size: 22px;
-      font-weight: bold;
-      line-height: 29px;
-      color: #353575;
-    }
+    width: 100%;
+    min-width: 0;
   }
 
   .main {
