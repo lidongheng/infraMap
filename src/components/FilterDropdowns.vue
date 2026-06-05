@@ -640,13 +640,13 @@ function applyModelValue(value) {
   syncingFromModel = true;
   const fallback = allSelectedValue();
   const next = value ?? fallback;
-  regionValue.value = keepValid(next.regionNameList, regionOptions.value, fallback.regionNameList);
-  azValue.value = keepValid(next.azNameList, filteredAzOptions.value, fallback.azNameList);
-  resourceCloudServerValue.value = keepValid(next.cloudServerType, currentResourceCloudServers.value, fallback.cloudServerType);
-  resourceSeriesValue.value = keepValid(next.resourceSeries, allResourceSeries.value, fallback.resourceSeries);
-  resourceFamilyValue.value = keepValid(next.resourceFamily, allResourceFamilies.value, fallback.resourceFamily);
-  resourceVerValue.value = keepValid(next.resourceVer, allResourceGenerations.value, fallback.resourceVer);
-  resourceTypeValue.value = keepValid(next.resourceType, allResourceTypes.value, fallback.resourceType);
+  regionValue.value = keepValid(getModelGroupValue(next, 'regionNameList', fallback), regionOptions.value, fallback.regionNameList);
+  azValue.value = keepValid(getModelGroupValue(next, 'azNameList', fallback), filteredAzOptions.value, fallback.azNameList);
+  resourceCloudServerValue.value = keepValid(getModelGroupValue(next, 'cloudServerType', fallback), currentResourceCloudServers.value, fallback.cloudServerType);
+  resourceSeriesValue.value = keepValid(getModelGroupValue(next, 'resourceSeries', fallback), allResourceSeries.value, fallback.resourceSeries);
+  resourceFamilyValue.value = keepValid(getModelGroupValue(next, 'resourceFamily', fallback), allResourceFamilies.value, fallback.resourceFamily);
+  resourceVerValue.value = keepValid(getModelGroupValue(next, 'resourceVer', fallback), allResourceGenerations.value, fallback.resourceVer);
+  resourceTypeValue.value = keepValid(getModelGroupValue(next, 'resourceType', fallback), allResourceTypes.value, fallback.resourceType);
   rangeSnapshot.value = getRangeValue();
   resourceSnapshot.value = getResourceValue();
   activeCloudServer.value = currentResourceCloudServers.value[0]?.value ?? '';
@@ -654,6 +654,13 @@ function applyModelValue(value) {
   activeFamily.value = allResourceFamilies.value[0]?.value ?? '';
   activeGeneration.value = allResourceGenerations.value[0]?.value ?? '';
   syncingFromModel = false;
+}
+
+function getModelGroupValue(value, key, fallback) {
+  if (Object.prototype.hasOwnProperty.call(value, key)) {
+    return value[key];
+  }
+  return fallback[key];
 }
 
 function keepValid(values, options, fallback) {

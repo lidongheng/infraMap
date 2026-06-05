@@ -231,6 +231,18 @@ function fillNewFilterGroups(value, options, oldOptions) {
   return nextValue;
 }
 
+function fillDefaultResourceFilterGroups(value, options) {
+  const defaultValue = createDefaultFilterValue(options);
+  return {
+    ...(value ?? {}),
+    cloudServerType: defaultValue.cloudServerType,
+    resourceSeries: defaultValue.resourceSeries,
+    resourceFamily: defaultValue.resourceFamily,
+    resourceVer: defaultValue.resourceVer,
+    resourceType: defaultValue.resourceType,
+  };
+}
+
 function getSubmitValue(item, keys) {
   const obj = parseOptionObj(item);
   for (const key of keys) {
@@ -345,4 +357,18 @@ watch(
     filterValue.value = reconcileFilterValue(nextValue, options);
   },
   { deep: true, immediate: true }
+);
+
+watch(
+  () => resolvedFilterConfig.value.resourceType,
+  (config, oldConfig) => {
+    if (!oldConfig) return;
+    const resourceConfigChanged =
+      config.variant !== oldConfig.variant || config.submitMode !== oldConfig.submitMode;
+    if (!resourceConfigChanged) return;
+    const nextValue = fillDefaultResourceFilterGroups(filterValue.value, filterOptions.value);
+    filterValue.value = reconcileFilterValue(nextValue, filterOptions.value);
+    backendFilters.value = buildBackendFilterValue(filterValue.value, filterOptions.value);
+  },
+  { deep: true }
 );
