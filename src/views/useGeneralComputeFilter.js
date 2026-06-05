@@ -18,6 +18,7 @@ export const backendFilters = ref(createEmptyBackendFilters());
 export const filterConfig = ref(null);
 export const filterResetKey = ref(0);
 export const visibleTiers = ref([]);
+const hasUserChangedFilter = ref(false);
 
 const resolvedFilterConfig = computed(() => ({
   region: {
@@ -327,14 +328,16 @@ function buildBackendFilterValue(value, options) {
 }
 
 export function onFilterChange(value) {
+  hasUserChangedFilter.value = true;
   filterValue.value = reconcileFilterValue(value, filterOptions.value);
   backendFilters.value = buildBackendFilterValue(filterValue.value, filterOptions.value);
   clearBubbleTierFilter();
 }
 
 export function resetGeneralComputeFilter() {
+  hasUserChangedFilter.value = false;
   filterValue.value = createDefaultFilterValue(filterOptions.value);
-  backendFilters.value = createEmptyBackendFilters();
+  backendFilters.value = buildBackendFilterValue(filterValue.value, filterOptions.value);
   filterResetKey.value += 1;
   clearBubbleTierFilter();
 }
@@ -351,10 +354,16 @@ export function setVisibleTierFilter(config) {
 watch(
   filterOptions,
   (options, oldOptions) => {
-    const nextValue = oldOptions
-      ? fillNewFilterGroups(filterValue.value, options, oldOptions)
-      : createDefaultFilterValue(options);
+    let nextValue;
+    if (!hasUserChangedFilter.value) {
+      nextValue = createDefaultFilterValue(options);
+    } else if (oldOptions) {
+      nextValue = fillNewFilterGroups(filterValue.value, options, oldOptions);
+    } else {
+      nextValue = createDefaultFilterValue(options);
+    }
     filterValue.value = reconcileFilterValue(nextValue, options);
+    backendFilters.value = buildBackendFilterValue(filterValue.value, options);
   },
   { deep: true, immediate: true }
 );
@@ -366,7 +375,12 @@ watch(
     const resourceConfigChanged =
       config.variant !== oldConfig.variant || config.submitMode !== oldConfig.submitMode;
     if (!resourceConfigChanged) return;
-    const nextValue = fillDefaultResourceFilterGroups(filterValue.value, filterOptions.value);
+    let nextValue;
+    if (hasUserChangedFilter.value) {
+      nextValue = fillDefaultResourceFilterGroups(filterValue.value, filterOptions.value);
+    } else {
+      nextValue = createDefaultFilterValue(filterOptions.value);
+    }
     filterValue.value = reconcileFilterValue(nextValue, filterOptions.value);
     backendFilters.value = buildBackendFilterValue(filterValue.value, filterOptions.value);
   },

@@ -709,7 +709,7 @@ function getUniqueOptions(options) {
   const map = new Map();
   (options ?? []).forEach(item => {
     if (!map.has(item.value)) {
-      map.set(item.value, toOptionMeta(item));
+      map.set(item.value, item);
     }
   });
   return Array.from(map.values());
