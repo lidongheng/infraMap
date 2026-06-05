@@ -286,8 +286,6 @@ export const useResourcePoolCustomer = () => {
   }
   resourcePoolCustomerStarted = true;
 
-  watch(activeCategory, loadTreeData);
-
   loadTreeData();
 }
 

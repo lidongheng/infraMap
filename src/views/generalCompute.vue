@@ -73,19 +73,11 @@ const { date: currentDate } = storeToRefs(useCurrentDate());
 
 // 通算页筛选项统一在这里按资源池配置；下游组件只消费配置，不再写资源池特判。
 // tree 面板现在使用“云服务 + 资源系列 + 资源族 + 资源代数 + 资源类型”五列。
-// resourceTypeOnly 面板保留原单层资源类型，只在左侧新增“云服务”列。
 const TREE_RESOURCE_FILTER = {
   visible: true,
   variant: "tree",
   submitMode: "tree",
   confirmable: true,
-};
-
-const LIST_RESOURCE_FILTER = {
-  visible: true,
-  variant: "list",
-  submitMode: "resourceTypeOnly",
-  confirmable: false,
 };
 
 const CATEGORY_CONFIG = {
@@ -128,7 +120,7 @@ const CATEGORY_CONFIG = {
     filters: {
       region: { visible: false, searchable: true },
       az: { visible: false, searchable: false },
-      resourceType: LIST_RESOURCE_FILTER,
+      resourceType: TREE_RESOURCE_FILTER,
     },
     tabs: [
       {
@@ -150,7 +142,7 @@ const CATEGORY_CONFIG = {
     filters: {
       region: { visible: true, searchable: true },
       az: { visible: false, searchable: false },
-      resourceType: LIST_RESOURCE_FILTER,
+      resourceType: TREE_RESOURCE_FILTER,
     },
     tabs: [
       {
