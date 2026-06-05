@@ -96,26 +96,56 @@
             <el-icon><ArrowDown /></el-icon>
           </button>
         </template>
-        <div v-if="isResourceListFilter" class="dropdown-panel single az-panel">
-          <div class="option-list">
-            <label class="option-row checked-row">
-              <el-checkbox
-                :model-value="isAllSelected(resourceTypeValue, visibleResourceTypes)"
-                :indeterminate="isIndeterminate(resourceTypeValue, visibleResourceTypes)"
-                @change="checked => toggleAll('resourceType', checked)"
-              />
-              <span>全部</span>
-            </label>
-            <el-checkbox-group v-model="resourceTypeValue" class="option-group">
-              <el-checkbox
-                v-for="item in visibleResourceTypes"
-                :key="item.value"
-                :value="item.value"
-                class="option-row"
-              >
-                {{ item.label }}
-              </el-checkbox>
-            </el-checkbox-group>
+        <div v-if="isResourceListFilter" class="dropdown-panel resource-panel resource-panel--list">
+          <div class="resource-columns resource-columns--list">
+            <div class="resource-column">
+              <div class="column-title">云服务</div>
+              <div class="resource-scroll">
+                <label class="resource-row checked-row">
+                  <el-checkbox
+                    :model-value="isAllSelected(resourceCloudServerValue, resourceTypeOnlyCloudServers)"
+                    :indeterminate="isIndeterminate(resourceCloudServerValue, resourceTypeOnlyCloudServers)"
+                    @change="checked => toggleAll('cloudServerType', checked)"
+                  />
+                  <span>全部</span>
+                  <el-icon><ArrowRight /></el-icon>
+                </label>
+                <el-checkbox-group v-model="resourceCloudServerValue">
+                  <label
+                    v-for="item in resourceTypeOnlyCloudServers"
+                    :key="item.value"
+                    :class="['resource-row', { active: activeCloudServer === item.value }]"
+                    @mouseenter="activeCloudServer = item.value"
+                  >
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+                    <el-icon><ArrowRight /></el-icon>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
+
+            <div class="resource-column">
+              <div class="column-title">资源类型</div>
+              <div class="resource-scroll">
+                <label class="resource-row checked-row">
+                  <el-checkbox
+                    :model-value="isAllSelected(resourceTypeValue, visibleResourceTypes)"
+                    :indeterminate="isIndeterminate(resourceTypeValue, visibleResourceTypes)"
+                    @change="checked => toggleAll('resourceType', checked)"
+                  />
+                  <span>全部</span>
+                </label>
+                <el-checkbox-group v-model="resourceTypeValue">
+                  <label
+                    v-for="item in visibleResourceTypes"
+                    :key="item.value"
+                    class="resource-row"
+                  >
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
           </div>
         </div>
         <div
@@ -125,12 +155,38 @@
         >
           <div class="resource-columns" :class="{ 'resource-columns--single': isOneLevelResourceTree }">
             <div v-if="!isOneLevelResourceTree" class="resource-column">
+              <div class="column-title">云服务</div>
+              <div class="resource-scroll">
+                <label class="resource-row checked-row">
+                  <el-checkbox
+                    :model-value="isAllSelected(resourceCloudServerValue, resourceCloudServers)"
+                    :indeterminate="isIndeterminate(resourceCloudServerValue, resourceCloudServers)"
+                    @change="checked => toggleAll('cloudServerType', checked)"
+                  />
+                  <span>全部</span>
+                  <el-icon><ArrowRight /></el-icon>
+                </label>
+                <el-checkbox-group v-model="resourceCloudServerValue">
+                  <label
+                    v-for="item in resourceCloudServers"
+                    :key="item.value"
+                    :class="['resource-row', { active: activeCloudServer === item.value }]"
+                    @mouseenter="activeCloudServer = item.value"
+                  >
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+                    <el-icon><ArrowRight /></el-icon>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
+
+            <div v-if="!isOneLevelResourceTree" class="resource-column">
               <div class="column-title">资源系列</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
-                    :model-value="isAllSelected(resourceSeriesValue, resourceSeries)"
-                    :indeterminate="isIndeterminate(resourceSeriesValue, resourceSeries)"
+                    :model-value="isAllSelected(resourceSeriesValue, visibleResourceSeries)"
+                    :indeterminate="isIndeterminate(resourceSeriesValue, visibleResourceSeries)"
                     @change="checked => toggleAll('resourceSeries', checked)"
                   />
                   <span>全部</span>
@@ -138,7 +194,7 @@
                 </label>
                 <el-checkbox-group v-model="resourceSeriesValue">
                   <label
-                    v-for="item in resourceSeries"
+                    v-for="item in visibleResourceSeries"
                     :key="item.value"
                     :class="['resource-row', { active: activeSeries === item.value }]"
                     @mouseenter="activeSeries = item.value"
@@ -295,31 +351,50 @@ const showRegionSearch = computed(() => resolvedFilterConfig.value.region.search
 const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
 const isResourceListFilter = computed(() => resolvedFilterConfig.value.resourceType.variant === "list");
 const isResourceConfirmable = computed(() => resolvedFilterConfig.value.resourceType.confirmable);
-const resourcePopperClass = computed(() =>
-  isResourceListFilter.value ? "filter-popper filter-popper--single" : "filter-popper"
-);
+const resourcePopperClass = computed(() => "filter-popper");
 const loading = computed(() => props.loading);
 const filteredAzOptions = computed(() => filterAzOptionsByRegions(azOptions.value, regionValue.value));
 const resourceTree = computed(() => normalizeResourceTree(props.options?.resourceTree));
 const isOneLevelResourceTree = computed(() =>
   resourceTree.value.length > 0 && resourceTree.value.every(item => !(item.children ?? []).length)
 );
-const resourceSeries = computed(() => resourceTree.value.map(toOptionMeta));
-const allResourceFamilies = computed(() => getUniqueOptions(resourceTree.value.flatMap(item => item.children ?? [])));
-const allResourceGenerations = computed(() => getUniqueOptions(
-  resourceTree.value.flatMap(item => item.children ?? []).flatMap(item => item.children ?? []),
-));
-const allResourceTypes = computed(() => getUniqueOptions(
-  isOneLevelResourceTree.value
-    ? resourceTree.value
-    : resourceTree.value
-      .flatMap(item => item.children ?? [])
-      .flatMap(item => item.children ?? [])
-      .flatMap(item => item.children ?? []),
-));
+const resourceCloudServers = computed(() => resourceTree.value.map(toOptionMeta));
+const resourceTypeOnlyCloudServers = computed(() => {
+  const cloudServers = resourceTree.value.filter(item => collectDirectTypesByCloudServers([item.value]).length > 0);
+  return getUniqueOptions(cloudServers);
+});
+const currentResourceCloudServers = computed(() => {
+  if (isResourceListFilter.value) {
+    return resourceTypeOnlyCloudServers.value;
+  }
+  return resourceCloudServers.value;
+});
+const allResourceSeries = computed(() => collectSeriesByCloudServers(resourceCloudServers.value.map(item => item.value)));
+const allResourceFamilies = computed(() =>
+  collectFamiliesBySeries(resourceCloudServers.value.map(item => item.value), allResourceSeries.value.map(item => item.value))
+);
+const allResourceGenerations = computed(() =>
+  collectGenerationsByFamilies(
+    resourceCloudServers.value.map(item => item.value),
+    allResourceSeries.value.map(item => item.value),
+    allResourceFamilies.value.map(item => item.value),
+  )
+);
+const allResourceTypes = computed(() => {
+  if (isResourceListFilter.value) {
+    return collectDirectTypesByCloudServers(resourceTypeOnlyCloudServers.value.map(item => item.value));
+  }
+  return collectTypesByGenerations(
+    resourceCloudServers.value.map(item => item.value),
+    allResourceSeries.value.map(item => item.value),
+    allResourceFamilies.value.map(item => item.value),
+    allResourceGenerations.value.map(item => item.value),
+  );
+});
 
 const regionValue = ref([]);
 const azValue = ref([]);
+const resourceCloudServerValue = ref([]);
 const resourceSeriesValue = ref([]);
 const resourceFamilyValue = ref([]);
 const resourceVerValue = ref([]);
@@ -327,6 +402,7 @@ const resourceTypeValue = ref([]);
 const rangeSnapshot = ref(getRangeValue());
 const resourceSnapshot = ref(getResourceValue());
 
+const activeCloudServer = ref('');
 const activeSeries = ref('');
 const activeFamily = ref('');
 const activeGeneration = ref('');
@@ -342,40 +418,35 @@ const filteredRegionOptions = computed(() => {
   return regionOptions.value.filter(item => item.label.toLowerCase().includes(keyword));
 });
 
+const visibleResourceSeries = computed(() =>
+  collectSeriesByCloudServers(resourceCloudServerValue.value)
+);
+
 const visibleResourceFamilies = computed(() => {
-  const seriesSet = new Set(resourceSeriesValue.value);
-  const families = resourceTree.value
-    .filter(item => seriesSet.has(item.value))
-    .flatMap(item => item.children ?? []);
-  return getUniqueOptions(families);
+  return collectFamiliesBySeries(resourceCloudServerValue.value, resourceSeriesValue.value);
 });
 
 const visibleResourceGenerations = computed(() => {
-  const seriesSet = new Set(resourceSeriesValue.value);
-  const familySet = new Set(resourceFamilyValue.value);
-  const generations = resourceTree.value
-    .filter(item => seriesSet.has(item.value))
-    .flatMap(item => item.children ?? [])
-    .filter(item => familySet.has(item.value))
-    .flatMap(item => item.children ?? []);
-  return getUniqueOptions(generations);
+  return collectGenerationsByFamilies(
+    resourceCloudServerValue.value,
+    resourceSeriesValue.value,
+    resourceFamilyValue.value,
+  );
 });
 
 const visibleResourceTypes = computed(() => {
   if (isOneLevelResourceTree.value) {
     return allResourceTypes.value;
   }
-  const seriesSet = new Set(resourceSeriesValue.value);
-  const familySet = new Set(resourceFamilyValue.value);
-  const generationSet = new Set(resourceVerValue.value);
-  const types = resourceTree.value
-    .filter(item => seriesSet.has(item.value))
-    .flatMap(item => item.children ?? [])
-    .filter(item => familySet.has(item.value))
-    .flatMap(item => item.children ?? [])
-    .filter(item => generationSet.has(item.value))
-    .flatMap(item => item.children ?? []);
-  return getUniqueOptions(types);
+  if (isResourceListFilter.value) {
+    return collectDirectTypesByCloudServers(resourceCloudServerValue.value);
+  }
+  return collectTypesByGenerations(
+    resourceCloudServerValue.value,
+    resourceSeriesValue.value,
+    resourceFamilyValue.value,
+    resourceVerValue.value,
+  );
 });
 
 const resourceSummary = computed(() => {
@@ -402,6 +473,14 @@ watch(resourceSeriesValue, (nextValue, oldValue) => {
   if (syncingResourceCascade) return;
   syncingResourceCascade = true;
   syncSeriesCascade(nextValue, oldValue);
+  syncingResourceCascade = false;
+}, { flush: 'sync' });
+
+watch(resourceCloudServerValue, (nextValue, oldValue) => {
+  if (syncingFromModel) return;
+  if (syncingResourceCascade) return;
+  syncingResourceCascade = true;
+  syncCloudServerCascade(nextValue, oldValue);
   syncingResourceCascade = false;
 }, { flush: 'sync' });
 
@@ -549,9 +628,10 @@ function allSelectedValue() {
   return {
     regionNameList: regionOptions.value.map(item => item.value),
     azNameList: azOptions.value.map(item => item.value),
-    resourceSeries: resourceSeries.value.map(item => item.value),
-    resourceFamily: allResourceFamilies.value.map(item => item.value),
-    resourceVer: allResourceGenerations.value.map(item => item.value),
+    cloudServerType: currentResourceCloudServers.value.map(item => item.value),
+    resourceSeries: isResourceListFilter.value ? [] : allResourceSeries.value.map(item => item.value),
+    resourceFamily: isResourceListFilter.value ? [] : allResourceFamilies.value.map(item => item.value),
+    resourceVer: isResourceListFilter.value ? [] : allResourceGenerations.value.map(item => item.value),
     resourceType: allResourceTypes.value.map(item => item.value),
   };
 }
@@ -562,13 +642,15 @@ function applyModelValue(value) {
   const next = value ?? fallback;
   regionValue.value = keepValid(next.regionNameList, regionOptions.value, fallback.regionNameList);
   azValue.value = keepValid(next.azNameList, filteredAzOptions.value, fallback.azNameList);
-  resourceSeriesValue.value = keepValid(next.resourceSeries, resourceSeries.value, fallback.resourceSeries);
+  resourceCloudServerValue.value = keepValid(next.cloudServerType, currentResourceCloudServers.value, fallback.cloudServerType);
+  resourceSeriesValue.value = keepValid(next.resourceSeries, allResourceSeries.value, fallback.resourceSeries);
   resourceFamilyValue.value = keepValid(next.resourceFamily, allResourceFamilies.value, fallback.resourceFamily);
   resourceVerValue.value = keepValid(next.resourceVer, allResourceGenerations.value, fallback.resourceVer);
   resourceTypeValue.value = keepValid(next.resourceType, allResourceTypes.value, fallback.resourceType);
   rangeSnapshot.value = getRangeValue();
   resourceSnapshot.value = getResourceValue();
-  activeSeries.value = resourceSeries.value[0]?.value ?? '';
+  activeCloudServer.value = currentResourceCloudServers.value[0]?.value ?? '';
+  activeSeries.value = visibleResourceSeries.value[0]?.value ?? '';
   activeFamily.value = allResourceFamilies.value[0]?.value ?? '';
   activeGeneration.value = allResourceGenerations.value[0]?.value ?? '';
   syncingFromModel = false;
@@ -606,6 +688,7 @@ function emitCurrentValue() {
   const value = {
     regionNameList: [...regionValue.value],
     azNameList: [...azValue.value],
+    cloudServerType: [...resourceCloudServerValue.value],
     resourceSeries: [...resourceSeriesValue.value],
     resourceFamily: [...resourceFamilyValue.value],
     resourceVer: [...resourceVerValue.value],
@@ -625,11 +708,67 @@ function getUniqueOptions(options) {
   return Array.from(map.values());
 }
 
+function isResourceTypeNode(item) {
+  return Boolean(item?.obj?.resourceType);
+}
+
+function collectSelectedCloudServers(cloudServerValues) {
+  const cloudServerSet = new Set(cloudServerValues);
+  return resourceTree.value.filter(item => cloudServerSet.has(item.value));
+}
+
+function collectSeriesByCloudServers(cloudServerValues) {
+  if (isOneLevelResourceTree.value) {
+    return [];
+  }
+  const series = collectSelectedCloudServers(cloudServerValues)
+    .flatMap(item => item.children ?? [])
+    .filter(item => !isResourceTypeNode(item));
+  return getUniqueOptions(series);
+}
+
+function collectDirectTypesByCloudServers(cloudServerValues) {
+  if (isOneLevelResourceTree.value) {
+    return resourceTree.value;
+  }
+  const types = collectSelectedCloudServers(cloudServerValues)
+    .flatMap(item => item.children ?? [])
+    .filter(isResourceTypeNode);
+  return getUniqueOptions(types);
+}
+
+function syncCloudServerCascade(nextValue, oldValue) {
+  const { added } = getValueChange(nextValue, oldValue);
+  const addedSeries = collectSeriesByCloudServers(added);
+  const addedFamilies = collectFamiliesBySeries(added, addedSeries.map(item => item.value));
+  const addedGenerations = collectGenerationsByFamilies(
+    added,
+    addedSeries.map(item => item.value),
+    addedFamilies.map(item => item.value),
+  );
+  const addedTypes = collectTypesByGenerations(
+    added,
+    addedSeries.map(item => item.value),
+    addedFamilies.map(item => item.value),
+    addedGenerations.map(item => item.value),
+  );
+  resourceSeriesValue.value = mergeValues(resourceSeriesValue.value, addedSeries.map(item => item.value));
+  resourceFamilyValue.value = mergeValues(resourceFamilyValue.value, addedFamilies.map(item => item.value));
+  resourceVerValue.value = mergeValues(resourceVerValue.value, addedGenerations.map(item => item.value));
+  resourceTypeValue.value = mergeValues(resourceTypeValue.value, addedTypes.map(item => item.value));
+  pruneResourceSelections();
+}
+
 function syncSeriesCascade(nextValue, oldValue) {
   const { added } = getValueChange(nextValue, oldValue);
-  const addedFamilies = collectFamiliesBySeries(added);
-  const addedGenerations = collectGenerationsByFamilies(nextValue, addedFamilies.map(item => item.value));
+  const addedFamilies = collectFamiliesBySeries(resourceCloudServerValue.value, added);
+  const addedGenerations = collectGenerationsByFamilies(
+    resourceCloudServerValue.value,
+    nextValue,
+    addedFamilies.map(item => item.value),
+  );
   const addedTypes = collectTypesByGenerations(
+    resourceCloudServerValue.value,
     nextValue,
     addedFamilies.map(item => item.value),
     addedGenerations.map(item => item.value),
@@ -642,8 +781,13 @@ function syncSeriesCascade(nextValue, oldValue) {
 
 function syncFamilyCascade(nextValue, oldValue) {
   const { added } = getValueChange(nextValue, oldValue);
-  const addedGenerations = collectGenerationsByFamilies(resourceSeriesValue.value, added);
+  const addedGenerations = collectGenerationsByFamilies(
+    resourceCloudServerValue.value,
+    resourceSeriesValue.value,
+    added,
+  );
   const addedTypes = collectTypesByGenerations(
+    resourceCloudServerValue.value,
     resourceSeriesValue.value,
     nextValue,
     addedGenerations.map(item => item.value),
@@ -655,40 +799,57 @@ function syncFamilyCascade(nextValue, oldValue) {
 
 function syncGenerationCascade(nextValue, oldValue) {
   const { added } = getValueChange(nextValue, oldValue);
-  const addedTypes = collectTypesByGenerations(resourceSeriesValue.value, resourceFamilyValue.value, added);
+  const addedTypes = collectTypesByGenerations(
+    resourceCloudServerValue.value,
+    resourceSeriesValue.value,
+    resourceFamilyValue.value,
+    added,
+  );
   resourceTypeValue.value = mergeValues(resourceTypeValue.value, addedTypes.map(item => item.value));
   pruneResourceSelections();
 }
 
 function pruneResourceSelections() {
-  const familyValues = collectFamiliesBySeries(resourceSeriesValue.value).map(item => item.value);
+  const seriesValues = collectSeriesByCloudServers(resourceCloudServerValue.value).map(item => item.value);
+  resourceSeriesValue.value = keepValueIntersection(resourceSeriesValue.value, seriesValues);
+
+  const familyValues = collectFamiliesBySeries(resourceCloudServerValue.value, resourceSeriesValue.value).map(item => item.value);
   resourceFamilyValue.value = keepValueIntersection(resourceFamilyValue.value, familyValues);
 
-  const generationValues = collectGenerationsByFamilies(resourceSeriesValue.value, resourceFamilyValue.value).map(item => item.value);
+  const generationValues = collectGenerationsByFamilies(
+    resourceCloudServerValue.value,
+    resourceSeriesValue.value,
+    resourceFamilyValue.value,
+  ).map(item => item.value);
   resourceVerValue.value = keepValueIntersection(resourceVerValue.value, generationValues);
 
-  const typeValues = collectTypesByGenerations(resourceSeriesValue.value, resourceFamilyValue.value, resourceVerValue.value).map(item => item.value);
+  const typeValues = collectTypesByGenerations(
+    resourceCloudServerValue.value,
+    resourceSeriesValue.value,
+    resourceFamilyValue.value,
+    resourceVerValue.value,
+  ).map(item => item.value);
   resourceTypeValue.value = keepValueIntersection(resourceTypeValue.value, typeValues);
 }
 
-function collectFamiliesBySeries(seriesValues) {
+function collectFamiliesBySeries(cloudServerValues, seriesValues) {
   if (isOneLevelResourceTree.value) {
     return [];
   }
   const seriesSet = new Set(seriesValues);
-  const families = resourceTree.value
+  const families = collectSeriesByCloudServers(cloudServerValues)
     .filter(item => seriesSet.has(item.value))
     .flatMap(item => item.children ?? []);
   return getUniqueOptions(families);
 }
 
-function collectGenerationsByFamilies(seriesValues, familyValues) {
+function collectGenerationsByFamilies(cloudServerValues, seriesValues, familyValues) {
   if (isOneLevelResourceTree.value) {
     return [];
   }
   const seriesSet = new Set(seriesValues);
   const familySet = new Set(familyValues);
-  const generations = resourceTree.value
+  const generations = collectSeriesByCloudServers(cloudServerValues)
     .filter(item => seriesSet.has(item.value))
     .flatMap(item => item.children ?? [])
     .filter(item => familySet.has(item.value))
@@ -696,21 +857,24 @@ function collectGenerationsByFamilies(seriesValues, familyValues) {
   return getUniqueOptions(generations);
 }
 
-function collectTypesByGenerations(seriesValues, familyValues, generationValues) {
+function collectTypesByGenerations(cloudServerValues, seriesValues, familyValues, generationValues) {
   if (isOneLevelResourceTree.value) {
-    return allResourceTypes.value;
+    return getUniqueOptions(resourceTree.value);
   }
   const seriesSet = new Set(seriesValues);
   const familySet = new Set(familyValues);
   const generationSet = new Set(generationValues);
-  const types = resourceTree.value
+  const nestedTypes = collectSeriesByCloudServers(cloudServerValues)
     .filter(item => seriesSet.has(item.value))
     .flatMap(item => item.children ?? [])
     .filter(item => familySet.has(item.value))
     .flatMap(item => item.children ?? [])
     .filter(item => generationSet.has(item.value))
     .flatMap(item => item.children ?? []);
-  return getUniqueOptions(types);
+  return getUniqueOptions([
+    ...collectDirectTypesByCloudServers(cloudServerValues),
+    ...nestedTypes,
+  ]);
 }
 
 function getValueChange(nextValue = [], oldValue = []) {
@@ -733,6 +897,7 @@ function keepValueIntersection(currentValue, allowedValue) {
 
 function getResourceValue() {
   return {
+    cloudServerType: [...resourceCloudServerValue.value],
     resourceSeries: [...resourceSeriesValue.value],
     resourceFamily: [...resourceFamilyValue.value],
     resourceVer: [...resourceVerValue.value],
@@ -741,6 +906,7 @@ function getResourceValue() {
 }
 
 function setResourceValue(value) {
+  resourceCloudServerValue.value = [...(value.cloudServerType ?? [])];
   resourceSeriesValue.value = [...(value.resourceSeries ?? [])];
   resourceFamilyValue.value = [...(value.resourceFamily ?? [])];
   resourceVerValue.value = [...(value.resourceVer ?? [])];
@@ -788,6 +954,9 @@ function toggleAll(type, checked) {
   if (type === 'az') {
     azValue.value = values;
   }
+  if (type === 'cloudServerType') {
+    resourceCloudServerValue.value = values;
+  }
   if (type === 'resourceSeries') {
     resourceSeriesValue.value = values;
   }
@@ -806,7 +975,8 @@ function getOptionsByType(type) {
   const map = {
     region: filteredRegionOptions.value,
     az: filteredAzOptions.value,
-    resourceSeries: resourceSeries.value,
+    cloudServerType: currentResourceCloudServers.value,
+    resourceSeries: visibleResourceSeries.value,
     resourceFamily: visibleResourceFamilies.value,
     resourceVer: visibleResourceGenerations.value,
     resourceType: visibleResourceTypes.value,
@@ -1074,18 +1244,26 @@ function confirmResource() {
 }
 
 .resource-panel {
-  width: 720px;
+  width: min(900px, calc(100vw - 32px));
 }
 
 .resource-panel--single {
   width: 220px;
 }
 
+.resource-panel--list {
+  width: min(420px, calc(100vw - 32px));
+}
+
 .resource-columns {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  grid-template-columns: repeat(5, minmax(136px, 1fr));
   gap: 8px;
   padding: 10px 14px 8px;
+}
+
+.resource-columns--list {
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
 }
 
 .resource-columns--single {

@@ -1,6 +1,7 @@
 import { computed, ref, watch } from "vue";
 import {
   azNameList,
+  cloudServerResourceTreeList,
   directoryTreeList,
   regionNameList,
 } from "./useDirectoryTree";
@@ -9,7 +10,6 @@ import {
   setBubbleTierFilter,
   tierFilter,
 } from "./useBubbleTierFilter";
-import { activeCategory } from "./useGeneralComputer";
 
 export { tierFilter };
 
@@ -43,6 +43,9 @@ const showRegionFilter = computed(() => resolvedFilterConfig.value.region.visibl
 const showAzFilter = computed(() => resolvedFilterConfig.value.az.visible);
 const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
 const shouldSubmitAzFilter = computed(() => showAzFilter.value || showRegionFilter.value);
+const isResourceTypeOnlySubmit = computed(
+  () => resolvedFilterConfig.value.resourceType.submitMode === "resourceTypeOnly"
+);
 
 function createSubmitOption(key, rawValue) {
   const value = String(rawValue);
@@ -62,7 +65,7 @@ export const resourceTree = computed(() => directoryTreeList.value);
 export const filterOptions = computed(() => ({
   regionNameList: regionNameList.value.map((name) => createSubmitOption("regionName", name)),
   azNameList: azNameList.value.map((name) => createSubmitOption("azName", name)),
-  resourceTree: resourceTree.value,
+  resourceTree: cloudServerResourceTreeList.value,
 }));
 
 function createEmptyBackendFilters() {
@@ -110,8 +113,30 @@ function collectSubmitOptions(tree, key) {
   return Array.from(optionMap.values());
 }
 
+function isResourceTypeItem(item) {
+  return Boolean(parseOptionObj(item)?.resourceType);
+}
+
+function flattenResourceSeries(tree) {
+  return (tree ?? [])
+    .flatMap((cloudServer) => cloudServer.children ?? [])
+    .filter((item) => !isResourceTypeItem(item));
+}
+
+function flattenDirectResourceTypes(tree) {
+  return (tree ?? [])
+    .flatMap((cloudServer) => cloudServer.children ?? [])
+    .filter(isResourceTypeItem);
+}
+
+function flattenResourceTypeOnlyCloudServers(tree) {
+  return (tree ?? []).filter((cloudServer) => {
+    return (cloudServer.children ?? []).some(isResourceTypeItem);
+  });
+}
+
 function flattenResourceFamilies(tree) {
-  return (tree ?? []).flatMap((series) => series.children ?? []);
+  return flattenResourceSeries(tree).flatMap((series) => series.children ?? []);
 }
 
 function flattenResourceGenerations(tree) {
@@ -123,8 +148,10 @@ function isOneLevelResourceTree(tree) {
 }
 
 function flattenResourceTypes(tree) {
-  if (isOneLevelResourceTree(tree)) return tree ?? [];
-  return flattenResourceGenerations(tree).flatMap((generation) => generation.children ?? []);
+  return [
+    ...flattenDirectResourceTypes(tree),
+    ...flattenResourceGenerations(tree).flatMap((generation) => generation.children ?? []),
+  ];
 }
 
 function getFilterOptionValue(item) {
@@ -133,13 +160,16 @@ function getFilterOptionValue(item) {
 
 function createDefaultFilterValue(options) {
   const tree = options.resourceTree ?? [];
+  const cloudServerOptions = isResourceTypeOnlySubmit.value ? flattenResourceTypeOnlyCloudServers(tree) : tree;
+  const resourceTypeOptions = isResourceTypeOnlySubmit.value ? flattenDirectResourceTypes(tree) : flattenResourceTypes(tree);
   return {
     regionNameList: showRegionFilter.value ? (options.regionNameList ?? []).map(getFilterOptionValue) : [],
     azNameList: showAzFilter.value ? (options.azNameList ?? []).map(getFilterOptionValue) : [],
-    resourceSeries: showResourceTypeFilter.value ? tree.map(getFilterOptionValue) : [],
-    resourceFamily: showResourceTypeFilter.value ? flattenResourceFamilies(tree).map(getFilterOptionValue) : [],
-    resourceVer: showResourceTypeFilter.value ? flattenResourceGenerations(tree).map(getFilterOptionValue) : [],
-    resourceType: showResourceTypeFilter.value ? flattenResourceTypes(tree).map(getFilterOptionValue) : [],
+    cloudServerType: showResourceTypeFilter.value ? cloudServerOptions.map(getFilterOptionValue) : [],
+    resourceSeries: showResourceTypeFilter.value && !isResourceTypeOnlySubmit.value ? flattenResourceSeries(tree).map(getFilterOptionValue) : [],
+    resourceFamily: showResourceTypeFilter.value && !isResourceTypeOnlySubmit.value ? flattenResourceFamilies(tree).map(getFilterOptionValue) : [],
+    resourceVer: showResourceTypeFilter.value && !isResourceTypeOnlySubmit.value ? flattenResourceGenerations(tree).map(getFilterOptionValue) : [],
+    resourceType: showResourceTypeFilter.value ? resourceTypeOptions.map(getFilterOptionValue) : [],
   };
 }
 
@@ -152,18 +182,24 @@ function keepValidValues(values, optionItems) {
 function reconcileFilterValue(value, options) {
   if (!value) return createDefaultFilterValue(options);
   const tree = options.resourceTree ?? [];
+  const cloudServerOptions = isResourceTypeOnlySubmit.value ? flattenResourceTypeOnlyCloudServers(tree) : tree;
+  const resourceTypeOptions = isResourceTypeOnlySubmit.value ? flattenDirectResourceTypes(tree) : flattenResourceTypes(tree);
   return {
     regionNameList: keepValidValues(value.regionNameList, options.regionNameList ?? []),
     azNameList: keepValidValues(value.azNameList, options.azNameList ?? []),
-    resourceSeries: keepValidValues(value.resourceSeries, tree),
-    resourceFamily: keepValidValues(value.resourceFamily, flattenResourceFamilies(tree)),
-    resourceVer: keepValidValues(value.resourceVer, flattenResourceGenerations(tree)),
-    resourceType: keepValidValues(value.resourceType, flattenResourceTypes(tree)),
+    cloudServerType: keepValidValues(value.cloudServerType, cloudServerOptions),
+    resourceSeries: isResourceTypeOnlySubmit.value ? [] : keepValidValues(value.resourceSeries, flattenResourceSeries(tree)),
+    resourceFamily: isResourceTypeOnlySubmit.value ? [] : keepValidValues(value.resourceFamily, flattenResourceFamilies(tree)),
+    resourceVer: isResourceTypeOnlySubmit.value ? [] : keepValidValues(value.resourceVer, flattenResourceGenerations(tree)),
+    resourceType: keepValidValues(value.resourceType, resourceTypeOptions),
   };
 }
 
 function getResourceTreeSignature(tree) {
-  return flattenResourceTypes(tree).map(getFilterOptionValue).join("|");
+  return [
+    ...(tree ?? []).map(getFilterOptionValue),
+    ...flattenResourceTypes(tree).map(getFilterOptionValue),
+  ].join("|");
 }
 
 function fillNewFilterGroups(value, options, oldOptions) {
@@ -186,6 +222,7 @@ function fillNewFilterGroups(value, options, oldOptions) {
   const resourceTreeChanged =
     getResourceTreeSignature(oldOptions.resourceTree ?? []) !== getResourceTreeSignature(options.resourceTree ?? []);
   if (showResourceTypeFilter.value && resourceTreeChanged) {
+    nextValue.cloudServerType = defaultValue.cloudServerType;
     nextValue.resourceSeries = defaultValue.resourceSeries;
     nextValue.resourceFamily = defaultValue.resourceFamily;
     nextValue.resourceVer = defaultValue.resourceVer;
@@ -211,23 +248,28 @@ function mapSelectedSubmitValues(selectedValues, optionItems, keys) {
 }
 
 function flattenResourceTypesWithSeries(tree) {
-  if (isOneLevelResourceTree(tree)) {
-    return (tree ?? []).map((item) => ({
-      item,
-      resourceSeries: "",
-    }));
-  }
-
-  return (tree ?? []).flatMap((series) => {
-    const resourceSeries = getSubmitValue(series, ["resourceSeries", "level0"]);
-    return (series.children ?? []).flatMap((family) =>
-      (family.children ?? []).flatMap((generation) =>
-        (generation.children ?? []).map((type) => ({
-          item: type,
-          resourceSeries,
-        }))
-      )
-    );
+  return (tree ?? []).flatMap((cloudServer) => {
+    const children = cloudServer.children ?? [];
+    const directTypes = children
+      .filter(isResourceTypeItem)
+      .map((item) => ({
+        item,
+        resourceSeries: "",
+      }));
+    const nestedTypes = children
+      .filter((item) => !isResourceTypeItem(item))
+      .flatMap((series) => {
+        const resourceSeries = getSubmitValue(series, ["resourceSeries", "level0"]);
+        return (series.children ?? []).flatMap((family) =>
+          (family.children ?? []).flatMap((generation) =>
+            (generation.children ?? []).map((type) => ({
+              item: type,
+              resourceSeries,
+            }))
+          )
+        );
+      });
+    return [...directTypes, ...nestedTypes];
   });
 }
 
@@ -238,14 +280,14 @@ function buildResourceTypeList(selectedValues, tree, submitMode) {
     .filter(({ item }) => selectedSet.has(getFilterOptionValue(item)))
     .map(({ item, resourceSeries }) => {
       const obj = parseOptionObj(item);
-      if (submitMode === "resourceTypeOnly" || oneLevelTree) {
+      if (submitMode === "resourceTypeOnly" || oneLevelTree || !resourceSeries) {
         return {
-          cloudServerName: activeCategory.value,
+          cloudServerName: obj?.cloudServerName,
           resourceType: obj?.resourceType,
         };
       }
       return {
-        cloudServerName: activeCategory.value,
+        cloudServerName: obj?.cloudServerName,
         resourceSeries,
         resourceFamily: obj?.resourceFamily,
         resourceVer: obj?.resourceVer,

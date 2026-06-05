@@ -12,6 +12,7 @@ export const tableDataSummary = ref({});
 export const inforData = ref({});
 
 export const directoryTreeList = ref([]);
+export const cloudServerResourceTreeList = ref([]);
 export const regionNameList = ref([]);
 export const azNameList = ref([]);
 export const directoryTreeLoading = ref(false);
@@ -131,16 +132,16 @@ function getResponsePayload(res, cloudServerName) {
   return res.data.find((item) => item.cloudServerType === cloudServerName);
 }
 
-function buildDirectoryTreeByCloudServerName(cloudServerName, data) {
+function buildDirectoryTreeByCloudServerName(cloudServerName, data, baseObj = {}) {
   if (cloudServerName === "EVS") {
-    return applyRootResourceTypeLevel(data);
+    return applyRootResourceTypeLevel(data, baseObj);
   }
 
   if (cloudServerName === "OBS") {
-    return applyRootResourceTypeLevel(data);
+    return applyRootResourceTypeLevel(data, baseObj);
   }
 
-  return applyLevel(data);
+  return applyLevel(data, { obj: baseObj });
 }
 
 function getMockDirectoryTreeData(cloudServerName) {
@@ -158,13 +159,40 @@ export async function mockFetchDirectoryTree(params = {}) {
     massage: "success",
     data: [
       {
-        cloudServerType: params.cloudServerName,
+        cloudServerType: "ECS",
         azNameList: ["非洲-开罗(AZ1)"],
         regionNameList: ["非洲-开罗"],
-        dirTreeList: getMockDirectoryTreeData(params.cloudServerName),
+        dirTreeList: getMockDirectoryTreeData("ECS"),
+      },
+      {
+        cloudServerType: "EVS",
+        azNameList: [],
+        regionNameList: [],
+        dirTreeList: getMockDirectoryTreeData("EVS"),
+      },
+      {
+        cloudServerType: "OBS",
+        azNameList: [],
+        regionNameList: ["非洲-开罗"],
+        dirTreeList: getMockDirectoryTreeData("OBS"),
       },
     ],
   };
+}
+
+function buildCloudServerResourceTreeList(list = []) {
+  return list.map((item) => {
+    const obj = {
+      cloudServerName: item.cloudServerType,
+    };
+    return {
+      name: item.cloudServerType,
+      level: 0,
+      obj,
+      objStr: JSON.stringify(obj),
+      children: buildDirectoryTreeByCloudServerName(item.cloudServerType, item.dirTreeList, obj),
+    };
+  });
 }
 
 const applyLevel = (arr = [], pitem = {}, plevel = 0) => {
@@ -200,9 +228,10 @@ const applyLevel = (arr = [], pitem = {}, plevel = 0) => {
   });
 };
 
-function applyRootResourceTypeLevel(arr = []) {
+function applyRootResourceTypeLevel(arr = [], baseObj = {}) {
   return arr.map((item) => {
     const obj = {
+      ...baseObj,
       resourceType: item.name,
     };
     const newItem = {
@@ -229,9 +258,10 @@ export const useResourcePoolCustomer = () => {
     const params = {
       month: currentStore.month,
       date: currentStore.date,
-      cloudServerName,
+      cloudServerName: "",
     };
     directoryTreeList.value = [];
+    cloudServerResourceTreeList.value = [];
     regionNameList.value = [];
     azNameList.value = [];
     directoryTreeLoading.value = true;
@@ -239,6 +269,7 @@ export const useResourcePoolCustomer = () => {
       if (requestId !== directoryTreeRequestId || activeCategory.value !== cloudServerName) {
         return;
       }
+      cloudServerResourceTreeList.value = buildCloudServerResourceTreeList(res.data);
       const payload = getResponsePayload(res, cloudServerName);
       regionNameList.value = payload.regionNameList;
       azNameList.value = payload.azNameList;
@@ -263,6 +294,7 @@ export const useResourcePoolCustomer = () => {
 export function useDirectoryTree() {
   return {
     directoryTreeList,
+    cloudServerResourceTreeList,
     directoryTreeLoading,
     regionNameList,
     azNameList,

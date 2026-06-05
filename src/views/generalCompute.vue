@@ -72,8 +72,8 @@ const category = computed(() => activeCategory.value);
 const { date: currentDate } = storeToRefs(useCurrentDate());
 
 // 通算页筛选项统一在这里按资源池配置；下游组件只消费配置，不再写资源池特判。
-// variant: tree 使用 ECS 四层树面板；list 使用 AZ 同款单列面板。
-// submitMode: tree 提交四层对象；resourceTypeOnly 提交 [{ resourceType }]。
+// tree 面板现在使用“云服务 + 资源系列 + 资源族 + 资源代数 + 资源类型”五列。
+// resourceTypeOnly 面板保留原单层资源类型，只在左侧新增“云服务”列。
 const TREE_RESOURCE_FILTER = {
   visible: true,
   variant: "tree",
