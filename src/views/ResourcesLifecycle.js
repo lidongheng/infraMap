@@ -1,5 +1,6 @@
 import { useCurrentDate } from "./useCurrentDate";
 import { ref, watch } from 'vue';
+import dayjs from "dayjs";
 import { formatNumToLocalString, formatRateValue } from "@/utils";
 import {
   getCardOperateAPI,
@@ -12,6 +13,31 @@ const isNull = (val) => ['null', ''].includes(String(val));
 
 const hasPermission = (PromiseSettledResult) =>
   PromiseSettledResult.status === 'fulfilled' && PromiseSettledResult.value.status === 200;
+
+function normalizeFilterParams(filters = {}) {
+  const toList = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string" && value) return value.split(",").filter(Boolean);
+    return [];
+  };
+  return {
+    regionNameList: toList(filters.regionNameList),
+    azNameList: toList(filters.azNameList),
+    resourceTypeList: Array.isArray(filters.resourceTypeList) ? filters.resourceTypeList : [],
+  };
+}
+
+function buildCommonComputeParams(currentStore, filters = {}) {
+  const normalizedFilters = normalizeFilterParams(filters);
+  return {
+    cloudServerName: selectedPool.value,
+    month: dayjs(currentStore.date).format("YYYYMM"),
+    date: currentStore.date,
+    regionNameList: normalizedFilters.regionNameList,
+    azNameList: normalizedFilters.azNameList,
+    resourceTypeList: normalizedFilters.resourceTypeList,
+  };
+}
 
 export const useResourcePool = () => {
   const currentStore = useCurrentDate();
@@ -27,10 +53,11 @@ export const useResourcePool = () => {
   }));
   const poolData = ref(structuredClone(initData));
 
-  const loadResourcePoolData = async () => {
+  const loadResourcePoolData = async (filters = {}) => {
     const metrics = ['efficiency', 'operate'];
+    const baseParams = buildCommonComputeParams(currentStore, filters);
     Promise.allSettled(
-      metrics.map((metric) => getResourcePoolLifecycleAPI(metric, currentStore.date, currentStore.month))
+      metrics.map((metric) => getResourcePoolLifecycleAPI({ ...baseParams, metric }))
     ).then(([efficiencyRes, operateRes]) => {
       if (hasPermission(efficiencyRes)) {
         poolData.value.forEach((pool) => {
@@ -101,8 +128,8 @@ export const useResourcePool = () => {
     value: '--',
     compareValue: '--',
   });
-  const loadOperateData = () => {
-    getCardOperateAPI({ month: currentStore.month, date: currentStore.date }).then((res) => {
+  const loadOperateData = (filters = {}) => {
+    getCardOperateAPI(buildCommonComputeParams(currentStore, filters)).then((res) => {
       if (res.status === 200) {
         operateData.value = res.data?.commonComputing?.[0]
       } else {
@@ -121,5 +148,10 @@ export const useResourcePool = () => {
     { immediate: true }
   );
 
-  return { poolData, operateData };
+  const fetchResourcePoolData = (filters = {}) => {
+    loadResourcePoolData(filters);
+    loadOperateData(filters);
+  };
+
+  return { poolData, operateData, fetchResourcePoolData };
 };

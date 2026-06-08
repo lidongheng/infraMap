@@ -251,9 +251,10 @@ export function getResourcePoolCustomerInfoEfficiencyAPI(params) {
 }
 
 export function getResourcePoolLifecycleAPI(metric, date, month) {
+  const params = typeof metric === 'object' ? metric : { metric, date, month };
   return requestInfra(
     API_PATHS.resourcePoolLifecycle,
-    { metric, date, month },
+    params,
     RESOURCE_POOL_LIFECYCLE_RESPONSE
   )
 }

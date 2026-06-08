@@ -52,14 +52,14 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { toWan, toBillion } from '@/utils';
 import { homeCardData } from './hooks/useIndicators';
-import { inforData } from './useDirectoryTree';
+import { inforData, loadResourcePoolCustomerInfo } from './useDirectoryTree';
 import { useResourcePool, selectedPool } from './ResourcesLifecycle';
-import { resetGeneralComputeFilter } from './useGeneralComputeFilter';
+import { backendFilters, resetGeneralComputeFilter } from './useGeneralComputeFilter';
 
-const { poolData, operateData } = useResourcePool();
+const { poolData, operateData, fetchResourcePoolData } = useResourcePool();
 const enabledPoolNames = ['ECS', 'EVS', 'OBS'];
 const lifecycleTableData = computed(() =>
   poolData.value.filter((item) => enabledPoolNames.includes(item.resourceName))
@@ -72,6 +72,15 @@ const onClick = (name) => {
     resetGeneralComputeFilter();
   }
 }
+
+watch(
+  backendFilters,
+  (filters) => {
+    fetchResourcePoolData(filters);
+    loadResourcePoolCustomerInfo(filters);
+  },
+  { deep: true, immediate: true }
+);
 </script>
 
 <style lang="less" scoped>

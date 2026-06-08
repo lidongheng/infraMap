@@ -1,4 +1,5 @@
 import { computed, ref, watch } from "vue";
+import dayjs from "dayjs";
 import { selectedPool } from "./ResourcesLifecycle";
 import { useCurrentDate } from "./useCurrentDate";
 import { ceilToMagnitude } from "./useBubbleAxisRange";
@@ -252,6 +253,36 @@ function applyRootResourceTypeLevel(arr = [], baseObj = {}) {
 
 export const resourceTree = computed(() => directoryTreeList.value);
 
+function normalizeFilterParams(filters = {}) {
+  const toList = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string" && value) return value.split(",").filter(Boolean);
+    return [];
+  };
+  return {
+    regionNameList: toList(filters.regionNameList),
+    azNameList: toList(filters.azNameList),
+    resourceTypeList: Array.isArray(filters.resourceTypeList) ? filters.resourceTypeList : [],
+  };
+}
+
+export function loadResourcePoolCustomerInfo(filters = {}) {
+  const currentStore = useCurrentDate();
+  const normalizedFilters = normalizeFilterParams(filters);
+  const params = {
+    cloudServerName: selectedPool.value,
+    month: dayjs(currentStore.date).format("YYYYMM"),
+    date: currentStore.date,
+    regionNameList: normalizedFilters.regionNameList,
+    azNameList: normalizedFilters.azNameList,
+    resourceTypeList: normalizedFilters.resourceTypeList,
+  };
+  return getResourcePoolCustomerInfoEfficiencyAPI(params).then((res) => {
+    inforData.value = res.data;
+    return res;
+  });
+}
+
 export const useResourcePoolCustomer = () => {
   const currentStore = useCurrentDate();
   const loadTreeData = () => {
@@ -289,21 +320,7 @@ export const useResourcePoolCustomer = () => {
   resourcePoolCustomerStarted = true;
 
   loadTreeData();
-  const loadKeyData = () => {
-    const params = {
-      month: currentStore.month,
-      date: currentStore.date,
-      cloudServerName: '',
-      ascOrder: false,
-      rangeLevel: '全部',
-      resourceLevel: '资源族',
-    };
-    getResourcePoolCustomerInfoEfficiencyAPI(params).then((res) => {
-      inforData.value = res.data;
-    })
-  };
-
-  watch([() => currentStore.date], loadKeyData, {
+  watch([() => currentStore.date], () => loadResourcePoolCustomerInfo(), {
     immediate: true,
   });
 }
