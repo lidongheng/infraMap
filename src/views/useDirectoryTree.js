@@ -320,9 +320,6 @@ export const useResourcePoolCustomer = () => {
   resourcePoolCustomerStarted = true;
 
   loadTreeData();
-  watch([() => currentStore.date], () => loadResourcePoolCustomerInfo(), {
-    immediate: true,
-  });
 }
 
 export function useDirectoryTree() {

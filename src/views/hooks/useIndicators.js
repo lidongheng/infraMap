@@ -1,7 +1,9 @@
 import { useCurrentDate } from "../useCurrentDate";
 import { ref, computed, reactive, watch } from 'vue';
+import dayjs from "dayjs";
 import { processingUnauthorizedData } from '@/utils';
 import { useSetInterval } from './useSetInterval';
+import { selectedPool } from "../ResourcesLifecycle";
 import {
   getCardCostAPI,
   getCardIndicatorAPI,
@@ -154,85 +156,115 @@ export const homeCardData = reactive({
   },
 });
 
-export const useHomeCardData = () => {
+function normalizeFilterParams(filters = {}) {
+  const toList = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string" && value) return value.split(",").filter(Boolean);
+    return [];
+  };
+  return {
+    regionNameList: toList(filters.regionNameList),
+    azNameList: toList(filters.azNameList),
+    resourceTypeList: Array.isArray(filters.resourceTypeList) ? filters.resourceTypeList : [],
+  };
+}
+
+function buildCommonComputeParams(currentStore, filters = {}) {
+  const normalizedFilters = normalizeFilterParams(filters);
+  return {
+    cloudServerName: selectedPool.value,
+    month: dayjs(currentStore.date).format("YYYYMM"),
+    date: currentStore.date,
+    regionNameList: normalizedFilters.regionNameList,
+    azNameList: normalizedFilters.azNameList,
+    resourceTypeList: normalizedFilters.resourceTypeList,
+  };
+}
+
+export const fetchHomeCardData = (filters = {}) => {
   const currentStore = useCurrentDate();
-  const loadAllData = () => {
-    getCardRecurringRevenueAPI({ month: currentStore.month, date: currentStore.date }).then(
-      (res) => {
-        if (res.status === 403) {
-          processingUnauthorizedData(homeCardData.recurringRevenue.commonComputing, '**');
-          processingUnauthorizedData(homeCardData.recurringRevenue.intelligentComputing, '**');
-          processingUnauthorizedData(homeCardData.recurringRevenue.externalCustomer, '**');
-          processingUnauthorizedData(homeCardData.recurringRevenue.internalCustomer, '**');
-          return;
-        }
-        if (!res.data) {
-          processingUnauthorizedData(homeCardData.recurringRevenue.commonComputing, '--');
-          processingUnauthorizedData(homeCardData.recurringRevenue.intelligentComputing, '--');
-          processingUnauthorizedData(homeCardData.recurringRevenue.externalCustomer, '--');
-          processingUnauthorizedData(homeCardData.recurringRevenue.internalCustomer, '--');
-          return;
-        }
-        homeCardData.recurringRevenue.commonComputing = res.data.commonComputing?.[0];
-        homeCardData.recurringRevenue.intelligentComputing = res.data.intelligentComputing?.[0];
-        homeCardData.recurringRevenue.externalCustomer = res.data.externalCustomer?.[0];
-        homeCardData.recurringRevenue.internalCustomer = res.data.internalCustomer?.[0];
-      }
-    );
-    getCardCostAPI({ month: currentStore.month, date: currentStore.date }).then((res) => {
+  const params = buildCommonComputeParams(currentStore, filters);
+  getCardRecurringRevenueAPI(params).then(
+    (res) => {
       if (res.status === 403) {
-        processingUnauthorizedData(homeCardData.cost.commonComputing, '**');
-        processingUnauthorizedData(homeCardData.cost.intelligentComputing, '**');
-        processingUnauthorizedData(homeCardData.cost.externalCustomer, '**');
-        processingUnauthorizedData(homeCardData.cost.internalCustomer, '**');
+        processingUnauthorizedData(homeCardData.recurringRevenue.commonComputing, '**');
+        processingUnauthorizedData(homeCardData.recurringRevenue.intelligentComputing, '**');
+        processingUnauthorizedData(homeCardData.recurringRevenue.externalCustomer, '**');
+        processingUnauthorizedData(homeCardData.recurringRevenue.internalCustomer, '**');
         return;
       }
       if (!res.data) {
-        processingUnauthorizedData(homeCardData.cost.commonComputing, '--');
-        processingUnauthorizedData(homeCardData.cost.intelligentComputing, '--');
-        processingUnauthorizedData(homeCardData.cost.externalCustomer, '--');
-        processingUnauthorizedData(homeCardData.cost.internalCustomer, '--');
+        processingUnauthorizedData(homeCardData.recurringRevenue.commonComputing, '--');
+        processingUnauthorizedData(homeCardData.recurringRevenue.intelligentComputing, '--');
+        processingUnauthorizedData(homeCardData.recurringRevenue.externalCustomer, '--');
+        processingUnauthorizedData(homeCardData.recurringRevenue.internalCustomer, '--');
         return;
       }
-      homeCardData.cost.commonComputing = res.data.commonComputing?.[0];
-      homeCardData.cost.intelligentComputing = res.data.intelligentComputing?.[0];
-      homeCardData.cost.externalCustomer = res.data.externalCustomer?.[0];
-      homeCardData.cost.internalCustomer = res.data.internalCustomer?.[0];
-    });
-    getCardIndicatorAPI({ month: currentStore.month, date: currentStore.date }).then((res) => {
-      if (!res.data.indicator) {
-        return;
-      }
-      const {
-        asset_gyy_servers_num_trends_app,
-        general_computing_server_num_all,
-        dfa_card_num_all,
-        ecs_out_customer_allocate_num,
-        ecs_in_customer_allocate_num,
-        pool_total_asset_online_rate,
-        universal_harddisk_rate,
-        pool_cpu_use_rate_all,
-        pool_npu_use_rate_all,
-        ascend_card_count_inner,
-        ascend_card_count_outer,
-        hashrate_all_total,
-      } = res.data.indicator ?? {};
-      homoIndicatiorsData.service = asset_gyy_servers_num_trends_app ?? {};
-      homoIndicatiorsData.assetOnlineRate = pool_total_asset_online_rate ?? {};
-      homoIndicatiorsData.universal_harddisk_rate = universal_harddisk_rate ?? {};
-      
-      homeCardData.eff.commonComputing = general_computing_server_num_all ?? {};
-      homeCardData.eff.intelligentComputing = dfa_card_num_all ?? {};
-      homeCardData.eff.externalCustomer = ecs_out_customer_allocate_num ?? {};
-      homeCardData.eff.internalCustomer = ecs_in_customer_allocate_num ?? {};
-      homeCardData.operate.commonComputing = pool_cpu_use_rate_all ?? {};
-      homeCardData.operate.intelligentComputing = pool_npu_use_rate_all ?? {};
+      homeCardData.recurringRevenue.commonComputing = res.data.commonComputing?.[0];
+      homeCardData.recurringRevenue.intelligentComputing = res.data.intelligentComputing?.[0];
+      homeCardData.recurringRevenue.externalCustomer = res.data.externalCustomer?.[0];
+      homeCardData.recurringRevenue.internalCustomer = res.data.internalCustomer?.[0];
+    }
+  );
+  getCardCostAPI(params).then((res) => {
+    if (res.status === 403) {
+      processingUnauthorizedData(homeCardData.cost.commonComputing, '**');
+      processingUnauthorizedData(homeCardData.cost.intelligentComputing, '**');
+      processingUnauthorizedData(homeCardData.cost.externalCustomer, '**');
+      processingUnauthorizedData(homeCardData.cost.internalCustomer, '**');
+      return;
+    }
+    if (!res.data) {
+      processingUnauthorizedData(homeCardData.cost.commonComputing, '--');
+      processingUnauthorizedData(homeCardData.cost.intelligentComputing, '--');
+      processingUnauthorizedData(homeCardData.cost.externalCustomer, '--');
+      processingUnauthorizedData(homeCardData.cost.internalCustomer, '--');
+      return;
+    }
+    homeCardData.cost.commonComputing = res.data.commonComputing?.[0];
+    homeCardData.cost.intelligentComputing = res.data.intelligentComputing?.[0];
+    homeCardData.cost.externalCustomer = res.data.externalCustomer?.[0];
+    homeCardData.cost.internalCustomer = res.data.internalCustomer?.[0];
+  });
+  getCardIndicatorAPI(params).then((res) => {
+    if (!res.data.indicator) {
+      return;
+    }
+    const {
+      asset_gyy_servers_num_trends_app,
+      general_computing_server_num_all,
+      dfa_card_num_all,
+      ecs_out_customer_allocate_num,
+      ecs_in_customer_allocate_num,
+      pool_total_asset_online_rate,
+      universal_harddisk_rate,
+      pool_cpu_use_rate_all,
+      pool_npu_use_rate_all,
+      ascend_card_count_inner,
+      ascend_card_count_outer,
+      hashrate_all_total,
+    } = res.data.indicator ?? {};
+    homoIndicatiorsData.service = asset_gyy_servers_num_trends_app ?? {};
+    homoIndicatiorsData.assetOnlineRate = pool_total_asset_online_rate ?? {};
+    homoIndicatiorsData.universal_harddisk_rate = universal_harddisk_rate ?? {};
+    
+    homeCardData.eff.commonComputing = general_computing_server_num_all ?? {};
+    homeCardData.eff.intelligentComputing = dfa_card_num_all ?? {};
+    homeCardData.eff.externalCustomer = ecs_out_customer_allocate_num ?? {};
+    homeCardData.eff.internalCustomer = ecs_in_customer_allocate_num ?? {};
+    homeCardData.operate.commonComputing = pool_cpu_use_rate_all ?? {};
+    homeCardData.operate.intelligentComputing = pool_npu_use_rate_all ?? {};
 
-      homeCardData.operate.externalCustomer = ascend_card_count_outer ?? {};
-      homeCardData.operate.internalCustomer = ascend_card_count_inner ?? {};
+    homeCardData.operate.externalCustomer = ascend_card_count_outer ?? {};
+    homeCardData.operate.internalCustomer = ascend_card_count_inner ?? {};
 
-      homeCardData.eFlops = hashrate_all_total ?? {};
-    });
+    homeCardData.eFlops = hashrate_all_total ?? {};
+  });
+}
+
+export const useHomeCardData = () => {
+  const loadAllData = () => {
+    fetchHomeCardData();
   };
   loadAllData();
 }

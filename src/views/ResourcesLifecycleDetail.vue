@@ -54,7 +54,7 @@
 <script setup>
 import { computed, watch } from 'vue';
 import { toWan, toBillion } from '@/utils';
-import { homeCardData } from './hooks/useIndicators';
+import { fetchHomeCardData, homeCardData } from './hooks/useIndicators';
 import { inforData, loadResourcePoolCustomerInfo } from './useDirectoryTree';
 import { useResourcePool, selectedPool } from './ResourcesLifecycle';
 import { backendFilters, resetGeneralComputeFilter } from './useGeneralComputeFilter';
@@ -76,6 +76,7 @@ const onClick = (name) => {
 watch(
   backendFilters,
   (filters) => {
+    fetchHomeCardData(filters);
     fetchResourcePoolData(filters);
     loadResourcePoolCustomerInfo(filters);
   },

@@ -1,5 +1,5 @@
 import { useCurrentDate } from "./useCurrentDate";
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import dayjs from "dayjs";
 import { formatNumToLocalString, formatRateValue } from "@/utils";
 import {
@@ -138,15 +138,6 @@ export const useResourcePool = () => {
       }
     });
   };
-
-  watch(
-    () => currentStore.date,
-    () => {
-      loadResourcePoolData();
-      loadOperateData();
-    },
-    { immediate: true }
-  );
 
   const fetchResourcePoolData = (filters = {}) => {
     loadResourcePoolData(filters);
