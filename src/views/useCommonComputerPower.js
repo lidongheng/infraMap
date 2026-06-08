@@ -2,7 +2,7 @@ import { ref } from "vue";
 import { storeToRefs } from "pinia";
 import dayjs from "dayjs";
 import { applyBubbleConfig, SIZE_TIERS } from "./commonComputerPowerConfig";
-import { selectedPool } from "./useChartOption";
+import { selectedPool } from "./ResourcesLifecycle";
 import { useCurrentDate } from "./useCurrentDate";
 
 /**

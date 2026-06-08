@@ -5,7 +5,7 @@
     </header>
     <section class="main flex-center">
       <section class="main-left">
-        <CategoryNav />
+        <ResourcesLifecycleDetail />
       </section>
       <section class="main-right">
         <div v-if="tabs.length > 1" class="tab-bar">
@@ -51,11 +51,11 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
-import CategoryNav from "@/components/CategoryNav.vue";
 import CommonTitle from "@/components/home/CommonTitle.vue";
 import CommonComputerPower from "./commonComputerPower.vue";
 import ResourcePoolTable from "@/components/ResourcePoolTable.vue";
-import { activeCategory } from "./useGeneralComputer";
+import ResourcesLifecycleDetail from "./ResourcesLifecycleDetail.vue";
+import { selectedPool } from "./ResourcesLifecycle";
 import { testData1 } from "./useCommonComputerPower";
 import { SIZE_TIERS } from "./commonComputerPowerConfig";
 import { useResourcePoolCustomer } from "./useDirectoryTree";
@@ -68,7 +68,7 @@ import {
 
 useResourcePoolCustomer();
 
-const category = computed(() => activeCategory.value);
+const category = computed(() => selectedPool.value);
 const { date: currentDate } = storeToRefs(useCurrentDate());
 
 // 通算页筛选项统一在这里按资源池配置；下游组件只消费配置，不再写资源池特判。
@@ -251,8 +251,8 @@ function onBubbleClick(detail) {
 
     .main-left {
       flex-shrink: 0;
-      width: 30px;
-      min-width: 30px;
+      width: 320px;
+      min-width: 320px;
     }
 
     .main-right {

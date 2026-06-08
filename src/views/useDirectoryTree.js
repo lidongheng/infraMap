@@ -1,6 +1,8 @@
 import { computed, ref, watch } from "vue";
-import { activeCategory } from "./useGeneralComputer";
+import { selectedPool } from "./ResourcesLifecycle";
 import { useCurrentDate } from "./useCurrentDate";
+import { ceilToMagnitude } from "./useBubbleAxisRange";
+import { getResourcePoolCustomerInfoEfficiencyAPI } from "@/api/infraMock";
 
 export const rangeLevel = ref('全部');
 export const resourceLevel = ref('资源族');
@@ -253,7 +255,7 @@ export const resourceTree = computed(() => directoryTreeList.value);
 export const useResourcePoolCustomer = () => {
   const currentStore = useCurrentDate();
   const loadTreeData = () => {
-    const cloudServerName = activeCategory.value;
+    const cloudServerName = selectedPool.value;
     const requestId = ++directoryTreeRequestId;
     const params = {
       month: currentStore.month,
@@ -266,7 +268,7 @@ export const useResourcePoolCustomer = () => {
     azNameList.value = [];
     directoryTreeLoading.value = true;
     mockFetchDirectoryTree(params).then((res) => {
-      if (requestId !== directoryTreeRequestId || activeCategory.value !== cloudServerName) {
+      if (requestId !== directoryTreeRequestId || selectedPool.value !== cloudServerName) {
         return;
       }
       cloudServerResourceTreeList.value = buildCloudServerResourceTreeList(res.data);
@@ -287,6 +289,23 @@ export const useResourcePoolCustomer = () => {
   resourcePoolCustomerStarted = true;
 
   loadTreeData();
+  const loadKeyData = () => {
+    const params = {
+      month: currentStore.month,
+      date: currentStore.date,
+      cloudServerName: '',
+      ascOrder: false,
+      rangeLevel: '全部',
+      resourceLevel: '资源族',
+    };
+    getResourcePoolCustomerInfoEfficiencyAPI(params).then((res) => {
+      inforData.value = res.data;
+    })
+  };
+
+  watch([() => currentStore.date], loadKeyData, {
+    immediate: true,
+  });
 }
 
 export function useDirectoryTree() {
