@@ -43,7 +43,6 @@ const resolvedFilterConfig = computed(() => ({
 const showRegionFilter = computed(() => resolvedFilterConfig.value.region.visible);
 const showAzFilter = computed(() => resolvedFilterConfig.value.az.visible);
 const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
-const shouldSubmitAzFilter = computed(() => showAzFilter.value || showRegionFilter.value);
 const isResourceTypeOnlySubmit = computed(
   () => resolvedFilterConfig.value.resourceType.submitMode === "resourceTypeOnly"
 );
@@ -317,8 +316,7 @@ function buildBackendFilterValue(value, options) {
     regionNameList: showRegionFilter.value
       ? mapSelectedSubmitValues(value.regionNameList, options.regionNameList ?? [], ["regionName"])
       : [],
-    // AZ 隐藏但 Region 可选时，组件会按选中的 Region 联动出对应 AZ，后端仍需要这组 AZ。
-    azNameList: shouldSubmitAzFilter.value
+    azNameList: showAzFilter.value
       ? mapSelectedSubmitValues(value.azNameList, options.azNameList ?? [], ["azName"])
       : [],
     resourceTypeList: showResourceTypeFilter.value

@@ -8,7 +8,7 @@
         :trigger="loading ? 'manual' : 'click'"
         width="fit-content"
         :show-arrow="false"
-        popper-class="filter-popper filter-popper--range"
+        :popper-class="rangePopperClass"
       >
         <template #reference>
           <button class="select-trigger" type="button" :disabled="loading">
@@ -16,7 +16,10 @@
             <el-icon><ArrowDown /></el-icon>
           </button>
         </template>
-        <div class="dropdown-panel range-panel">
+        <div
+          class="dropdown-panel range-panel"
+          :class="{ 'range-panel--single': !showRegionFilter || !showAzFilter }"
+        >
           <div v-if="showRegionSearch" class="search-box range-search">
             <el-icon><Search /></el-icon>
             <input v-model="regionKeyword" placeholder="请输入关键字" />
@@ -351,6 +354,10 @@ const showRegionSearch = computed(() => resolvedFilterConfig.value.region.search
 const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
 const isResourceListFilter = computed(() => resolvedFilterConfig.value.resourceType.variant === "list");
 const isResourceConfirmable = computed(() => resolvedFilterConfig.value.resourceType.confirmable);
+const rangePopperClass = computed(() => {
+  const singleClass = !showRegionFilter.value || !showAzFilter.value ? " filter-popper--range-single" : "";
+  return `filter-popper filter-popper--range${singleClass}`;
+});
 const resourcePopperClass = computed(() => "filter-popper");
 const loading = computed(() => props.loading);
 const filteredAzOptions = computed(() => filterAzOptionsByRegions(azOptions.value, regionValue.value));
@@ -1143,6 +1150,10 @@ function confirmResource() {
 
 .range-panel {
   width: 520px;
+}
+
+.range-panel--single {
+  width: 260px;
 }
 
 .range-search {

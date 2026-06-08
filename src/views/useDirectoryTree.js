@@ -21,6 +21,7 @@ export const azNameList = ref([]);
 export const directoryTreeLoading = ref(false);
 let directoryTreeRequestId = 0;
 let resourcePoolCustomerStarted = false;
+let directoryTreeDataCache = [];
 
 function createResourceTypes(prefix, sizes) {
   return sizes.map((size) => ({
@@ -198,6 +199,24 @@ function buildCloudServerResourceTreeList(list = []) {
   });
 }
 
+function clearSelectedDirectoryTree() {
+  directoryTreeList.value = [];
+  regionNameList.value = [];
+  azNameList.value = [];
+}
+
+function applySelectedDirectoryTree(list = directoryTreeDataCache) {
+  const cloudServerName = selectedPool.value;
+  const payload = list.find((item) => item.cloudServerType === cloudServerName);
+  clearSelectedDirectoryTree();
+  if (!payload) {
+    return;
+  }
+  regionNameList.value = payload.regionNameList;
+  azNameList.value = payload.azNameList;
+  directoryTreeList.value = buildDirectoryTreeByCloudServerName(cloudServerName, payload.dirTreeList);
+}
+
 const applyLevel = (arr = [], pitem = {}, plevel = 0) => {
   const levelKeyMap = {
     0: 'level0',
@@ -286,27 +305,22 @@ export function loadResourcePoolCustomerInfo(filters = {}) {
 export const useResourcePoolCustomer = () => {
   const currentStore = useCurrentDate();
   const loadTreeData = () => {
-    const cloudServerName = selectedPool.value;
     const requestId = ++directoryTreeRequestId;
     const params = {
-      month: currentStore.month,
+      month: dayjs(currentStore.date).format("YYYYMM"),
       date: currentStore.date,
       cloudServerName: "",
     };
-    directoryTreeList.value = [];
+    clearSelectedDirectoryTree();
     cloudServerResourceTreeList.value = [];
-    regionNameList.value = [];
-    azNameList.value = [];
     directoryTreeLoading.value = true;
     mockFetchDirectoryTree(params).then((res) => {
-      if (requestId !== directoryTreeRequestId || selectedPool.value !== cloudServerName) {
+      if (requestId !== directoryTreeRequestId) {
         return;
       }
-      cloudServerResourceTreeList.value = buildCloudServerResourceTreeList(res.data);
-      const payload = getResponsePayload(res, cloudServerName);
-      regionNameList.value = payload.regionNameList;
-      azNameList.value = payload.azNameList;
-      directoryTreeList.value = buildDirectoryTreeByCloudServerName(cloudServerName, payload.dirTreeList);
+      directoryTreeDataCache = res.data;
+      cloudServerResourceTreeList.value = buildCloudServerResourceTreeList(directoryTreeDataCache);
+      applySelectedDirectoryTree();
     }).finally(() => {
       if (requestId === directoryTreeRequestId) {
         directoryTreeLoading.value = false;
@@ -320,6 +334,9 @@ export const useResourcePoolCustomer = () => {
   resourcePoolCustomerStarted = true;
 
   loadTreeData();
+  watch(selectedPool, () => {
+    applySelectedDirectoryTree();
+  });
 }
 
 export function useDirectoryTree() {
