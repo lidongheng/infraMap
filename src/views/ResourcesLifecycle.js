@@ -30,7 +30,6 @@ function normalizeFilterParams(filters = {}) {
 function buildCommonComputeParams(currentStore, filters = {}) {
   const normalizedFilters = normalizeFilterParams(filters);
   return {
-    cloudServerName: selectedPool.value,
     month: dayjs(currentStore.date).format("YYYYMM"),
     date: currentStore.date,
     regionNameList: normalizedFilters.regionNameList,
