@@ -222,6 +222,7 @@ export function useCommonComputerPower() {
     const cloudServerName = selectedPool.value;
     currentFilters.value = normalizeFilterParams(filters);
     const params = {
+      cloudServerName,
       month: dayjs(date.value).format("YYYYMM"),
       date: date.value,
       regionNameList: currentFilters.value.regionNameList,
