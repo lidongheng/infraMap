@@ -270,6 +270,21 @@ function mapSelectedSubmitValues(selectedValues, optionItems, keys) {
     .filter(Boolean);
 }
 
+function isNoneOrAllSelected(selectedValues, optionItems) {
+  const selectedLength = selectedValues?.length ?? 0;
+  const optionLength = optionItems?.length ?? 0;
+  return selectedLength === 0 || selectedLength === optionLength;
+}
+
+function buildPartialSubmitValues(selectedValues, optionItems, keys) {
+  // 后端约定：全不选和全选都表示“不按该维度过滤”，统一提交空数组。
+  // 只有部分选择时，才把 UI 选中的项转换成后端需要的字段值。
+  if (isNoneOrAllSelected(selectedValues, optionItems)) {
+    return [];
+  }
+  return mapSelectedSubmitValues(selectedValues, optionItems, keys);
+}
+
 function flattenResourceTypesWithSeries(tree) {
   return (tree ?? []).flatMap((cloudServer) => {
     const children = cloudServer.children ?? [];
@@ -322,15 +337,18 @@ function buildResourceTypeList(selectedValues, tree, submitMode) {
 
 function buildBackendFilterValue(value, options) {
   const tree = options.resourceTree ?? [];
+  const resourceTypeOptions = showResourceTypeFilter.value
+    ? flattenResourceTypes(tree)
+    : [];
   // 未展示的筛选项提交空数组，避免隐藏项的旧选中值继续影响请求。
   return {
     regionNameList: showRegionFilter.value
-      ? mapSelectedSubmitValues(value.regionNameList, options.regionNameList ?? [], ["regionName"])
+      ? buildPartialSubmitValues(value.regionNameList, options.regionNameList ?? [], ["regionName"])
       : [],
     azNameList: showAzFilter.value
-      ? mapSelectedSubmitValues(value.azNameList, options.azNameList ?? [], ["azName"])
+      ? buildPartialSubmitValues(value.azNameList, options.azNameList ?? [], ["azName"])
       : [],
-    resourceTypeList: showResourceTypeFilter.value
+    resourceTypeList: showResourceTypeFilter.value && !isNoneOrAllSelected(value.resourceType, resourceTypeOptions)
       ? buildResourceTypeList(value.resourceType, tree, resolvedFilterConfig.value.resourceType.submitMode)
       : [],
   };
