@@ -132,28 +132,47 @@ const mockObsResourceTree = [
   { name: "深度归档存储", children: null },
 ];
 
+const mockDccResourceTree = [
+  { name: "通用型", children: null },
+  { name: "计算型", children: null },
+  { name: "内存型", children: null },
+];
+
+const mockBmsResourceTree = [
+  { name: "通用裸金属", children: null },
+  { name: "计算裸金属", children: null },
+  { name: "存储裸金属", children: null },
+];
+
+const mockDssResourceTree = [
+  { name: "共享型", children: null },
+  { name: "独享型", children: null },
+];
+
 function getResponsePayload(res, cloudServerName) {
   return res.data.find((item) => item.cloudServerType === cloudServerName);
 }
 
 function buildDirectoryTreeByCloudServerName(cloudServerName, data, baseObj = {}) {
-  if (cloudServerName === "EVS") {
-    return applyRootResourceTypeLevel(data, baseObj);
+  // 目录树只有 ECS 是五层结构，需要按资源系列/资源族/资源代数/资源类型逐层转换。
+  // 其他云服务都是两层结构，第二层直接作为 resourceType，和 OBS 的下拉面板、提交结构保持一致。
+  if (cloudServerName === "ECS") {
+    return applyLevel(data, { obj: baseObj });
   }
 
-  if (cloudServerName === "OBS") {
-    return applyRootResourceTypeLevel(data, baseObj);
-  }
-
-  return applyLevel(data, { obj: baseObj });
+  return applyRootResourceTypeLevel(data, baseObj);
 }
 
 function getMockDirectoryTreeData(cloudServerName) {
   const mockDataMap = {
+    ECS: mockResourceTree,
+    BMS: mockBmsResourceTree,
+    DCC: mockDccResourceTree,
     EVS: mockEvsResourceTree,
     OBS: mockObsResourceTree,
+    DSS: mockDssResourceTree,
   };
-  return mockDataMap[cloudServerName] ?? mockResourceTree;
+  return mockDataMap[cloudServerName];
 }
 
 export async function mockFetchDirectoryTree(params = {}) {
@@ -169,6 +188,18 @@ export async function mockFetchDirectoryTree(params = {}) {
         dirTreeList: getMockDirectoryTreeData("ECS"),
       },
       {
+        cloudServerType: "BMS",
+        azNameList: [],
+        regionNameList: ["非洲-开罗"],
+        dirTreeList: getMockDirectoryTreeData("BMS"),
+      },
+      {
+        cloudServerType: "DCC",
+        azNameList: [],
+        regionNameList: ["非洲-开罗"],
+        dirTreeList: getMockDirectoryTreeData("DCC"),
+      },
+      {
         cloudServerType: "EVS",
         azNameList: [],
         regionNameList: [],
@@ -179,6 +210,12 @@ export async function mockFetchDirectoryTree(params = {}) {
         azNameList: [],
         regionNameList: ["非洲-开罗"],
         dirTreeList: getMockDirectoryTreeData("OBS"),
+      },
+      {
+        cloudServerType: "DSS",
+        azNameList: [],
+        regionNameList: ["非洲-开罗"],
+        dirTreeList: getMockDirectoryTreeData("DSS"),
       },
     ],
   };
