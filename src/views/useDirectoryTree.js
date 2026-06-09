@@ -333,9 +333,12 @@ export const useResourcePoolCustomer = () => {
   resourcePoolCustomerStarted = true;
 
   loadTreeData();
+  // 目录树接口一次返回所有云服务的数据。
+  // 切换 ECS/EVS/OBS 时只从缓存里应用当前云服务的 Region/AZ/资源树，
+  // 使用 flush: 'sync' 确保 resetGeneralComputeFilter 读取到的是切换后的选项。
   watch(selectedPool, () => {
     applySelectedDirectoryTree();
-  });
+  }, { flush: 'sync' });
 }
 
 export function useDirectoryTree() {

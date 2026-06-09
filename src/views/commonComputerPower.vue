@@ -24,7 +24,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
 import BubbleChart from "@/components/BubbleChart.vue";
 import { useCommonComputerPower, computeWeightedAvg } from "./useCommonComputerPower";
@@ -115,14 +115,13 @@ const { chartXRange, chartYRange, chartYTicks } = useBubbleAxisRange(
 watch(
   backendFilters,
   (filters) => {
+    // backendFilters 为 null 时表示筛选选项还没加载完成。
+    // 等默认全选参数生成后再请求，避免首屏空筛选条件请求。
+    if (!filters) return;
     fetchData(filters);
   },
-  { deep: true }
+  { deep: true, immediate: true }
 );
-
-onMounted(() => {
-  fetchData(backendFilters.value);
-});
 
 defineExpose({ data: mappedData });
 </script>

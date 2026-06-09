@@ -14,7 +14,12 @@ import {
 export { tierFilter };
 
 export const filterValue = ref(null);
-export const backendFilters = ref(createEmptyBackendFilters());
+// null 表示后端筛选参数尚未就绪。
+// 通算页进入时，目录树接口会先返回云服务/Region/AZ/资源类型选项，
+// 随后这里才能生成“默认全选”的后端参数。
+// 如果初始值直接用空数组对象，气泡图和左侧卡片会先用空条件请求一次，
+// 等选项加载完成后再用全选条件请求一次，造成首屏重复请求。
+export const backendFilters = ref(null);
 export const filterConfig = ref(null);
 export const filterResetKey = ref(0);
 export const visibleTiers = ref([]);
@@ -67,6 +72,12 @@ export const filterOptions = computed(() => ({
   azNameList: azNameList.value.map((name) => createSubmitOption("azName", name)),
   resourceTree: cloudServerResourceTreeList.value,
 }));
+
+function isFilterOptionsReady(options) {
+  // resourceTree 来自目录树接口的一次性返回，是构造资源粒度默认全选项的基础。
+  // 等它有值后再生成 backendFilters，避免消费者拿到空筛选条件提前请求。
+  return (options.resourceTree ?? []).length > 0;
+}
 
 function createEmptyBackendFilters() {
   return {
@@ -326,6 +337,8 @@ function buildBackendFilterValue(value, options) {
 }
 
 export function onFilterChange(value) {
+  // 选项未就绪时忽略 UI 触发，统一等 filterOptions watch 生成默认全选参数。
+  if (!isFilterOptionsReady(filterOptions.value)) return;
   hasUserChangedFilter.value = true;
   filterValue.value = reconcileFilterValue(value, filterOptions.value);
   backendFilters.value = buildBackendFilterValue(filterValue.value, filterOptions.value);
@@ -333,6 +346,8 @@ export function onFilterChange(value) {
 }
 
 export function resetGeneralComputeFilter() {
+  // 资源池/时间切换会重置筛选；如果目录树选项还没准备好，不生成空参数。
+  if (!isFilterOptionsReady(filterOptions.value)) return;
   hasUserChangedFilter.value = false;
   filterValue.value = createDefaultFilterValue(filterOptions.value);
   backendFilters.value = buildBackendFilterValue(filterValue.value, filterOptions.value);
@@ -352,6 +367,11 @@ export function setVisibleTierFilter(config) {
 watch(
   filterOptions,
   (options, oldOptions) => {
+    // 首屏目录树加载前 filterOptions 会先计算出空数组。
+    // 这里直接返回，让 backendFilters 保持 null，所有请求监听都会跳过。
+    if (!isFilterOptionsReady(options)) {
+      return;
+    }
     let nextValue;
     if (!hasUserChangedFilter.value) {
       nextValue = createDefaultFilterValue(options);

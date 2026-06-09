@@ -76,6 +76,9 @@ const onClick = (name) => {
 watch(
   backendFilters,
   (filters) => {
+    // 左侧所有卡片和表格也共用同一份后端筛选参数。
+    // filters 为 null 时不请求，保证首屏只在“默认全选”生成后拉取一次。
+    if (!filters) return;
     fetchHomeCardData(filters);
     fetchResourcePoolData(filters);
     loadResourcePoolCustomerInfo(filters);
