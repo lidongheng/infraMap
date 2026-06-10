@@ -87,6 +87,7 @@ function createEmptyBackendFilters() {
     regionNameList: [],
     azNameList: [],
     resourceTypeList: [],
+    leftResourceTypeList: [],
   };
 }
 
@@ -435,6 +436,19 @@ function buildOneLevelCloudServerResourceTypeList(value, tree) {
     .map((cloudServerName) => ({ cloudServerName }));
 }
 
+function buildLeftResourceTypeList(value, tree) {
+  // 左侧汇总类接口需要拿到用户真实勾选的资源类型，不能复用气泡图“全选传空数组”的规则。
+  // BMS/DCC/DSS 只有云服务自身这一层，左侧不把它们放进 resourceTypeList。
+  if (!hasUserChangedFilter.value) {
+    return [];
+  }
+  return buildResourceTypeList(
+    value.resourceType,
+    tree,
+    resolvedFilterConfig.value.resourceType.submitMode
+  );
+}
+
 function buildBackendFilterValue(value, options) {
   const tree = options.resourceTree ?? [];
   const resourceTypeOptions = showResourceTypeFilter.value
@@ -443,6 +457,7 @@ function buildBackendFilterValue(value, options) {
   const isAllResourceGranularitySelected = isResourceGranularityAllSelected(value, tree, resourceTypeOptions);
   const shouldSubmitEmptyResourceTypes = shouldSubmitEmptyResourceTypeList(value, tree, resourceTypeOptions);
   const oneLevelResourceTypeList = buildOneLevelCloudServerResourceTypeList(value, tree);
+  const leftResourceTypeList = buildLeftResourceTypeList(value, tree);
   let resourceTypeList = [];
   if (showResourceTypeFilter.value) {
     // 资源粒度全选表示不按资源过滤；气泡图也需要传空数组，不能再展开 BMS/DCC/DSS。
@@ -468,6 +483,7 @@ function buildBackendFilterValue(value, options) {
       ? buildPartialSubmitValues(value.azNameList, options.azNameList ?? [], ["azName"])
       : [],
     resourceTypeList,
+    leftResourceTypeList,
   };
 }
 

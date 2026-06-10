@@ -176,7 +176,7 @@ function normalizeFilterParams(filters = {}) {
   return {
     regionNameList: toList(filters.regionNameList),
     azNameList: toList(filters.azNameList),
-    resourceTypeList: normalizeLeftResourceTypeList(filters.resourceTypeList),
+    resourceTypeList: normalizeLeftResourceTypeList(filters.leftResourceTypeList ?? filters.resourceTypeList),
     cloudServerName: typeof filters.cloudServerName === "string" ? filters.cloudServerName : "",
   };
 }
