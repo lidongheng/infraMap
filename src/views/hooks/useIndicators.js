@@ -157,6 +157,54 @@ export const homeCardData = reactive({
   },
 });
 
+function createUnavailableCardValue() {
+  return {
+    value: '--',
+    curValue: '--',
+    mom: '--',
+    compareValue: '--',
+    compareLastMonval: '--',
+    trends: [],
+  };
+}
+
+function setHomeCardDataUnavailable() {
+  [
+    homeCardData.recurringRevenue.commonComputing,
+    homeCardData.recurringRevenue.intelligentComputing,
+    homeCardData.recurringRevenue.externalCustomer,
+    homeCardData.recurringRevenue.internalCustomer,
+    homeCardData.cost.commonComputing,
+    homeCardData.cost.intelligentComputing,
+    homeCardData.cost.externalCustomer,
+    homeCardData.cost.internalCustomer,
+  ].forEach((item) => {
+    processingUnauthorizedData(item, '--');
+  });
+
+  homeCardData.eff.commonComputing = createUnavailableCardValue();
+  homeCardData.eff.intelligentComputing = createUnavailableCardValue();
+  homeCardData.eff.externalCustomer = createUnavailableCardValue();
+  homeCardData.eff.internalCustomer = createUnavailableCardValue();
+  homeCardData.operate.commonComputing = createUnavailableCardValue();
+  homeCardData.operate.intelligentComputing = createUnavailableCardValue();
+  homeCardData.operate.externalCustomer = createUnavailableCardValue();
+  homeCardData.operate.internalCustomer = createUnavailableCardValue();
+  homeCardData.eFlops = createUnavailableCardValue();
+}
+
+function hasUndevelopedCloudServerFilter(filters = {}) {
+  if (oneLevelCloudServerNames.has(filters.cloudServerName)) {
+    return true;
+  }
+  if (!Array.isArray(filters.resourceTypeList)) {
+    return false;
+  }
+  return filters.resourceTypeList.some((item) => {
+    return oneLevelCloudServerNames.has(item?.cloudServerName) && !item?.resourceType;
+  });
+}
+
 function normalizeFilterParams(filters = {}) {
   const toList = (value) => {
     if (Array.isArray(value)) return value;
@@ -195,6 +243,11 @@ function buildCommonComputeParams(currentStore, filters = {}) {
 
 export const fetchHomeCardData = (filters = {}) => {
   const currentStore = useCurrentDate();
+  // BMS/DCC/DSS 的卡片数据后端还未开发；命中这些筛选时不请求接口，页面展示 --。
+  if (hasUndevelopedCloudServerFilter(filters)) {
+    setHomeCardDataUnavailable();
+    return;
+  }
   const params = buildCommonComputeParams(currentStore, filters);
   getCardRecurringRevenueAPI(params).then(
     (res) => {

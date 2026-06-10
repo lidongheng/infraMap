@@ -334,8 +334,44 @@ function normalizeFilterParams(filters = {}) {
   };
 }
 
+function hasUndevelopedCloudServerFilter(filters = {}) {
+  if (oneLevelCloudServerNames.has(filters.cloudServerName)) {
+    return true;
+  }
+  if (!Array.isArray(filters.resourceTypeList)) {
+    return false;
+  }
+  return filters.resourceTypeList.some((item) => {
+    return oneLevelCloudServerNames.has(item?.cloudServerName) && !item?.resourceType;
+  });
+}
+
+function createUnavailableCustomerInfo() {
+  return {
+    externalServerNumTotal: '--',
+    internalServerNumTotal: '--',
+    summary: {
+      customerAlloactionTotal: '--',
+      externalAllocationTotal: '--',
+      hwRdSelfAllocationTotal: '--',
+      internalAllocationTotal: '--',
+      serverNumExternalTotal: '--',
+      serverNumHwRdSelfTotal: '--',
+      serverNumInternalTotal: '--',
+      serverNumTotal: '--',
+    },
+  };
+}
+
 export function loadResourcePoolCustomerInfo(filters = {}) {
   const currentStore = useCurrentDate();
+  if (hasUndevelopedCloudServerFilter(filters)) {
+    inforData.value = createUnavailableCustomerInfo();
+    return Promise.resolve({
+      status: 200,
+      data: inforData.value,
+    });
+  }
   const normalizedFilters = normalizeFilterParams(filters);
   const params = {
     cloudServerName: normalizedFilters.cloudServerName,
