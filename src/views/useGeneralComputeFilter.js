@@ -373,8 +373,13 @@ function isCurrentPoolResourceFullySelected(value, tree) {
 }
 
 function shouldSubmitEmptyResourceTypeList(value, tree, resourceTypeOptions) {
-  // 全部云服务维度下的全不选/全选，仍然表示不按资源粒度过滤。
-  if (isNoneOrAllSelected(value.resourceType, resourceTypeOptions)) {
+  // 资源类型全不选表示不按资源过滤；但资源类型全选不一定等于资源粒度全选，
+  // 因为 BMS/DCC/DSS 是单层云服务，需要同时判断云服务列是否也全选。
+  if ((value.resourceType?.length ?? 0) === 0) {
+    return true;
+  }
+
+  if (isResourceGranularityAllSelected(value, tree, resourceTypeOptions)) {
     return true;
   }
 
