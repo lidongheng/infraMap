@@ -4,10 +4,10 @@
       <span>通用Server</span><span>{{ toWan(homeCardData.eff.commonComputing.curValue) }}</span><span>万台</span>
     </p>
     <p>
-      <span>外部Customer</span><span>{{ toWan(inforData?.externalServerNumTotal) }}</span><span>万台</span>
+      <span>外部Customer</span><span>{{ toWan(filterInforData?.externalServerNumTotal) }}</span><span>万台</span>
     </p>
     <p>
-      <span>External Customer</span><span>{{ toWan(inforData?.internalServerNumTotal) }}</span><span>万台</span>
+      <span>External Customer</span><span>{{ toWan(filterInforData?.internalServerNumTotal) }}</span><span>万台</span>
     </p>
     <p>
       <span>盈</span><span>{{ toBillion(operateData?.value) }}</span><span>亿元</span>
@@ -55,7 +55,7 @@
 import { computed, watch } from 'vue';
 import { toWan, toBillion } from '@/utils';
 import { fetchHomeCardData, homeCardData } from './hooks/useIndicators';
-import { inforData, loadResourcePoolCustomerInfo } from './useDirectoryTree';
+import { filterInforData, loadResourcePoolCustomerInfo } from './useDirectoryTree';
 import { useResourcePool, selectedPool } from './ResourcesLifecycle';
 import { backendFilters, resetGeneralComputeFilter } from './useGeneralComputeFilter';
 

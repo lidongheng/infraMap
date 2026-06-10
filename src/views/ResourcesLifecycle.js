@@ -26,6 +26,18 @@ function normalizeLeftResourceTypeList(value) {
   return value;
 }
 
+function hasUndevelopedCloudServerFilter(filters = {}) {
+  if (oneLevelCloudServerNames.has(filters.cloudServerName)) {
+    return true;
+  }
+  if (!Array.isArray(filters.resourceTypeList)) {
+    return false;
+  }
+  return filters.resourceTypeList.some((item) => {
+    return oneLevelCloudServerNames.has(item?.cloudServerName) && !item?.resourceType;
+  });
+}
+
 function normalizeFilterParams(filters = {}) {
   const toList = (value) => {
     if (Array.isArray(value)) return value;
@@ -142,6 +154,13 @@ export const useResourcePool = () => {
     compareValue: '--',
   });
   const loadOperateData = (filters = {}) => {
+    if (hasUndevelopedCloudServerFilter(filters)) {
+      operateData.value = {
+        value: '--',
+        compareValue: '--',
+      };
+      return;
+    }
     getCardOperateAPI(buildCommonComputeParams(currentStore, filters)).then((res) => {
       if (res.status === 200) {
         operateData.value = res.data?.commonComputing?.[0]

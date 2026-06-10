@@ -13,6 +13,7 @@ export const resourceTypeList = ref([]);
 export const customerData = ref({ detailList: [] });
 export const tableDataSummary = ref({});
 export const inforData = ref({});
+export const filterInforData = ref({});
 
 export const directoryTreeList = ref([]);
 export const cloudServerResourceTreeList = ref([]);
@@ -366,10 +367,10 @@ function createUnavailableCustomerInfo() {
 export function loadResourcePoolCustomerInfo(filters = {}) {
   const currentStore = useCurrentDate();
   if (hasUndevelopedCloudServerFilter(filters)) {
-    inforData.value = createUnavailableCustomerInfo();
+    filterInforData.value = createUnavailableCustomerInfo();
     return Promise.resolve({
       status: 200,
-      data: inforData.value,
+      data: filterInforData.value,
     });
   }
   const normalizedFilters = normalizeFilterParams(filters);
@@ -382,7 +383,7 @@ export function loadResourcePoolCustomerInfo(filters = {}) {
     resourceTypeList: normalizedFilters.resourceTypeList,
   };
   return getResourcePoolCustomerInfoEfficiencyAPI(params).then((res) => {
-    inforData.value = res.data;
+    filterInforData.value = res.data;
     return res;
   });
 }
