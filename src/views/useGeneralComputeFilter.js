@@ -412,7 +412,8 @@ function buildBackendCloudServerName(value, tree) {
     return selectedCloudServerNames[0];
   }
 
-  return selectedPool.value;
+  // 云服务选中 0 个或 2 个及以上时，不把左侧 selectedPool 带给汇总类接口。
+  return "";
 }
 
 function buildOneLevelCloudServerResourceTypeList(value, tree) {
