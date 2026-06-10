@@ -326,6 +326,7 @@ export function loadResourcePoolCustomerInfo(filters = {}) {
   const currentStore = useCurrentDate();
   const normalizedFilters = normalizeFilterParams(filters);
   const params = {
+    cloudServerName: selectedPool.value,
     month: dayjs(currentStore.date).format("YYYYMM"),
     date: currentStore.date,
     regionNameList: normalizedFilters.regionNameList,

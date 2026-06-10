@@ -10,6 +10,7 @@ import {
   setBubbleTierFilter,
   tierFilter,
 } from "./useBubbleTierFilter";
+import { selectedPool } from "./ResourcesLifecycle";
 
 export { tierFilter };
 
@@ -276,6 +277,15 @@ function isNoneOrAllSelected(selectedValues, optionItems) {
   return selectedLength === 0 || selectedLength === optionLength;
 }
 
+function isSameSelection(selectedValues, optionItems) {
+  const selectedLength = selectedValues?.length ?? 0;
+  const optionLength = optionItems?.length ?? 0;
+  if (selectedLength !== optionLength) return false;
+  if (optionLength === 0) return false;
+  const optionValueSet = new Set(optionItems.map(getFilterOptionValue));
+  return (selectedValues ?? []).every((item) => optionValueSet.has(item));
+}
+
 function buildPartialSubmitValues(selectedValues, optionItems, keys) {
   // 后端约定：全不选和全选都表示“不按该维度过滤”，统一提交空数组。
   // 只有部分选择时，才把 UI 选中的项转换成后端需要的字段值。
@@ -335,11 +345,48 @@ function buildResourceTypeList(selectedValues, tree, submitMode) {
     .filter((item) => item.resourceType);
 }
 
+function getCloudServerName(item) {
+  return parseOptionObj(item)?.cloudServerName ?? "";
+}
+
+function findCurrentPoolCloudServer(tree) {
+  return (tree ?? []).find((item) => getCloudServerName(item) === selectedPool.value);
+}
+
+function isOnlyCurrentPoolSelected(value, tree) {
+  const currentPoolCloudServer = findCurrentPoolCloudServer(tree);
+  if (!currentPoolCloudServer) return false;
+  const selectedCloudServerValues = value.cloudServerType ?? [];
+  if (selectedCloudServerValues.length !== 1) return false;
+  return selectedCloudServerValues[0] === getFilterOptionValue(currentPoolCloudServer);
+}
+
+function isCurrentPoolResourceFullySelected(value, tree) {
+  const currentPoolCloudServer = findCurrentPoolCloudServer(tree);
+  if (!currentPoolCloudServer) return false;
+  const currentPoolResourceTypes = isResourceTypeOnlySubmit.value
+    ? flattenDirectResourceTypes([currentPoolCloudServer])
+    : flattenResourceTypes([currentPoolCloudServer]);
+  return isSameSelection(value.resourceType, currentPoolResourceTypes);
+}
+
+function shouldSubmitEmptyResourceTypeList(value, tree, resourceTypeOptions) {
+  // 全部云服务维度下的全不选/全选，仍然表示不按资源粒度过滤。
+  if (isNoneOrAllSelected(value.resourceType, resourceTypeOptions)) {
+    return true;
+  }
+
+  // 左侧已经选中了具体 selectedPool；此时资源粒度只勾选该云服务及其全部子项，
+  // 和“不按资源粒度继续收窄”含义一致，需要给后端传空数组。
+  return isOnlyCurrentPoolSelected(value, tree) && isCurrentPoolResourceFullySelected(value, tree);
+}
+
 function buildBackendFilterValue(value, options) {
   const tree = options.resourceTree ?? [];
   const resourceTypeOptions = showResourceTypeFilter.value
     ? flattenResourceTypes(tree)
     : [];
+  const shouldSubmitEmptyResourceTypes = shouldSubmitEmptyResourceTypeList(value, tree, resourceTypeOptions);
   // 未展示的筛选项提交空数组，避免隐藏项的旧选中值继续影响请求。
   return {
     regionNameList: showRegionFilter.value
@@ -348,7 +395,7 @@ function buildBackendFilterValue(value, options) {
     azNameList: showAzFilter.value
       ? buildPartialSubmitValues(value.azNameList, options.azNameList ?? [], ["azName"])
       : [],
-    resourceTypeList: showResourceTypeFilter.value && !isNoneOrAllSelected(value.resourceType, resourceTypeOptions)
+    resourceTypeList: showResourceTypeFilter.value && !shouldSubmitEmptyResourceTypes
       ? buildResourceTypeList(value.resourceType, tree, resolvedFilterConfig.value.resourceType.submitMode)
       : [],
   };

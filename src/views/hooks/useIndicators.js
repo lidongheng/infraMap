@@ -1,9 +1,9 @@
 import { useCurrentDate } from "../useCurrentDate";
+import { selectedPool } from "../ResourcesLifecycle";
 import { ref, computed, reactive, watch } from 'vue';
 import dayjs from "dayjs";
 import { processingUnauthorizedData } from '@/utils';
 import { useSetInterval } from './useSetInterval';
-import { selectedPool } from "../ResourcesLifecycle";
 import {
   getCardCostAPI,
   getCardIndicatorAPI,
@@ -172,6 +172,7 @@ function normalizeFilterParams(filters = {}) {
 function buildCommonComputeParams(currentStore, filters = {}) {
   const normalizedFilters = normalizeFilterParams(filters);
   return {
+    cloudServerName: selectedPool.value,
     month: dayjs(currentStore.date).format("YYYYMM"),
     date: currentStore.date,
     regionNameList: normalizedFilters.regionNameList,
