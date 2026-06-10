@@ -10,9 +10,21 @@ import {
 export const selectedPool = ref('ECS');
 
 const isNull = (val) => ['null', ''].includes(String(val));
+const oneLevelCloudServerNames = new Set(["BMS", "DCC", "DSS"]);
 
 const hasPermission = (PromiseSettledResult) =>
   PromiseSettledResult.status === 'fulfilled' && PromiseSettledResult.value.status === 200;
+
+function normalizeLeftResourceTypeList(value) {
+  if (!Array.isArray(value)) return [];
+  // 左侧汇总类接口单选 BMS/DCC/DSS 时只用 cloudServerName 表达云服务，resourceTypeList 传空数组。
+  if (value.length !== 1) return value;
+  const [item] = value;
+  if (oneLevelCloudServerNames.has(item?.cloudServerName) && !item?.resourceType) {
+    return [];
+  }
+  return value;
+}
 
 function normalizeFilterParams(filters = {}) {
   const toList = (value) => {
@@ -23,14 +35,15 @@ function normalizeFilterParams(filters = {}) {
   return {
     regionNameList: toList(filters.regionNameList),
     azNameList: toList(filters.azNameList),
-    resourceTypeList: Array.isArray(filters.resourceTypeList) ? filters.resourceTypeList : [],
+    resourceTypeList: normalizeLeftResourceTypeList(filters.resourceTypeList),
+    cloudServerName: typeof filters.cloudServerName === "string" ? filters.cloudServerName : "",
   };
 }
 
 function buildCommonComputeParams(currentStore, filters = {}) {
   const normalizedFilters = normalizeFilterParams(filters);
   return {
-    cloudServerName: selectedPool.value,
+    cloudServerName: normalizedFilters.cloudServerName,
     month: dayjs(currentStore.date).format("YYYYMM"),
     date: currentStore.date,
     regionNameList: normalizedFilters.regionNameList,

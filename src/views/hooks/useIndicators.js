@@ -1,5 +1,4 @@
 import { useCurrentDate } from "../useCurrentDate";
-import { selectedPool } from "../ResourcesLifecycle";
 import { ref, computed, reactive, watch } from 'vue';
 import dayjs from "dayjs";
 import { processingUnauthorizedData } from '@/utils';
@@ -11,6 +10,8 @@ import {
   getTotalCostAPI,
   getTotalTurnoverAPI,
 } from '@/api/infraMock';
+
+const oneLevelCloudServerNames = new Set(["BMS", "DCC", "DSS"]);
 
 export const homoIndicatiorsData = reactive({
   totalCost: {
@@ -162,17 +163,28 @@ function normalizeFilterParams(filters = {}) {
     if (typeof value === "string" && value) return value.split(",").filter(Boolean);
     return [];
   };
+  const normalizeLeftResourceTypeList = (value) => {
+    if (!Array.isArray(value)) return [];
+    // 左侧卡片接口单选 BMS/DCC/DSS 时只用 cloudServerName 表达云服务，resourceTypeList 传空数组。
+    if (value.length !== 1) return value;
+    const [item] = value;
+    if (oneLevelCloudServerNames.has(item?.cloudServerName) && !item?.resourceType) {
+      return [];
+    }
+    return value;
+  };
   return {
     regionNameList: toList(filters.regionNameList),
     azNameList: toList(filters.azNameList),
-    resourceTypeList: Array.isArray(filters.resourceTypeList) ? filters.resourceTypeList : [],
+    resourceTypeList: normalizeLeftResourceTypeList(filters.resourceTypeList),
+    cloudServerName: typeof filters.cloudServerName === "string" ? filters.cloudServerName : "",
   };
 }
 
 function buildCommonComputeParams(currentStore, filters = {}) {
   const normalizedFilters = normalizeFilterParams(filters);
   return {
-    cloudServerName: selectedPool.value,
+    cloudServerName: normalizedFilters.cloudServerName,
     month: dayjs(currentStore.date).format("YYYYMM"),
     date: currentStore.date,
     regionNameList: normalizedFilters.regionNameList,

@@ -22,6 +22,7 @@ export const directoryTreeLoading = ref(false);
 let directoryTreeRequestId = 0;
 let resourcePoolCustomerStarted = false;
 let directoryTreeDataCache = [];
+const oneLevelCloudServerNames = new Set(["BMS", "DCC", "DSS"]);
 
 function createResourceTypes(prefix, sizes) {
   return sizes.map((size) => ({
@@ -315,10 +316,21 @@ function normalizeFilterParams(filters = {}) {
     if (typeof value === "string" && value) return value.split(",").filter(Boolean);
     return [];
   };
+  const normalizeLeftResourceTypeList = (value) => {
+    if (!Array.isArray(value)) return [];
+    // 左侧 Customer Info 接口单选 BMS/DCC/DSS 时只用 cloudServerName 表达云服务，resourceTypeList 传空数组。
+    if (value.length !== 1) return value;
+    const [item] = value;
+    if (oneLevelCloudServerNames.has(item?.cloudServerName) && !item?.resourceType) {
+      return [];
+    }
+    return value;
+  };
   return {
     regionNameList: toList(filters.regionNameList),
     azNameList: toList(filters.azNameList),
-    resourceTypeList: Array.isArray(filters.resourceTypeList) ? filters.resourceTypeList : [],
+    resourceTypeList: normalizeLeftResourceTypeList(filters.resourceTypeList),
+    cloudServerName: typeof filters.cloudServerName === "string" ? filters.cloudServerName : "",
   };
 }
 
@@ -326,7 +338,7 @@ export function loadResourcePoolCustomerInfo(filters = {}) {
   const currentStore = useCurrentDate();
   const normalizedFilters = normalizeFilterParams(filters);
   const params = {
-    cloudServerName: selectedPool.value,
+    cloudServerName: normalizedFilters.cloudServerName,
     month: dayjs(currentStore.date).format("YYYYMM"),
     date: currentStore.date,
     regionNameList: normalizedFilters.regionNameList,

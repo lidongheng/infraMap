@@ -25,6 +25,7 @@ export const filterConfig = ref(null);
 export const filterResetKey = ref(0);
 export const visibleTiers = ref([]);
 const hasUserChangedFilter = ref(false);
+const emptyResourceTypeCloudServerNames = new Set(["BMS", "DCC", "DSS"]);
 
 const resolvedFilterConfig = computed(() => ({
   region: {
@@ -82,6 +83,7 @@ function isFilterOptionsReady(options) {
 
 function createEmptyBackendFilters() {
   return {
+    cloudServerName: "",
     regionNameList: [],
     azNameList: [],
     resourceTypeList: [],
@@ -381,23 +383,85 @@ function shouldSubmitEmptyResourceTypeList(value, tree, resourceTypeOptions) {
   return isOnlyCurrentPoolSelected(value, tree) && isCurrentPoolResourceFullySelected(value, tree);
 }
 
+function getCloudServerOptions(tree) {
+  if (isResourceTypeOnlySubmit.value) {
+    return flattenResourceTypeOnlyCloudServers(tree);
+  }
+  return tree ?? [];
+}
+
+function isResourceGranularityAllSelected(value, tree, resourceTypeOptions) {
+  const cloudServerOptions = getCloudServerOptions(tree);
+  return isSameSelection(value.cloudServerType, cloudServerOptions)
+    && isSameSelection(value.resourceType, resourceTypeOptions);
+}
+
+function buildBackendCloudServerName(value, tree) {
+  // 首屏默认全选不是用户主动筛选，左侧相关接口按后端约定传空字符串。
+  if (!hasUserChangedFilter.value) {
+    return "";
+  }
+
+  const selectedCloudServerValues = new Set(value.cloudServerType ?? []);
+  const selectedCloudServerNames = (tree ?? [])
+    .filter((item) => selectedCloudServerValues.has(getFilterOptionValue(item)))
+    .map(getCloudServerName)
+    .filter(Boolean);
+
+  if (selectedCloudServerNames.length === 1) {
+    return selectedCloudServerNames[0];
+  }
+
+  return selectedPool.value;
+}
+
+function buildOneLevelCloudServerResourceTypeList(value, tree) {
+  // BMS/DCC/DSS 没有 resourceType 子层，用户主动选择后用 cloudServerName 对象表达资源粒度。
+  if (!hasUserChangedFilter.value) {
+    return [];
+  }
+
+  const selectedCloudServerValues = new Set(value.cloudServerType ?? []);
+  return (tree ?? [])
+    .filter((item) => selectedCloudServerValues.has(getFilterOptionValue(item)))
+    .map(getCloudServerName)
+    .filter((cloudServerName) => emptyResourceTypeCloudServerNames.has(cloudServerName))
+    .map((cloudServerName) => ({ cloudServerName }));
+}
+
 function buildBackendFilterValue(value, options) {
   const tree = options.resourceTree ?? [];
   const resourceTypeOptions = showResourceTypeFilter.value
     ? flattenResourceTypes(tree)
     : [];
+  const isAllResourceGranularitySelected = isResourceGranularityAllSelected(value, tree, resourceTypeOptions);
   const shouldSubmitEmptyResourceTypes = shouldSubmitEmptyResourceTypeList(value, tree, resourceTypeOptions);
+  const oneLevelResourceTypeList = buildOneLevelCloudServerResourceTypeList(value, tree);
+  let resourceTypeList = [];
+  if (showResourceTypeFilter.value) {
+    // 资源粒度全选表示不按资源过滤；气泡图也需要传空数组，不能再展开 BMS/DCC/DSS。
+    if (isAllResourceGranularitySelected) {
+      resourceTypeList = [];
+    } else if (oneLevelResourceTypeList.length > 0) {
+      resourceTypeList = oneLevelResourceTypeList;
+    } else if (!shouldSubmitEmptyResourceTypes) {
+      resourceTypeList = buildResourceTypeList(
+        value.resourceType,
+        tree,
+        resolvedFilterConfig.value.resourceType.submitMode
+      );
+    }
+  }
   // 未展示的筛选项提交空数组，避免隐藏项的旧选中值继续影响请求。
   return {
+    cloudServerName: buildBackendCloudServerName(value, tree),
     regionNameList: showRegionFilter.value
       ? buildPartialSubmitValues(value.regionNameList, options.regionNameList ?? [], ["regionName"])
       : [],
     azNameList: showAzFilter.value
       ? buildPartialSubmitValues(value.azNameList, options.azNameList ?? [], ["azName"])
       : [],
-    resourceTypeList: showResourceTypeFilter.value && !shouldSubmitEmptyResourceTypes
-      ? buildResourceTypeList(value.resourceType, tree, resolvedFilterConfig.value.resourceType.submitMode)
-      : [],
+    resourceTypeList,
   };
 }
 
