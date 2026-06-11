@@ -264,7 +264,9 @@ const tableRadio = ref('chart');
 }
 
 .container {
-  width: 1872px;
+  width: 100%;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   border-radius: 16px;
   background-color: rgba(221, 227, 246, 0.4);
   box-shadow: 0 4px 4px 0 rgba(33, 48, 92, 0.2);
@@ -274,6 +276,8 @@ const tableRadio = ref('chart');
   justify-content: space-between;
 
   .header {
+    width: 100%;
+    min-width: 0;
     column-gap: 8px;
     .title {
       font-size: 22px;
@@ -344,6 +348,7 @@ const tableRadio = ref('chart');
       .trend {
         flex: 1;
         min-height: 0;
+        min-width: 0;
         padding: 18px 20px;
         border-radius: 14px;
         background: rgba(246, 248, 252, 0.9);
@@ -364,6 +369,7 @@ const tableRadio = ref('chart');
 
       .ai-computer-power {
         flex-shrink: 0;
+        min-width: 0;
       }
 
       .trend-header {
@@ -377,12 +383,15 @@ const tableRadio = ref('chart');
       }
 
       .trend-chart {
+        width: 100%;
+        min-width: 0;
         height: 380px;
       }
 
       .ai-table {
         flex: 1;
         min-height: 460px;
+        min-width: 0;
         padding: 24px;
         border-radius: 14px;
         background: rgba(246, 248, 252, 0.9);
