@@ -1,7 +1,7 @@
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { applyBubbleConfig, AI_SIZE_TIERS } from "./commonComputerPowerConfig";
-import { selectedPool } from "./useChartOption";
+import { selectedPool } from "./ResourcesLifecycle";
 import { useCurrentDate } from "./useCurrentDate";
 
 function keepEnglishOnly(str) {
