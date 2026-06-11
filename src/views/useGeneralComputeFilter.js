@@ -402,6 +402,21 @@ function isResourceGranularityAllSelected(value, tree, resourceTypeOptions) {
     && isSameSelection(value.resourceType, resourceTypeOptions);
 }
 
+function isFilterGroupAllSelected(value, optionItems) {
+  if ((optionItems ?? []).length === 0) {
+    return true;
+  }
+  return isSameSelection(value, optionItems);
+}
+
+function isRangeGranularityAllSelected(value, options) {
+  const regionAllSelected = !showRegionFilter.value
+    || isFilterGroupAllSelected(value.regionNameList, options.regionNameList ?? []);
+  const azAllSelected = !showAzFilter.value
+    || isFilterGroupAllSelected(value.azNameList, options.azNameList ?? []);
+  return regionAllSelected && azAllSelected;
+}
+
 function buildBackendCloudServerName(value, tree) {
   // 首屏默认全选不是用户主动筛选，左侧相关接口按后端约定传空字符串。
   if (!hasUserChangedFilter.value) {
@@ -458,6 +473,10 @@ function buildBackendFilterValue(value, options) {
   const shouldSubmitEmptyResourceTypes = shouldSubmitEmptyResourceTypeList(value, tree, resourceTypeOptions);
   const oneLevelResourceTypeList = buildOneLevelCloudServerResourceTypeList(value, tree);
   const leftResourceTypeList = buildLeftResourceTypeList(value, tree);
+  // 用户手动把范围粒度和资源粒度都恢复成全选时，参数语义必须和首屏默认全选一致。
+  if (isRangeGranularityAllSelected(value, options) && isAllResourceGranularitySelected) {
+    return createEmptyBackendFilters();
+  }
   let resourceTypeList = [];
   if (showResourceTypeFilter.value) {
     // 资源粒度全选表示不按资源过滤；气泡图也需要传空数组，不能再展开 BMS/DCC/DSS。
