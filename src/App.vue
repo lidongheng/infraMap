@@ -17,4 +17,8 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn';
   max-width: 100%;
   overflow-x: hidden;
 }
+
+:global(body) {
+  margin: 0;
+}
 </style>

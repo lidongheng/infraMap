@@ -9,28 +9,49 @@ import aiComputeView from '../views/aiComputeView.vue'
 import lifecycleTrend from '../views/lifecycleTrend.vue'
 import saleHome from '../views/saleView/saleHome/index.vue'
 import RoleSelect from '../views/RoleSelect.vue'
+import GlobalLayout from '@/components/home/GlobalLayout.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'roleSelect',
-    component: RoleSelect
+    name: '主页',
+    component: GlobalLayout,
+    redirect: '/roleSelect',
+    children: [
+      {
+        path: '/roleSelect',
+        name: 'roleSelect',
+        component: RoleSelect
+      },
+      {
+        path: '/costOperation',
+        name: 'home',
+        component: Index
+      },
+      {
+        path: '/generalCompute',
+        name: 'generalCompute',
+        component: generalComputeView
+      },
+      {
+        path: '/aiCompute',
+        name: 'aiCompute',
+        component: aiComputeView
+      },
+      {
+        path: '/saleHome',
+        component: 'saleHome',
+        component: saleHome,
+      }
+    ]
   },
-  {
-    path: '/cxoHome',
-    name: 'home',
-    component: Index
-  },
+  
   {
     path: '/commonComputerPower',
     name: 'commonComputerPower',
     component: commonComputerPower
   },
-  {
-    path: '/generalCompute',
-    name: 'generalCompute',
-    component: generalComputeView
-  },
+  
   {
     path: '/PLAnalysis',
     name: 'PLAnalysis',
@@ -61,11 +82,7 @@ const routes = [
     name: 'profitLossTrend',
     component: profitLossTrendPage
   },
-  {
-    path: '/aiCompute',
-    name: 'aiCompute',
-    component: aiComputeView
-  },
+  
   {
     path: '/lifecycleTrend',
     name: 'lifecycleTrend',
@@ -102,11 +119,6 @@ const routes = [
     component: () => import('../components/ExampleUsage.vue'),
     meta: { requiresTab: true, title: '项目管理' }
   },
-  {
-    path: '/saleHome',
-    component: 'saleHome',
-    component: saleHome,
-  }
 ]
 
 const router = createRouter({

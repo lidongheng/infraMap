@@ -40,7 +40,7 @@ const roles = [
 
 function handleSelect(role) {
   // CXO 进入经营视角，其他角色进入销售视角。
-  const targetPath = role === 'cxo' ? '/cxoHome' : '/saleHome'
+  const targetPath = role === 'cxo' ? '/costOperation' : '/saleHome'
   router.push(targetPath)
 }
 </script>
