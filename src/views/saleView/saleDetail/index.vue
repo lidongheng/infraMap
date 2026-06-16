@@ -7,28 +7,17 @@
         <LeftOverview v-model:active="active" />
       </div>
 
-      <div class="right">
-        <div class="overview-cards">
-          <div
-            v-for="item in overviewCardList"
-            :key="item"
-            class="overview-card"
-          >
-            <component
-              :is="informationComponent"
-              v-if="item === 1 && informationComponent"
-            />
-          </div>
-        </div>
-
-        <div class="table-card">
-          <div class="tree-card">
-            <el-tree :data="treeData" />
-          </div>
-          <div class="table-content">
-            <el-table :data="tableData" />
-          </div>
-        </div>
+      <div class="right" v-if="active === 'ECS'">
+        <ECSInformation></ECSInformation>
+        <ECSTable :active="active"></ECSTable>
+      </div>
+      <div class="right" v-if="active === 'OBS'">
+        <OBSInformation></OBSInformation>
+        <OBSTable :active="active"></OBSTable>
+      </div>
+      <div class="right" v-if="active === 'XPU'">
+        <XPUInformation></XPUInformation>
+        <OBSTable :active="active"></OBSTable>
       </div>
     </div>
   </div>
@@ -39,7 +28,9 @@ import { ref, computed, watch } from 'vue';
 import CommonTitle from "@/components/home/CommonTitle.vue";
 import LeftOverview from './LeftOverview.vue';
 import ECSInformation from './ECSInformation.vue';
+import ECSTable from './ECSTable.vue';
 import OBSInformation from './OBSInformation.vue';
+import OBSTable from './OBSTable.vue';
 import XPUInformation from './XPUInformation.vue';
 import { useRoute } from 'vue-router';
 
@@ -68,7 +59,7 @@ watch(
 
 <style lang="less" scoped>
 .sale-detail-layout {
-  height: calc(100vh - 140px);
+  min-height: calc(100vh - 140px);
   display: flex;
   gap: 16px;
   margin-top: 12px;
@@ -84,7 +75,6 @@ watch(
 .right {
   flex: 1;
   min-width: 0;
-  min-height: 0;
   display: grid;
   grid-template-rows: minmax(120px, 1fr) minmax(0, 3fr);
   gap: 16px;
@@ -134,9 +124,5 @@ watch(
   min-height: 0;
   border: 1px solid #e8ecf1;
   overflow: auto;
-}
-
-:deep(.table-content .el-table) {
-  height: 100%;
 }
 </style>
