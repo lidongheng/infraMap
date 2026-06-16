@@ -67,6 +67,8 @@ export const ROUTE_CONFIG = {
   // 特殊路由配置（不需要tab参数的路由）
   specialRoutes: [
     '/',
+    '/cxoHome',
+    '/saleHome',
     '/login',
     '/register',
     '/404',
@@ -76,7 +78,7 @@ export const ROUTE_CONFIG = {
 
   // 路由别名配置
   routeAliases: {
-    '/home': '/',
+    '/home': '/cxoHome',
     '/main': '/dashboard?tab=overview'
   }
 }

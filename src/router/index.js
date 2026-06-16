@@ -7,10 +7,17 @@ import { ROUTE_CONFIG, checkRouteRedirect, getRouteConfig } from '../config/rout
 import profitLossTrendPage from '../views/profitLossTrendPage.vue'
 import aiComputeView from '../views/aiComputeView.vue'
 import lifecycleTrend from '../views/lifecycleTrend.vue'
+import saleHome from '../views/saleView/saleHome/index.vue'
+import RoleSelect from '../views/RoleSelect.vue'
 
 const routes = [
   {
     path: '/',
+    name: 'roleSelect',
+    component: RoleSelect
+  },
+  {
+    path: '/cxoHome',
     name: 'home',
     component: Index
   },
@@ -94,6 +101,11 @@ const routes = [
     name: 'project',
     component: () => import('../components/ExampleUsage.vue'),
     meta: { requiresTab: true, title: '项目管理' }
+  },
+  {
+    path: '/saleHome',
+    component: 'saleHome',
+    component: saleHome,
   }
 ]
 
