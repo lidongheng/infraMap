@@ -1,7 +1,137 @@
 <template>
-  <div class="filter-bar" :class="{ 'is-loading': loading }">
+  <div
+    v-if="hasCustomFilters"
+    class="filter-bar custom-filter-bar"
+    :class="{ 'is-loading': loading }"
+  >
+    <div
+      v-for="filter in customFilters"
+      :key="filter.key"
+      class="filter-item"
+    >
+      <span class="filter-label">{{ filter.label }}</span>
+      <el-popover
+        :visible="customVisible[filter.key]"
+        @update:visible="visible => setCustomVisible(filter, visible)"
+        placement="bottom-start"
+        :trigger="loading ? 'manual' : 'click'"
+        width="fit-content"
+        :show-arrow="false"
+        :popper-class="getCustomPopperClass(filter)"
+      >
+        <template #reference>
+          <button class="select-trigger resource-trigger" type="button" :disabled="loading">
+            <span>{{ getCustomSummary(filter) }}</span>
+            <el-icon><ArrowDown /></el-icon>
+          </button>
+        </template>
+        <div
+          v-if="filter.type === 'list'"
+          class="dropdown-panel custom-list-panel"
+        >
+          <div class="option-list">
+            <label class="option-row checked-row">
+              <el-checkbox
+                :model-value="isAllSelected(getCustomValue(filter.valueKey), getCustomRootOptions(filter))"
+                :indeterminate="isIndeterminate(getCustomValue(filter.valueKey), getCustomRootOptions(filter))"
+                @change="checked => toggleCustomAll(filter, filter.valueKey, getCustomRootOptions(filter), checked)"
+              />
+              <span>全部</span>
+            </label>
+            <el-checkbox-group
+              :model-value="getCustomValue(filter.valueKey)"
+              class="option-group"
+              @update:model-value="value => setCustomValue(filter, filter.valueKey, value)"
+            >
+              <label
+                v-for="item in getCustomRootOptions(filter)"
+                :key="item.value"
+                class="option-row"
+              >
+                <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+              </label>
+            </el-checkbox-group>
+          </div>
+        </div>
+        <div
+          v-else
+          class="dropdown-panel custom-cascade-panel"
+        >
+          <div v-if="filter.searchable" class="search-box custom-search">
+            <el-icon><Search /></el-icon>
+            <input
+              :value="customKeyword[filter.key]"
+              placeholder="请输入关键字"
+              @input="event => setCustomKeyword(filter.key, event.target.value)"
+            />
+          </div>
+          <div class="custom-columns">
+            <div class="custom-column">
+              <div class="column-title">{{ filter.columns[0].title }}</div>
+              <div class="resource-scroll">
+                <label class="resource-row checked-row">
+                  <el-checkbox
+                    :model-value="isAllSelected(getCustomValue(filter.parentValueKey), getCustomRootOptions(filter))"
+                    :indeterminate="isIndeterminate(getCustomValue(filter.parentValueKey), getCustomRootOptions(filter))"
+                    @change="checked => toggleCustomParentAll(filter, checked)"
+                  />
+                  <span>全部</span>
+                  <el-icon><ArrowRight /></el-icon>
+                </label>
+                <el-checkbox-group
+                  :model-value="getCustomValue(filter.parentValueKey)"
+                  @update:model-value="value => setCustomParentValue(filter, value)"
+                >
+                  <label
+                    v-for="item in getCustomRootOptions(filter)"
+                    :key="item.value"
+                    :class="['resource-row', { active: customActive[filter.key] === item.value }]"
+                    @mouseenter="setCustomActive(filter.key, item.value)"
+                  >
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+                    <el-icon><ArrowRight /></el-icon>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
+            <div class="custom-column">
+              <div class="column-title">{{ filter.columns[1].title }}</div>
+              <div class="resource-scroll">
+                <label class="resource-row checked-row">
+                  <el-checkbox
+                    :model-value="isAllSelected(getCustomValue(filter.valueKey), getCustomLeafOptions(filter))"
+                    :indeterminate="isIndeterminate(getCustomValue(filter.valueKey), getCustomLeafOptions(filter))"
+                    @change="checked => toggleCustomAll(filter, filter.valueKey, getCustomLeafOptions(filter), checked)"
+                  />
+                  <span>全部</span>
+                </label>
+                <el-checkbox-group
+                  :model-value="getCustomValue(filter.valueKey)"
+                  @update:model-value="value => setCustomValue(filter, filter.valueKey, value)"
+                >
+                  <label
+                    v-for="item in getCustomLeafOptions(filter)"
+                    :key="item.value"
+                    class="resource-row"
+                  >
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
+          </div>
+          <div v-if="filter.confirmable" class="panel-actions">
+            <button class="plain-btn" type="button" @click="cancelCustomFilter(filter)">取消</button>
+            <button class="primary-btn" type="button" @click="confirmCustomFilter(filter)">确定</button>
+          </div>
+        </div>
+      </el-popover>
+    </div>
+  </div>
+
+  <div v-else class="filter-bar" :class="{ 'is-loading': loading }">
     <div v-if="showRangeFilter" class="filter-item">
-      <span class="filter-label">范围粒度</span>
+      <span class="filter-label">{{ filterLabels.range }}</span>
       <el-popover
         v-model:visible="rangeVisible"
         placement="bottom-start"
@@ -26,7 +156,7 @@
           </div>
           <div class="range-columns" :class="{ 'range-columns--single': !showRegionFilter || !showAzFilter }">
             <div v-if="showRegionFilter" class="range-column">
-              <div class="column-title">Region</div>
+              <div class="column-title">{{ regionColumnLabel }}</div>
               <div class="option-list">
                 <label class="option-row checked-row">
                   <el-checkbox
@@ -51,7 +181,7 @@
             </div>
 
             <div v-if="showAzFilter" class="range-column">
-              <div class="column-title">AZ</div>
+              <div class="column-title">{{ azColumnLabel }}</div>
               <div class="option-list">
                 <label class="option-row checked-row">
                   <el-checkbox
@@ -84,7 +214,7 @@
     </div>
 
     <div v-if="showResourceTypeFilter" class="filter-item">
-      <span class="filter-label">资源粒度</span>
+      <span class="filter-label">{{ filterLabels.resourceType }}</span>
       <el-popover
         v-model:visible="resourceVisible"
         placement="bottom-start"
@@ -314,6 +444,7 @@ const props = defineProps({
   showRegionFilter: { type: Boolean, default: true },
   showAzFilter: { type: Boolean, default: true },
   filterConfig: { type: Object, default: null },
+  labels: { type: Object, default: null },
   loading: { type: Boolean, default: false },
 });
 
@@ -322,9 +453,30 @@ const emit = defineEmits(['update:modelValue', 'change']);
 const rangeVisible = ref(false);
 const resourceVisible = ref(false);
 const regionKeyword = ref('');
+const customVisible = ref({});
+const customKeyword = ref({});
+const customActive = ref({});
+const customValueMap = ref({});
+const customSnapshotMap = ref({});
 
 const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.regionNameList)));
 const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azNameList)));
+const rangeFilterConfig = computed(() => getFilterConfigByKey('range'));
+const resourceTypeFilterConfig = computed(() => getFilterConfigByKey('resourceType'));
+const rangeColumns = computed(() => rangeFilterConfig.value?.columns ?? []);
+const regionColumnConfig = computed(() => rangeColumns.value[0] ?? {});
+const azColumnConfig = computed(() => rangeColumns.value[1] ?? {});
+const filterLabels = computed(() => ({
+  range: rangeFilterConfig.value?.label ?? '范围粒度',
+  resourceType: resourceTypeFilterConfig.value?.label ?? '资源粒度',
+  region: 'Region',
+  resourceGeneration: '资源代数',
+  ...(props.labels ?? {}),
+}));
+const customFilters = computed(() =>
+  getConfiguredFilters().filter(filter => ['list', 'cascade'].includes(filter.type))
+);
+const hasCustomFilters = computed(() => customFilters.value.length > 0);
 
 // FilterDropdowns 只关心展示和交互：哪些框显示、资源类型用树还是单列、是否需要确定按钮。
 // 后端字段形态由通算筛选 composable 统一转换，避免 UI 组件夹带资源池判断。
@@ -332,25 +484,27 @@ const resolvedFilterConfig = computed(() => ({
   region: {
     visible: props.showRegionFilter,
     searchable: true,
-    ...(props.filterConfig?.region ?? {}),
+    ...(regionColumnConfig.value ?? {}),
   },
   az: {
     visible: props.showAzFilter,
     searchable: false,
-    ...(props.filterConfig?.az ?? {}),
+    ...(azColumnConfig.value ?? {}),
   },
   resourceType: {
     visible: true,
     variant: "tree",
     submitMode: "tree",
     confirmable: true,
-    ...(props.filterConfig?.resourceType ?? {}),
+    ...(resourceTypeFilterConfig.value ?? props.filterConfig?.resourceType ?? {}),
   },
 }));
 const showRegionFilter = computed(() => resolvedFilterConfig.value.region.visible);
 const showAzFilter = computed(() => resolvedFilterConfig.value.az.visible);
 const showRangeFilter = computed(() => showRegionFilter.value || showAzFilter.value);
 const showRegionSearch = computed(() => resolvedFilterConfig.value.region.searchable);
+const regionColumnLabel = computed(() => resolvedFilterConfig.value.region.label ?? 'Region');
+const azColumnLabel = computed(() => resolvedFilterConfig.value.az.label ?? 'AZ');
 const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
 const isResourceListFilter = computed(() => resolvedFilterConfig.value.resourceType.variant === "list");
 const isResourceConfirmable = computed(() => resolvedFilterConfig.value.resourceType.confirmable);
@@ -476,6 +630,7 @@ const rangeSummary = computed(() => {
 });
 
 watch(resourceSeriesValue, (nextValue, oldValue) => {
+  if (hasCustomFilters.value) return;
   if (syncingFromModel) return;
   if (syncingResourceCascade) return;
   syncingResourceCascade = true;
@@ -484,6 +639,7 @@ watch(resourceSeriesValue, (nextValue, oldValue) => {
 }, { flush: 'sync' });
 
 watch(resourceCloudServerValue, (nextValue, oldValue) => {
+  if (hasCustomFilters.value) return;
   if (syncingFromModel) return;
   if (syncingResourceCascade) return;
   syncingResourceCascade = true;
@@ -492,6 +648,7 @@ watch(resourceCloudServerValue, (nextValue, oldValue) => {
 }, { flush: 'sync' });
 
 watch(resourceFamilyValue, (nextValue, oldValue) => {
+  if (hasCustomFilters.value) return;
   if (syncingFromModel) return;
   if (syncingResourceCascade) return;
   syncingResourceCascade = true;
@@ -500,6 +657,7 @@ watch(resourceFamilyValue, (nextValue, oldValue) => {
 }, { flush: 'sync' });
 
 watch(resourceVerValue, (nextValue, oldValue) => {
+  if (hasCustomFilters.value) return;
   if (syncingFromModel) return;
   if (syncingResourceCascade) return;
   syncingResourceCascade = true;
@@ -509,6 +667,10 @@ watch(resourceVerValue, (nextValue, oldValue) => {
 
 watch(resourceTypeValue, () => {
   if (syncingFromModel) return;
+  if (hasCustomFilters.value) {
+    emitCurrentValue();
+    return;
+  }
   // list 型资源类型保持即时提交；tree 型仍等用户点击“确定”。
   if (!isResourceListFilter.value) return;
   emitCurrentValue();
@@ -516,6 +678,10 @@ watch(resourceTypeValue, () => {
 
 watch(regionValue, () => {
   if (syncingFromModel) return;
+  if (hasCustomFilters.value) {
+    emitCurrentValue();
+    return;
+  }
   syncingLocationCascade = true;
   azValue.value = filteredAzOptions.value.map(item => item.value);
   syncingLocationCascade = false;
@@ -524,6 +690,7 @@ watch(regionValue, () => {
 }, { deep: true, flush: 'sync' });
 
 watch(azValue, () => {
+  if (hasCustomFilters.value) return;
   if (syncingFromModel) return;
   if (syncingLocationCascade) return;
   if (rangeVisible.value) return;
@@ -531,6 +698,7 @@ watch(azValue, () => {
 }, { deep: true, flush: 'sync' });
 
 watch(rangeVisible, (visible) => {
+  if (hasCustomFilters.value) return;
   if (loading.value) {
     rangeVisible.value = false;
     return;
@@ -546,6 +714,7 @@ watch(rangeVisible, (visible) => {
 });
 
 watch(resourceVisible, (visible) => {
+  if (hasCustomFilters.value) return;
   if (loading.value) {
     resourceVisible.value = false;
     return;
@@ -583,6 +752,7 @@ watch(loading, (value) => {
   if (!value) return;
   rangeVisible.value = false;
   resourceVisible.value = false;
+  customVisible.value = {};
 });
 
 function normalizeOptions(options) {
@@ -631,7 +801,24 @@ function toOptionMeta(item) {
   };
 }
 
+function getConfiguredFilters() {
+  if (Array.isArray(props.filterConfig)) {
+    return props.filterConfig;
+  }
+  if (Array.isArray(props.filterConfig?.filters)) {
+    return props.filterConfig.filters;
+  }
+  return [];
+}
+
+function getFilterConfigByKey(key) {
+  return getConfiguredFilters().find(filter => filter.key === key);
+}
+
 function allSelectedValue() {
+  if (hasCustomFilters.value) {
+    return customAllSelectedValue();
+  }
   return {
     regionNameList: regionOptions.value.map(item => item.value),
     azNameList: azOptions.value.map(item => item.value),
@@ -643,7 +830,23 @@ function allSelectedValue() {
   };
 }
 
+function customAllSelectedValue() {
+  return customFilters.value.reduce((result, filter) => {
+    if (filter.type === 'list') {
+      result[filter.valueKey] = getCustomRootOptions(filter).map(item => item.value);
+      return result;
+    }
+    result[filter.parentValueKey] = getCustomRootOptions(filter).map(item => item.value);
+    result[filter.valueKey] = getCustomLeafOptions(filter, result[filter.parentValueKey]).map(item => item.value);
+    return result;
+  }, {});
+}
+
 function applyModelValue(value) {
+  if (hasCustomFilters.value) {
+    applyCustomModelValue(value);
+    return;
+  }
   syncingFromModel = true;
   const fallback = allSelectedValue();
   const next = value ?? fallback;
@@ -660,6 +863,34 @@ function applyModelValue(value) {
   activeSeries.value = visibleResourceSeries.value[0]?.value ?? '';
   activeFamily.value = allResourceFamilies.value[0]?.value ?? '';
   activeGeneration.value = allResourceGenerations.value[0]?.value ?? '';
+  syncingFromModel = false;
+}
+
+function applyCustomModelValue(value) {
+  syncingFromModel = true;
+  const fallback = customAllSelectedValue();
+  const next = value ?? fallback;
+  customFilters.value.forEach((filter) => {
+    if (filter.type === 'list') {
+      customValueMap.value[filter.valueKey] = keepValid(
+        getModelGroupValue(next, filter.valueKey, fallback),
+        getCustomRootOptions(filter),
+        fallback[filter.valueKey],
+      );
+      return;
+    }
+    customValueMap.value[filter.parentValueKey] = keepValid(
+      getModelGroupValue(next, filter.parentValueKey, fallback),
+      getCustomRootOptions(filter),
+      fallback[filter.parentValueKey],
+    );
+    customValueMap.value[filter.valueKey] = keepValid(
+      getModelGroupValue(next, filter.valueKey, fallback),
+      getCustomLeafOptions(filter),
+      fallback[filter.valueKey],
+    );
+    customActive.value[filter.key] = getCustomRootOptions(filter)[0]?.value ?? '';
+  });
   syncingFromModel = false;
 }
 
@@ -699,6 +930,10 @@ function filterAzOptionsByRegions(options, selectedRegions) {
 
 function emitCurrentValue() {
   if (syncingFromModel) return;
+  if (hasCustomFilters.value) {
+    emitCustomCurrentValue();
+    return;
+  }
   const value = {
     regionNameList: [...regionValue.value],
     azNameList: [...azValue.value],
@@ -710,6 +945,133 @@ function emitCurrentValue() {
   };
   emit('update:modelValue', value);
   emit('change', value);
+}
+
+function emitCustomCurrentValue() {
+  const value = customFilters.value.reduce((result, filter) => {
+    if (filter.type !== 'list') {
+      result[filter.parentValueKey] = [...getCustomValue(filter.parentValueKey)];
+    }
+    result[filter.valueKey] = [...getCustomValue(filter.valueKey)];
+    return result;
+  }, {});
+  emit('update:modelValue', value);
+  emit('change', value);
+}
+
+function getCustomRootOptions(filter) {
+  return sortOptionsByInitial(normalizeOptions(props.options?.[filter.optionKey]));
+}
+
+function getCustomLeafOptions(filter, parentValue) {
+  const selectedParents = parentValue ?? getCustomValue(filter.parentValueKey);
+  const rootOptions = getCustomRootOptions(filter);
+  const parentValues = selectedParents.length ? selectedParents : rootOptions.map(item => item.value);
+  const keyword = (customKeyword.value[filter.key] ?? '').trim().toLowerCase();
+  const options = getUniqueOptions(
+    rootOptions
+      .filter(item => parentValues.includes(item.value))
+      .flatMap(item => item.children ?? [])
+  );
+  if (!filter.searchable || !keyword) {
+    return options;
+  }
+  return options.filter(item => item.label.toLowerCase().includes(keyword));
+}
+
+function getCustomValue(key) {
+  return customValueMap.value[key] ?? [];
+}
+
+function setCustomValue(filter, key, value) {
+  customValueMap.value[key] = value;
+  if (!filter.confirmable) {
+    emitCurrentValue();
+  }
+}
+
+function setCustomParentValue(filter, value) {
+  customValueMap.value[filter.parentValueKey] = value;
+  customValueMap.value[filter.valueKey] = value.length ? getCustomLeafOptions(filter, value).map(item => item.value) : [];
+  if (!filter.confirmable) {
+    emitCurrentValue();
+  }
+}
+
+function toggleCustomAll(filter, key, options, checked) {
+  setCustomValue(filter, key, checked ? options.map(item => item.value) : []);
+}
+
+function toggleCustomParentAll(filter, checked) {
+  const values = checked ? getCustomRootOptions(filter).map(item => item.value) : [];
+  setCustomParentValue(filter, values);
+}
+
+function setCustomVisible(filter, visible) {
+  if (loading.value) {
+    customVisible.value[filter.key] = false;
+    return;
+  }
+  if (visible) {
+    saveCustomSnapshot(filter);
+  }
+  if (!visible && filter.confirmable) {
+    restoreCustomSnapshot(filter);
+  }
+  customVisible.value[filter.key] = visible;
+}
+
+function setCustomKeyword(key, value) {
+  customKeyword.value[key] = value;
+}
+
+function setCustomActive(key, value) {
+  customActive.value[key] = value;
+}
+
+function getCustomSummary(filter) {
+  if (filter.type === 'list') {
+    return getSummary(getCustomValue(filter.valueKey), getCustomRootOptions(filter));
+  }
+  return getSummary(getCustomValue(filter.valueKey), getCustomLeafOptions(filter));
+}
+
+function getCustomPopperClass(filter) {
+  const typeClass = filter.type === 'list' ? 'filter-popper--custom-list' : 'filter-popper--custom-cascade';
+  return `filter-popper ${typeClass}`;
+}
+
+function getCustomValueKeys(filter) {
+  if (filter.type === 'list') {
+    return [filter.valueKey];
+  }
+  return [filter.parentValueKey, filter.valueKey];
+}
+
+function saveCustomSnapshot(filter) {
+  customSnapshotMap.value[filter.key] = getCustomValueKeys(filter).reduce((result, key) => {
+    result[key] = [...getCustomValue(key)];
+    return result;
+  }, {});
+}
+
+function restoreCustomSnapshot(filter) {
+  const snapshot = customSnapshotMap.value[filter.key];
+  if (!snapshot) return;
+  Object.entries(snapshot).forEach(([key, value]) => {
+    customValueMap.value[key] = [...value];
+  });
+}
+
+function cancelCustomFilter(filter) {
+  restoreCustomSnapshot(filter);
+  customVisible.value[filter.key] = false;
+}
+
+function confirmCustomFilter(filter) {
+  saveCustomSnapshot(filter);
+  customVisible.value[filter.key] = false;
+  emitCurrentValue();
 }
 
 function getUniqueOptions(options) {
@@ -1037,6 +1399,10 @@ function confirmResource() {
   cursor: progress;
 }
 
+.custom-filter-bar {
+  justify-content: flex-end;
+}
+
 .filter-item {
   display: flex;
   align-items: center;
@@ -1271,6 +1637,38 @@ function confirmResource() {
 
 .resource-panel--list {
   width: min(420px, calc(100vw - 32px));
+}
+
+:global(.filter-popper--custom-list) {
+  box-sizing: border-box;
+  padding: 10px;
+}
+
+:global(.filter-popper--custom-cascade) {
+  box-sizing: border-box;
+  padding: 10px;
+}
+
+.custom-list-panel {
+  width: 220px;
+}
+
+.custom-cascade-panel {
+  width: min(440px, calc(100vw - 32px));
+}
+
+.custom-search {
+  margin-bottom: 8px;
+}
+
+.custom-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.custom-column {
+  min-width: 0;
 }
 
 .resource-columns {

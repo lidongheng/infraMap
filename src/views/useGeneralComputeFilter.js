@@ -27,23 +27,41 @@ export const visibleTiers = ref([]);
 const hasUserChangedFilter = ref(false);
 const emptyResourceTypeCloudServerNames = new Set(["BMS", "DCC", "DSS"]);
 
+function getConfiguredFilters() {
+  if (Array.isArray(filterConfig.value)) {
+    return filterConfig.value;
+  }
+  if (Array.isArray(filterConfig.value?.filters)) {
+    return filterConfig.value.filters;
+  }
+  return [];
+}
+
+function getFilterConfigByKey(key) {
+  return getConfiguredFilters().find((filter) => filter.key === key);
+}
+
+function getRangeColumns() {
+  return getFilterConfigByKey("range")?.columns ?? [];
+}
+
 const resolvedFilterConfig = computed(() => ({
   region: {
     visible: true,
     searchable: true,
-    ...(filterConfig.value?.region ?? {}),
+    ...(getRangeColumns()[0] ?? {}),
   },
   az: {
     visible: true,
     searchable: false,
-    ...(filterConfig.value?.az ?? {}),
+    ...(getRangeColumns()[1] ?? {}),
   },
   resourceType: {
     visible: true,
     variant: "tree",
     submitMode: "tree",
     confirmable: true,
-    ...(filterConfig.value?.resourceType ?? {}),
+    ...(getFilterConfigByKey("resourceType") ?? filterConfig.value?.resourceType ?? {}),
   },
 }));
 

@@ -71,9 +71,25 @@ useResourcePoolCustomer();
 const category = computed(() => selectedPool.value);
 const { date: currentDate } = storeToRefs(useCurrentDate());
 
-// 通算页筛选项统一在这里按资源池配置；下游组件只消费配置，不再写资源池特判。
-// tree 面板现在使用“云服务 + 资源系列 + 资源族 + 资源代数 + 资源类型”五列。
+/**
+ * 通算页筛选项统一在 CATEGORY_CONFIG.filters 里按资源池配置：
+ * - key：筛选项唯一标识，FilterDropdowns 和 useGeneralComputeFilter 会用它找到对应配置。
+ * - label：筛选框左侧展示名称。
+ * - type：筛选框形态；range 表示范围粒度，resourceTree 表示资源粒度树。
+ * - columns：仅 type 为 range 时使用，配置范围粒度里的列。
+ * - columns.label：范围粒度弹层里的列标题。
+ * - columns[0]：范围粒度第一列，对应 Region。
+ * - columns[1]：范围粒度第二列，对应 AZ。
+ * - visible：控制当前列或筛选框是否展示。
+ * - searchable：控制当前列是否展示搜索框。
+ * - variant：仅 type 为 resourceTree 时使用；tree 表示展示资源树面板。
+ * - submitMode：控制资源粒度提交字段结构；tree 表示按树的完整层级提交。
+ * - confirmable：控制资源粒度是否需要点击“确定”后再提交。
+ */
 const TREE_RESOURCE_FILTER = {
+  key: "resourceType",
+  label: "资源粒度",
+  type: "resourceTree",
   visible: true,
   variant: "tree",
   submitMode: "tree",
@@ -82,11 +98,18 @@ const TREE_RESOURCE_FILTER = {
 
 const CATEGORY_CONFIG = {
   ECS: {
-    filters: {
-      region: { visible: true, searchable: true },
-      az: { visible: true, searchable: false },
-      resourceType: TREE_RESOURCE_FILTER,
-    },
+    filters: [
+      {
+        key: "range",
+        label: "范围粒度",
+        type: "range",
+        columns: [
+          { label: "Region", visible: true, searchable: true },
+          { label: "AZ", visible: true, searchable: false },
+        ],
+      },
+      TREE_RESOURCE_FILTER,
+    ],
     tabs: [
       {
         key: "allocationRate",
@@ -117,11 +140,18 @@ const CATEGORY_CONFIG = {
     ],
   },
   EVS: {
-    filters: {
-      region: { visible: false, searchable: true },
-      az: { visible: false, searchable: false },
-      resourceType: TREE_RESOURCE_FILTER,
-    },
+    filters: [
+      {
+        key: "range",
+        label: "范围粒度",
+        type: "range",
+        columns: [
+          { label: "Region", visible: false, searchable: true },
+          { label: "AZ", visible: false, searchable: false },
+        ],
+      },
+      TREE_RESOURCE_FILTER,
+    ],
     tabs: [
       {
         key: "useRate",
@@ -139,11 +169,18 @@ const CATEGORY_CONFIG = {
     ],
   },
   OBS: {
-    filters: {
-      region: { visible: true, searchable: true },
-      az: { visible: false, searchable: false },
-      resourceType: TREE_RESOURCE_FILTER,
-    },
+    filters: [
+      {
+        key: "range",
+        label: "范围粒度",
+        type: "range",
+        columns: [
+          { label: "Region", visible: true, searchable: true },
+          { label: "AZ", visible: false, searchable: false },
+        ],
+      },
+      TREE_RESOURCE_FILTER,
+    ],
     tabs: [
       {
         key: "allocationRate",
