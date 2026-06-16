@@ -70,6 +70,7 @@ export const ROUTE_CONFIG = {
     '/roleSelect',
     '/costOperation',
     '/saleHome',
+    '/saleDetail',
     '/login',
     '/register',
     '/404',

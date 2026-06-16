@@ -10,6 +10,7 @@ import lifecycleTrend from '../views/lifecycleTrend.vue'
 import saleHome from '../views/saleView/saleHome/index.vue'
 import RoleSelect from '../views/RoleSelect.vue'
 import GlobalLayout from '@/components/home/GlobalLayout.vue'
+import SaleDetail from '../views/saleView/saleDetail/index.vue'
 
 const routes = [
   {
@@ -40,8 +41,13 @@ const routes = [
       },
       {
         path: '/saleHome',
-        component: 'saleHome',
+        name: 'saleHome',
         component: saleHome,
+      },
+      {
+        path: '/saleDetail',
+        name: 'saleDetail',
+        component: SaleDetail,
       }
     ]
   },
