@@ -4,17 +4,21 @@
       <CommonTitle title="智算" icon-name="type">
         <template #select>
           <FilterDropdowns
-            v-model="cardTypeFilterValue"
-            :options="cardTypeFilterOptions"
-            :filter-config="cardTypeFilterConfig"
-            @change="onCardTypeFilterChange"
+            v-model="overviewFilterValue"
+            :options="overviewFilterOptions"
+            :filter-config="overviewFilterConfig"
+            @change="onOverviewFilterChange"
           />
         </template>
       </CommonTitle>
     </header>
     <section class="main flex-center">
       <section class="main-left">
-        <AICategoryNav />
+        <AICategoryNav
+          :compute-items="filteredComputeItems"
+          :token-items="filteredTokenItems"
+          :token-customer-items="tokenCustomerItems"
+        />
       </section>
       <section class="main-right">
         <div v-if="tabs.length > 1" class="tab-bar">
@@ -54,6 +58,7 @@
                   :avgXField="currentConfig.xField"
                   :trafficLightKeys="currentConfig.trafficLightKeys"
                   :dataFilter="currentConfig.dataFilter ?? null"
+                  :static-data="currentStaticChartData"
                   @bubble-click="onBubbleClick"
                   @visible-change="onVisibleChange"
                 />
@@ -101,10 +106,19 @@ import AICategoryNav from "@/components/AICategoryNav.vue";
 import AIComputerPower from "./aiComputerPower.vue";
 import SuperNodeChart from "./superNodeChart.vue";
 import ResourcePoolTable from "@/components/ResourcePoolTable.vue";
-import { selectedResourceType, parentName, isCustomer } from "./useAIComputer";
+import {
+  aiOverviewMode,
+  selectedCustomerType,
+  selectedModelType,
+  selectedResourceType,
+  selectedTokenGroup,
+  parentName,
+  isCustomer,
+} from "./useAIComputer";
 import { mockFetchEfficiency2, toSuperNodeChartData } from "./useSuperNodeChart";
 import { useCurrentDate } from "./useCurrentDate";
 import SwitchTableOrChart from "@/components/SwitchTableOrChart.vue";
+import { AI_SIZE_TIERS, applyBubbleConfig } from "./commonComputerPowerConfig";
 
 const NPU_USEAGE_FOR_GENERATION = {
   key: "npuUsage",
@@ -138,30 +152,216 @@ const SUPER_NODE_CONFIG = {
   label: "超节点",
   avgXFromFrontend: true,
 };
+const TOKEN_MODEL_MODE_CONFIG = {
+  key: "tokenUsage",
+  label: "资源池",
+  xField: "_tokenUseRate",
+  yField: "_actualTps",
+  xAxisName: "Token利用率",
+  title: "实际TPS",
+  yAxisName: "TPS",
+  yRange: [0, 100],
+  tooltipYLabel: "实际TPS",
+  trafficLightKeys: { x: "Token利用率", y: "实际TPS" },
+  dataFilter: (d) => d.x != null && d.y != null && d._tokenUseRate > 0,
+};
+const TOKEN_CUSTOMER_MODE_CONFIG = {
+  key: "tokenUsage",
+  label: "资源池",
+  xField: "_token2UseRate",
+  yField: "_actualTps2",
+  xAxisName: "Token2利用率",
+  title: "实际TPS2",
+  yAxisName: "TPS",
+  yRange: [0, 100],
+  tooltipYLabel: "实际TPS2",
+  trafficLightKeys: { x: "Token2利用率", y: "实际TPS2" },
+  dataFilter: (d) => d.x != null && d.y != null && d._token2UseRate > 0,
+};
 
 const { date: currentMonth } = storeToRefs(useCurrentDate());
 
 const CARD_TYPE_VALUE_KEY = "cardType";
-const cardTypeFilterConfig = [
-  {
-    key: CARD_TYPE_VALUE_KEY,
-    label: "卡类型",
-    type: "list",
-    optionKey: CARD_TYPE_VALUE_KEY,
-    valueKey: CARD_TYPE_VALUE_KEY,
-  },
-];
-const cardTypeFilterOptions = {
-  [CARD_TYPE_VALUE_KEY]: ["A3", "A2", "A1"],
+const MODEL_TYPE_VALUE_KEY = "modelType";
+const CARD_TYPE_OPTIONS = ["A3", "A2", "A1"];
+const MODEL_TYPE_OPTIONS = ["DS V4", "DS V3", "Minimax"];
+const cardTypeFilterConfig = {
+  key: CARD_TYPE_VALUE_KEY,
+  label: "卡类型",
+  type: "list",
+  optionKey: CARD_TYPE_VALUE_KEY,
+  valueKey: CARD_TYPE_VALUE_KEY,
 };
-const cardTypeFilterValue = ref({
-  [CARD_TYPE_VALUE_KEY]: [selectedResourceType.value],
+const modelTypeFilterConfig = {
+  key: MODEL_TYPE_VALUE_KEY,
+  label: "模型类型",
+  type: "list",
+  optionKey: MODEL_TYPE_VALUE_KEY,
+  valueKey: MODEL_TYPE_VALUE_KEY,
+};
+const overviewFilterOptions = {
+  [CARD_TYPE_VALUE_KEY]: CARD_TYPE_OPTIONS,
+  [MODEL_TYPE_VALUE_KEY]: MODEL_TYPE_OPTIONS,
+};
+const overviewFilterValue = ref({
+  [CARD_TYPE_VALUE_KEY]: CARD_TYPE_OPTIONS,
 });
 
-watch(selectedResourceType, (cardType) => {
-  cardTypeFilterValue.value = {
-    [CARD_TYPE_VALUE_KEY]: [cardType],
-  };
+const computeOverviewItems = [
+  {
+    name: "A3",
+    cardNum: "3,415.5",
+    allocationRate: "6.97%",
+    revenue: "64.095",
+    cost: "64.095",
+    margin: "6.97%",
+  },
+  {
+    name: "A2",
+    cardNum: "3,415.5",
+    allocationRate: "6.97%",
+    revenue: "64.095",
+    cost: "64.095",
+    margin: "6.97%",
+  },
+  {
+    name: "A1",
+    cardNum: "3,415.5",
+    allocationRate: "6.97%",
+    revenue: "64.095",
+    cost: "64.095",
+    margin: "6.97%",
+  },
+];
+
+const tokenOverviewItems = [
+  {
+    name: "DS V4",
+    cardNum: "715.5",
+    dailyToken: "6.97%",
+    revenue: "18.09",
+    cost: "17.09",
+    margin: "24.075%",
+  },
+  {
+    name: "DS V3",
+    cardNum: "715.5",
+    dailyToken: "6.97%",
+    revenue: "18.09",
+    cost: "17.09",
+    margin: "24.075%",
+  },
+  {
+    name: "Minimax",
+    cardNum: "715.5",
+    dailyToken: "6.97%",
+    revenue: "18.09",
+    cost: "17.09",
+    margin: "24.075%",
+  },
+];
+
+const tokenCustomerItems = [
+  {
+    name: "外部",
+    cardNum: "42",
+    dailyToken: "6.97%",
+    revenue: "18.09",
+    cost: "17.09",
+    margin: "25.295%",
+  },
+  {
+    name: "内部",
+    cardNum: "42",
+    dailyToken: "6.97%",
+    revenue: "18.09",
+    cost: "17.09",
+    margin: "25.295%",
+  },
+];
+
+const staticChartDataMap = {
+  A3: makeStaticChartData([
+    ["华东-A3资源池1", 72, 68, 620],
+    ["华北-A3资源池2", 55, 48, 3600],
+    ["华南-A3资源池3", 88, 82, 120],
+    ["西南-A3资源池4", 43, 39, 250],
+    ["华东-A3资源池5", 31, 27, 4200],
+    ["华北-A3资源池6", 65, 60, 80],
+  ]),
+  A2: makeStaticChartData([
+    ["华东-A2资源池1", 62, 56, 520],
+    ["华北-A2资源池2", 49, 42, 2800],
+    ["华南-A2资源池3", 76, 70, 180],
+    ["西南-A2资源池4", 38, 34, 350],
+    ["华东-A2资源池5", 58, 52, 1600],
+  ]),
+  A1: makeStaticChartData([
+    ["华东-A1资源池1", 46, 40, 460],
+    ["华北-A1资源池2", 34, 29, 1300],
+    ["华南-A1资源池3", 69, 63, 220],
+    ["西南-A1资源池4", 52, 47, 760],
+    ["华东-A1资源池5", 28, 24, 3100],
+  ]),
+  "DS V4": makeTokenModelChartData([
+    ["DS V4-华东模型池1", 74, 66, 1431],
+    ["DS V4-华北模型池2", 61, 57, 980],
+    ["DS V4-华南模型池3", 83, 72, 360],
+    ["DS V4-西南模型池4", 48, 41, 2100],
+  ]),
+  "DS V3": makeTokenModelChartData([
+    ["DS V3-华东模型池1", 68, 60, 1280],
+    ["DS V3-华北模型池2", 53, 47, 860],
+    ["DS V3-华南模型池3", 79, 69, 420],
+    ["DS V3-西南模型池4", 44, 38, 1800],
+  ]),
+  Minimax: makeTokenModelChartData([
+    ["Minimax-华东模型池1", 71, 63, 1180],
+    ["Minimax-华北模型池2", 59, 52, 760],
+    ["Minimax-华南模型池3", 82, 74, 390],
+    ["Minimax-西南模型池4", 51, 45, 1680],
+  ]),
+  外部: makeTokenCustomerChartData([
+    ["外部客户池-华东", 57, 50, 840],
+    ["外部客户池-华北", 62, 54, 620],
+    ["外部客户池-华南", 49, 42, 1200],
+    ["外部客户池-西南", 71, 64, 460],
+  ]),
+  内部: makeTokenCustomerChartData([
+    ["内部客户池-华东", 69, 64, 520],
+    ["内部客户池-华北", 58, 51, 880],
+    ["内部客户池-华南", 77, 70, 340],
+    ["内部客户池-西南", 46, 38, 1360],
+  ]),
+};
+
+const overviewFilterConfig = computed(() => {
+  if (aiOverviewMode.value === "token") {
+    return [modelTypeFilterConfig];
+  }
+  return [cardTypeFilterConfig];
+});
+
+const filteredComputeItems = computed(() => {
+  const selectedCards = overviewFilterValue.value[CARD_TYPE_VALUE_KEY];
+  if (!Array.isArray(selectedCards)) return [];
+  return computeOverviewItems.filter((item) => selectedCards.includes(item.name));
+});
+
+const filteredTokenItems = computed(() => {
+  const selectedModels = overviewFilterValue.value[MODEL_TYPE_VALUE_KEY];
+  if (!Array.isArray(selectedModels)) return [];
+  return tokenOverviewItems.filter((item) => selectedModels.includes(item.name));
+});
+
+const currentStaticChartData = computed(() => {
+  if (aiOverviewMode.value === "token") {
+    if (selectedTokenGroup.value === "customer") {
+      return staticChartDataMap[selectedCustomerType.value];
+    }
+    return staticChartDataMap[selectedModelType.value];
+  }
+  return staticChartDataMap[selectedResourceType.value];
 });
 
 const xpodDetailData = ref({});
@@ -179,6 +379,12 @@ const superNodeAvgRangeList = computed(() =>
 );
 
 const tabs = computed(() => {
+  if (aiOverviewMode.value === "token") {
+    if (selectedTokenGroup.value === "customer") {
+      return [TOKEN_CUSTOMER_MODE_CONFIG];
+    }
+    return [TOKEN_MODEL_MODE_CONFIG];
+  }
   if (['A3'].includes(selectedResourceType.value) ||
     ['代次'].includes(parentName.value) && !selectedResourceType.value) {
       return [NPU_USEAGE_FOR_GENERATION, SUPER_NODE_CONFIG];
@@ -218,6 +424,36 @@ watch(currentMonth, () => {
 watch(activeTab, () => {
   tierFilter.value = null;
   chartCollapsed.value = false;
+});
+
+watch(aiOverviewMode, (mode) => {
+  tierFilter.value = null;
+  chartCollapsed.value = false;
+  if (mode === "token") {
+    overviewFilterValue.value = {
+      [MODEL_TYPE_VALUE_KEY]: MODEL_TYPE_OPTIONS,
+    };
+    return;
+  }
+  overviewFilterValue.value = {
+    [CARD_TYPE_VALUE_KEY]: CARD_TYPE_OPTIONS,
+  };
+});
+
+watch(filteredComputeItems, (items) => {
+  if (aiOverviewMode.value !== "compute") return;
+  if (!items.length) return;
+  const isSelectedVisible = items.some(item => item.name === selectedResourceType.value);
+  if (isSelectedVisible) return;
+  selectedResourceType.value = items[0].name;
+});
+
+watch(filteredTokenItems, (items) => {
+  if (aiOverviewMode.value !== "token") return;
+  if (!items.length) return;
+  const isSelectedVisible = items.some(item => item.name === selectedModelType.value);
+  if (isSelectedVisible) return;
+  selectedModelType.value = items[0].name;
 });
 
 const currentConfig = computed(() =>
@@ -287,11 +523,61 @@ function onBubbleClick(detail) {
   tableRef.value?.scrollToByName(azName);
 }
 
-function onCardTypeFilterChange(value) {
-  const [cardType] = value[CARD_TYPE_VALUE_KEY];
-  // FilterDropdowns 是多选形态；智算页现有卡类型状态只接收单个有效值。
-  if (!cardType) return;
-  selectedResourceType.value = cardType;
+function onOverviewFilterChange(value) {
+  overviewFilterValue.value = value;
+  if (aiOverviewMode.value === "token") {
+    updateSelectedModelType(value[MODEL_TYPE_VALUE_KEY]);
+    return;
+  }
+  updateSelectedResourceType(value[CARD_TYPE_VALUE_KEY]);
+}
+
+function updateSelectedResourceType(cardTypes) {
+  if (!cardTypes.length) return;
+  if (cardTypes.includes(selectedResourceType.value)) return;
+  selectedResourceType.value = cardTypes[0];
+}
+
+function updateSelectedModelType(modelTypes) {
+  if (!modelTypes.length) return;
+  if (modelTypes.includes(selectedModelType.value)) return;
+  selectedModelType.value = modelTypes[0];
+}
+
+function makeStaticChartData(rows) {
+  return rows.map(([name, npuUseRate, allocationRate, serverNum]) => applyBubbleConfig({
+    name,
+    azName: name,
+    x: allocationRate,
+    y: allocationRate,
+    serverNum,
+    _allocationRate: allocationRate,
+    _npuUseRate: npuUseRate,
+  }, AI_SIZE_TIERS));
+}
+
+function makeTokenModelChartData(rows) {
+  return rows.map(([name, tokenUseRate, actualTps, serverNum]) => applyBubbleConfig({
+    name,
+    azName: name,
+    x: tokenUseRate,
+    y: actualTps,
+    serverNum,
+    _tokenUseRate: tokenUseRate,
+    _actualTps: actualTps,
+  }, AI_SIZE_TIERS));
+}
+
+function makeTokenCustomerChartData(rows) {
+  return rows.map(([name, token2UseRate, actualTps2, serverNum]) => applyBubbleConfig({
+    name,
+    azName: name,
+    x: token2UseRate,
+    y: actualTps2,
+    serverNum,
+    _token2UseRate: token2UseRate,
+    _actualTps2: actualTps2,
+  }, AI_SIZE_TIERS));
 }
 
 const tableRadio = ref('chart');
@@ -328,8 +614,8 @@ const tableRadio = ref('chart');
 
     .main-left {
       flex-shrink: 0;
-      width: 30px;
-      min-width: 30px;
+      width: 640px;
+      min-width: 640px;
     }
 
     .main-right {
