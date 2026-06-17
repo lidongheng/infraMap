@@ -1,7 +1,16 @@
 <template>
   <div class="container">
-    <header class="header flex-center">
-      <span class="title">xxxxxxxxx</span>
+    <header class="header">
+      <CommonTitle title="智算" icon-name="type">
+        <template #select>
+          <FilterDropdowns
+            v-model="cardTypeFilterValue"
+            :options="cardTypeFilterOptions"
+            :filter-config="cardTypeFilterConfig"
+            @change="onCardTypeFilterChange"
+          />
+        </template>
+      </CommonTitle>
     </header>
     <section class="main flex-center">
       <section class="main-left">
@@ -86,6 +95,8 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
+import CommonTitle from "@/components/home/CommonTitle.vue";
+import FilterDropdowns from "@/components/FilterDropdowns.vue";
 import AICategoryNav from "@/components/AICategoryNav.vue";
 import AIComputerPower from "./aiComputerPower.vue";
 import SuperNodeChart from "./superNodeChart.vue";
@@ -129,6 +140,29 @@ const SUPER_NODE_CONFIG = {
 };
 
 const { date: currentMonth } = storeToRefs(useCurrentDate());
+
+const CARD_TYPE_VALUE_KEY = "cardType";
+const cardTypeFilterConfig = [
+  {
+    key: CARD_TYPE_VALUE_KEY,
+    label: "卡类型",
+    type: "list",
+    optionKey: CARD_TYPE_VALUE_KEY,
+    valueKey: CARD_TYPE_VALUE_KEY,
+  },
+];
+const cardTypeFilterOptions = {
+  [CARD_TYPE_VALUE_KEY]: ["A3", "A2", "A1"],
+};
+const cardTypeFilterValue = ref({
+  [CARD_TYPE_VALUE_KEY]: [selectedResourceType.value],
+});
+
+watch(selectedResourceType, (cardType) => {
+  cardTypeFilterValue.value = {
+    [CARD_TYPE_VALUE_KEY]: [cardType],
+  };
+});
 
 const xpodDetailData = ref({});
 const fetchXpodDetail = async () => {
@@ -253,6 +287,12 @@ function onBubbleClick(detail) {
   tableRef.value?.scrollToByName(azName);
 }
 
+function onCardTypeFilterChange(value) {
+  const [cardType] = value[CARD_TYPE_VALUE_KEY];
+  // FilterDropdowns 是多选形态；智算页现有卡类型状态只接收单个有效值。
+  if (!cardType) return;
+  selectedResourceType.value = cardType;
+}
 
 const tableRadio = ref('chart');
 </script>
@@ -278,13 +318,6 @@ const tableRadio = ref('chart');
   .header {
     width: 100%;
     min-width: 0;
-    column-gap: 8px;
-    .title {
-      font-size: 22px;
-      font-weight: bold;
-      line-height: 29px;
-      color: #353575;
-    }
   }
 
   .main {
