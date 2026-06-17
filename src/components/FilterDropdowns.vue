@@ -221,13 +221,13 @@
         <div v-if="isResourceListFilter" class="dropdown-panel resource-panel resource-panel--list">
           <div class="resource-columns resource-columns--list">
             <div class="resource-column">
-              <div class="column-title">云服务</div>
+              <div class="column-title">{{ resourceCloudServerColumn.label }}</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
                     :model-value="isAllSelected(resourceCloudServerValue, resourceTypeOnlyCloudServers)"
                     :indeterminate="isIndeterminate(resourceCloudServerValue, resourceTypeOnlyCloudServers)"
-                    @change="checked => toggleAll('cloudServerType', checked)"
+                    @change="checked => toggleAll(resourceCloudServerColumn.valueKey, checked)"
                   />
                   <span>全部</span>
                   <el-icon><ArrowRight /></el-icon>
@@ -247,13 +247,13 @@
             </div>
 
             <div class="resource-column">
-              <div class="column-title">资源类型</div>
+              <div class="column-title">{{ resourceTypeColumn.label }}</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
                     :model-value="isAllSelected(resourceTypeValue, visibleResourceTypes)"
                     :indeterminate="isIndeterminate(resourceTypeValue, visibleResourceTypes)"
-                    @change="checked => toggleAll('resourceType', checked)"
+                    @change="checked => toggleAll(resourceTypeColumn.valueKey, checked)"
                   />
                   <span>全部</span>
                 </label>
@@ -277,13 +277,13 @@
         >
           <div class="resource-columns" :class="{ 'resource-columns--single': isOneLevelResourceTree }">
             <div v-if="!isOneLevelResourceTree" class="resource-column">
-              <div class="column-title">云服务</div>
+              <div class="column-title">{{ resourceCloudServerColumn.label }}</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
                     :model-value="isAllSelected(resourceCloudServerValue, resourceCloudServers)"
                     :indeterminate="isIndeterminate(resourceCloudServerValue, resourceCloudServers)"
-                    @change="checked => toggleAll('cloudServerType', checked)"
+                    @change="checked => toggleAll(resourceCloudServerColumn.valueKey, checked)"
                   />
                   <span>全部</span>
                   <el-icon><ArrowRight /></el-icon>
@@ -303,13 +303,13 @@
             </div>
 
             <div v-if="!isOneLevelResourceTree" class="resource-column">
-              <div class="column-title">资源系列</div>
+              <div class="column-title">{{ resourceSeriesColumn.label }}</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
                     :model-value="isAllSelected(resourceSeriesValue, visibleResourceSeries)"
                     :indeterminate="isIndeterminate(resourceSeriesValue, visibleResourceSeries)"
-                    @change="checked => toggleAll('resourceSeries', checked)"
+                    @change="checked => toggleAll(resourceSeriesColumn.valueKey, checked)"
                   />
                   <span>全部</span>
                   <el-icon><ArrowRight /></el-icon>
@@ -329,13 +329,13 @@
             </div>
 
             <div v-if="!isOneLevelResourceTree" class="resource-column">
-              <div class="column-title">资源族</div>
+              <div class="column-title">{{ resourceFamilyColumn.label }}</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
                     :model-value="isAllSelected(resourceFamilyValue, visibleResourceFamilies)"
                     :indeterminate="isIndeterminate(resourceFamilyValue, visibleResourceFamilies)"
-                    @change="checked => toggleAll('resourceFamily', checked)"
+                    @change="checked => toggleAll(resourceFamilyColumn.valueKey, checked)"
                   />
                   <span>全部</span>
                   <el-icon><ArrowRight /></el-icon>
@@ -355,13 +355,13 @@
             </div>
 
             <div v-if="!isOneLevelResourceTree" class="resource-column">
-              <div class="column-title">资源代数</div>
+              <div class="column-title">{{ resourceGenerationColumn.label }}</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
                     :model-value="isAllSelected(resourceVerValue, visibleResourceGenerations)"
                     :indeterminate="isIndeterminate(resourceVerValue, visibleResourceGenerations)"
-                    @change="checked => toggleAll('resourceVer', checked)"
+                    @change="checked => toggleAll(resourceGenerationColumn.valueKey, checked)"
                   />
                   <span>全部</span>
                   <el-icon><ArrowRight /></el-icon>
@@ -381,13 +381,13 @@
             </div>
 
             <div class="resource-column">
-              <div class="column-title">资源类型</div>
+              <div class="column-title">{{ resourceTypeColumn.label }}</div>
               <div class="resource-scroll">
                 <label class="resource-row checked-row">
                   <el-checkbox
                     :model-value="isAllSelected(resourceTypeValue, visibleResourceTypes)"
                     :indeterminate="isIndeterminate(resourceTypeValue, visibleResourceTypes)"
-                    @change="checked => toggleAll('resourceType', checked)"
+                    @change="checked => toggleAll(resourceTypeColumn.valueKey, checked)"
                   />
                   <span>全部</span>
                 </label>
@@ -452,6 +452,12 @@ const resourceTypeFilterConfig = computed(() => getFilterConfigByKey('resourceTy
 const rangeColumns = computed(() => rangeFilterConfig.value?.columns ?? []);
 const regionColumnConfig = computed(() => rangeColumns.value[0] ?? {});
 const azColumnConfig = computed(() => rangeColumns.value[1] ?? {});
+const resourceTreeColumns = computed(() => resourceTypeFilterConfig.value.columns);
+const resourceCloudServerColumn = computed(() => resourceTreeColumns.value[0]);
+const resourceSeriesColumn = computed(() => resourceTreeColumns.value[1]);
+const resourceFamilyColumn = computed(() => resourceTreeColumns.value[2]);
+const resourceGenerationColumn = computed(() => resourceTreeColumns.value[3]);
+const resourceTypeColumn = computed(() => resourceTreeColumns.value[4]);
 const customFilters = computed(() => props.filterConfig.filter(filter => isCustomFilter(filter)));
 const hasRangeFilter = computed(() => Boolean(rangeFilterConfig.value));
 const hasResourceTreeFilter = computed(() => Boolean(resourceTypeFilterConfig.value));
@@ -523,7 +529,7 @@ const resourceFamilyValue = ref([]);
 const resourceVerValue = ref([]);
 const resourceTypeValue = ref([]);
 const rangeSnapshot = ref(getRangeValue());
-const resourceSnapshot = ref(getResourceValue());
+const resourceSnapshot = ref({});
 
 const activeCloudServer = ref('');
 const activeSeries = ref('');
@@ -768,15 +774,15 @@ function isCustomFilter(filter) {
 function allSelectedValue() {
   const value = {};
   if (hasRangeFilter.value) {
-    value.regionNameList = regionOptions.value.map(item => item.value);
-    value.azNameList = azOptions.value.map(item => item.value);
+    value[regionColumnConfig.value.valueKey] = regionOptions.value.map(item => item.value);
+    value[azColumnConfig.value.valueKey] = azOptions.value.map(item => item.value);
   }
   if (hasResourceTreeFilter.value) {
-    value.cloudServerType = currentResourceCloudServers.value.map(item => item.value);
-    value.resourceSeries = isResourceListFilter.value ? [] : allResourceSeries.value.map(item => item.value);
-    value.resourceFamily = isResourceListFilter.value ? [] : allResourceFamilies.value.map(item => item.value);
-    value.resourceVer = isResourceListFilter.value ? [] : allResourceGenerations.value.map(item => item.value);
-    value.resourceType = allResourceTypes.value.map(item => item.value);
+    value[resourceCloudServerColumn.value.valueKey] = currentResourceCloudServers.value.map(item => item.value);
+    value[resourceSeriesColumn.value.valueKey] = isResourceListFilter.value ? [] : allResourceSeries.value.map(item => item.value);
+    value[resourceFamilyColumn.value.valueKey] = isResourceListFilter.value ? [] : allResourceFamilies.value.map(item => item.value);
+    value[resourceGenerationColumn.value.valueKey] = isResourceListFilter.value ? [] : allResourceGenerations.value.map(item => item.value);
+    value[resourceTypeColumn.value.valueKey] = allResourceTypes.value.map(item => item.value);
   }
   return {
     ...value,
@@ -801,16 +807,16 @@ function applyModelValue(value) {
   const fallback = allSelectedValue();
   const next = value ?? fallback;
   if (hasRangeFilter.value) {
-    regionValue.value = keepValid(getModelGroupValue(next, 'regionNameList', fallback), regionOptions.value, fallback.regionNameList);
-    azValue.value = keepValid(getModelGroupValue(next, 'azNameList', fallback), filteredAzOptions.value, fallback.azNameList);
+    regionValue.value = keepValid(getModelGroupValue(next, regionColumnConfig.value.valueKey, fallback), regionOptions.value, fallback[regionColumnConfig.value.valueKey]);
+    azValue.value = keepValid(getModelGroupValue(next, azColumnConfig.value.valueKey, fallback), filteredAzOptions.value, fallback[azColumnConfig.value.valueKey]);
     rangeSnapshot.value = getRangeValue();
   }
   if (hasResourceTreeFilter.value) {
-    resourceCloudServerValue.value = keepValid(getModelGroupValue(next, 'cloudServerType', fallback), currentResourceCloudServers.value, fallback.cloudServerType);
-    resourceSeriesValue.value = keepValid(getModelGroupValue(next, 'resourceSeries', fallback), allResourceSeries.value, fallback.resourceSeries);
-    resourceFamilyValue.value = keepValid(getModelGroupValue(next, 'resourceFamily', fallback), allResourceFamilies.value, fallback.resourceFamily);
-    resourceVerValue.value = keepValid(getModelGroupValue(next, 'resourceVer', fallback), allResourceGenerations.value, fallback.resourceVer);
-    resourceTypeValue.value = keepValid(getModelGroupValue(next, 'resourceType', fallback), allResourceTypes.value, fallback.resourceType);
+    resourceCloudServerValue.value = keepValid(getModelGroupValue(next, resourceCloudServerColumn.value.valueKey, fallback), currentResourceCloudServers.value, fallback[resourceCloudServerColumn.value.valueKey]);
+    resourceSeriesValue.value = keepValid(getModelGroupValue(next, resourceSeriesColumn.value.valueKey, fallback), allResourceSeries.value, fallback[resourceSeriesColumn.value.valueKey]);
+    resourceFamilyValue.value = keepValid(getModelGroupValue(next, resourceFamilyColumn.value.valueKey, fallback), allResourceFamilies.value, fallback[resourceFamilyColumn.value.valueKey]);
+    resourceVerValue.value = keepValid(getModelGroupValue(next, resourceGenerationColumn.value.valueKey, fallback), allResourceGenerations.value, fallback[resourceGenerationColumn.value.valueKey]);
+    resourceTypeValue.value = keepValid(getModelGroupValue(next, resourceTypeColumn.value.valueKey, fallback), allResourceTypes.value, fallback[resourceTypeColumn.value.valueKey]);
     resourceSnapshot.value = getResourceValue();
     activeCloudServer.value = currentResourceCloudServers.value[0]?.value ?? '';
     activeSeries.value = visibleResourceSeries.value[0]?.value ?? '';
@@ -883,15 +889,15 @@ function emitCurrentValue() {
   if (syncingFromModel) return;
   const value = {};
   if (hasRangeFilter.value) {
-    value.regionNameList = [...regionValue.value];
-    value.azNameList = [...azValue.value];
+    value[regionColumnConfig.value.valueKey] = [...regionValue.value];
+    value[azColumnConfig.value.valueKey] = [...azValue.value];
   }
   if (hasResourceTreeFilter.value) {
-    value.cloudServerType = [...resourceCloudServerValue.value];
-    value.resourceSeries = [...resourceSeriesValue.value];
-    value.resourceFamily = [...resourceFamilyValue.value];
-    value.resourceVer = [...resourceVerValue.value];
-    value.resourceType = [...resourceTypeValue.value];
+    value[resourceCloudServerColumn.value.valueKey] = [...resourceCloudServerValue.value];
+    value[resourceSeriesColumn.value.valueKey] = [...resourceSeriesValue.value];
+    value[resourceFamilyColumn.value.valueKey] = [...resourceFamilyValue.value];
+    value[resourceGenerationColumn.value.valueKey] = [...resourceVerValue.value];
+    value[resourceTypeColumn.value.valueKey] = [...resourceTypeValue.value];
   }
   Object.assign(value, getCustomCurrentValue());
   emit('update:modelValue', value);
@@ -1222,32 +1228,32 @@ function keepValueIntersection(currentValue, allowedValue) {
 
 function getResourceValue() {
   return {
-    cloudServerType: [...resourceCloudServerValue.value],
-    resourceSeries: [...resourceSeriesValue.value],
-    resourceFamily: [...resourceFamilyValue.value],
-    resourceVer: [...resourceVerValue.value],
-    resourceType: [...resourceTypeValue.value],
+    [resourceCloudServerColumn.value.valueKey]: [...resourceCloudServerValue.value],
+    [resourceSeriesColumn.value.valueKey]: [...resourceSeriesValue.value],
+    [resourceFamilyColumn.value.valueKey]: [...resourceFamilyValue.value],
+    [resourceGenerationColumn.value.valueKey]: [...resourceVerValue.value],
+    [resourceTypeColumn.value.valueKey]: [...resourceTypeValue.value],
   };
 }
 
 function setResourceValue(value) {
-  resourceCloudServerValue.value = [...(value.cloudServerType ?? [])];
-  resourceSeriesValue.value = [...(value.resourceSeries ?? [])];
-  resourceFamilyValue.value = [...(value.resourceFamily ?? [])];
-  resourceVerValue.value = [...(value.resourceVer ?? [])];
-  resourceTypeValue.value = [...(value.resourceType ?? [])];
+  resourceCloudServerValue.value = [...value[resourceCloudServerColumn.value.valueKey]];
+  resourceSeriesValue.value = [...value[resourceSeriesColumn.value.valueKey]];
+  resourceFamilyValue.value = [...value[resourceFamilyColumn.value.valueKey]];
+  resourceVerValue.value = [...value[resourceGenerationColumn.value.valueKey]];
+  resourceTypeValue.value = [...value[resourceTypeColumn.value.valueKey]];
 }
 
 function getRangeValue() {
   return {
-    regionNameList: [...regionValue.value],
-    azNameList: [...azValue.value],
+    [regionColumnConfig.value.valueKey]: [...regionValue.value],
+    [azColumnConfig.value.valueKey]: [...azValue.value],
   };
 }
 
 function setRangeValue(value) {
-  regionValue.value = [...value.regionNameList];
-  azValue.value = [...value.azNameList];
+  regionValue.value = [...value[regionColumnConfig.value.valueKey]];
+  azValue.value = [...value[azColumnConfig.value.valueKey]];
 }
 
 function getSummary(value, options) {
@@ -1279,32 +1285,40 @@ function toggleAll(type, checked) {
   if (type === 'az') {
     azValue.value = values;
   }
-  if (type === 'cloudServerType') {
+  if (!hasResourceTreeFilter.value) return;
+  if (type === resourceCloudServerColumn.value.valueKey) {
     resourceCloudServerValue.value = values;
   }
-  if (type === 'resourceSeries') {
+  if (type === resourceSeriesColumn.value.valueKey) {
     resourceSeriesValue.value = values;
   }
-  if (type === 'resourceFamily') {
+  if (type === resourceFamilyColumn.value.valueKey) {
     resourceFamilyValue.value = values;
   }
-  if (type === 'resourceVer') {
+  if (type === resourceGenerationColumn.value.valueKey) {
     resourceVerValue.value = values;
   }
-  if (type === 'resourceType') {
+  if (type === resourceTypeColumn.value.valueKey) {
     resourceTypeValue.value = values;
   }
 }
 
 function getOptionsByType(type) {
+  if (type === 'region') {
+    return filteredRegionOptions.value;
+  }
+  if (type === 'az') {
+    return filteredAzOptions.value;
+  }
+  if (!hasResourceTreeFilter.value) {
+    return [];
+  }
   const map = {
-    region: filteredRegionOptions.value,
-    az: filteredAzOptions.value,
-    cloudServerType: currentResourceCloudServers.value,
-    resourceSeries: visibleResourceSeries.value,
-    resourceFamily: visibleResourceFamilies.value,
-    resourceVer: visibleResourceGenerations.value,
-    resourceType: visibleResourceTypes.value,
+    [resourceCloudServerColumn.value.valueKey]: currentResourceCloudServers.value,
+    [resourceSeriesColumn.value.valueKey]: visibleResourceSeries.value,
+    [resourceFamilyColumn.value.valueKey]: visibleResourceFamilies.value,
+    [resourceGenerationColumn.value.valueKey]: visibleResourceGenerations.value,
+    [resourceTypeColumn.value.valueKey]: visibleResourceTypes.value,
   };
   return map[type] ?? [];
 }

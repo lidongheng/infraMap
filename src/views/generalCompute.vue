@@ -76,10 +76,12 @@ const { date: currentDate } = storeToRefs(useCurrentDate());
  * - key：筛选项唯一标识，FilterDropdowns 和 useGeneralComputeFilter 会用它找到对应配置。
  * - label：筛选框左侧展示名称。
  * - type：筛选框形态；range 表示范围粒度，resourceTree 表示资源粒度树。
- * - columns：仅 type 为 range 时使用，配置范围粒度里的列。
- * - columns.label：范围粒度弹层里的列标题。
+ * - columns：配置筛选弹层里的列。
+ * - columns.label：弹层里的列标题。
+ * - columns.valueKey：当前列选中结果回写到 filterValue 时使用的字段名。
  * - columns[0]：范围粒度第一列，对应 Region。
  * - columns[1]：范围粒度第二列，对应 AZ。
+ * - resourceTree 的 columns 按资源树层级顺序配置：云服务、资源系列、资源族、资源代数、资源类型。
  * - visible：控制当前列或筛选框是否展示。
  * - searchable：控制当前列是否展示搜索框。
  * - variant：仅 type 为 resourceTree 时使用；tree 表示展示资源树面板。
@@ -94,6 +96,13 @@ const TREE_RESOURCE_FILTER = {
   variant: "tree",
   submitMode: "tree",
   confirmable: true,
+  columns: [
+    { label: "云服务", valueKey: "cloudServerType" },
+    { label: "资源系列", valueKey: "resourceSeries" },
+    { label: "资源族", valueKey: "resourceFamily" },
+    { label: "资源代数", valueKey: "resourceVer" },
+    { label: "资源类型", valueKey: "resourceType" },
+  ],
 };
 
 const CATEGORY_CONFIG = {
@@ -104,8 +113,8 @@ const CATEGORY_CONFIG = {
         label: "范围粒度",
         type: "range",
         columns: [
-          { label: "Region", visible: true, searchable: true },
-          { label: "AZ", visible: true, searchable: false },
+          { label: "Region", valueKey: "regionNameList", visible: true, searchable: true },
+          { label: "AZ", valueKey: "azNameList", visible: true, searchable: false },
         ],
       },
       TREE_RESOURCE_FILTER,
@@ -146,8 +155,8 @@ const CATEGORY_CONFIG = {
         label: "范围粒度",
         type: "range",
         columns: [
-          { label: "Region", visible: false, searchable: true },
-          { label: "AZ", visible: false, searchable: false },
+          { label: "Region", valueKey: "regionNameList", visible: false, searchable: true },
+          { label: "AZ", valueKey: "azNameList", visible: false, searchable: false },
         ],
       },
       TREE_RESOURCE_FILTER,
@@ -175,8 +184,8 @@ const CATEGORY_CONFIG = {
         label: "范围粒度",
         type: "range",
         columns: [
-          { label: "Region", visible: true, searchable: true },
-          { label: "AZ", visible: false, searchable: false },
+          { label: "Region", valueKey: "regionNameList", visible: true, searchable: true },
+          { label: "AZ", valueKey: "azNameList", visible: false, searchable: false },
         ],
       },
       TREE_RESOURCE_FILTER,
