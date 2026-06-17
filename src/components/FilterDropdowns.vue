@@ -1,16 +1,13 @@
 <template>
-  <div
-    v-if="hasCustomFilters"
-    class="filter-bar custom-filter-bar"
-    :class="{ 'is-loading': loading }"
-  >
+  <div class="filter-bar custom-filter-bar" :class="{ 'is-loading': loading }">
     <div
-      v-for="filter in customFilters"
+      v-for="filter in visibleFilters"
       :key="filter.key"
       class="filter-item"
     >
       <span class="filter-label">{{ filter.label }}</span>
       <el-popover
+        v-if="isCustomFilter(filter)"
         :visible="customVisible[filter.key]"
         @update:visible="visible => setCustomVisible(filter, visible)"
         placement="bottom-start"
@@ -126,13 +123,8 @@
           </div>
         </div>
       </el-popover>
-    </div>
-  </div>
-
-  <div v-else class="filter-bar" :class="{ 'is-loading': loading }">
-    <div v-if="showRangeFilter" class="filter-item">
-      <span class="filter-label">{{ filterLabels.range }}</span>
       <el-popover
+        v-else-if="filter.type === 'range'"
         v-model:visible="rangeVisible"
         placement="bottom-start"
         :trigger="loading ? 'manual' : 'click'"
@@ -211,11 +203,8 @@
           </div>
         </div>
       </el-popover>
-    </div>
-
-    <div v-if="showResourceTypeFilter" class="filter-item">
-      <span class="filter-label">{{ filterLabels.resourceType }}</span>
       <el-popover
+        v-else-if="filter.type === 'resourceTree'"
         v-model:visible="resourceVisible"
         placement="bottom-start"
         :trigger="loading ? 'manual' : 'click'"
@@ -441,10 +430,7 @@ const props = defineProps({
     type: Object,
     default: null,
   },
-  showRegionFilter: { type: Boolean, default: true },
-  showAzFilter: { type: Boolean, default: true },
-  filterConfig: { type: Object, default: null },
-  labels: { type: Object, default: null },
+  filterConfig: { type: [Array, Object], required: true },
   loading: { type: Boolean, default: false },
 });
 
@@ -466,45 +452,39 @@ const resourceTypeFilterConfig = computed(() => getFilterConfigByKey('resourceTy
 const rangeColumns = computed(() => rangeFilterConfig.value?.columns ?? []);
 const regionColumnConfig = computed(() => rangeColumns.value[0] ?? {});
 const azColumnConfig = computed(() => rangeColumns.value[1] ?? {});
-const filterLabels = computed(() => ({
-  range: rangeFilterConfig.value?.label ?? '范围粒度',
-  resourceType: resourceTypeFilterConfig.value?.label ?? '资源粒度',
-  region: 'Region',
-  resourceGeneration: '资源代数',
-  ...(props.labels ?? {}),
-}));
+const configuredFilters = computed(() => getConfiguredFilters());
 const customFilters = computed(() =>
-  getConfiguredFilters().filter(filter => ['list', 'cascade'].includes(filter.type))
+  configuredFilters.value.filter(filter => isCustomFilter(filter))
 );
-const hasCustomFilters = computed(() => customFilters.value.length > 0);
+const hasRangeFilter = computed(() => Boolean(rangeFilterConfig.value));
+const hasResourceTreeFilter = computed(() => Boolean(resourceTypeFilterConfig.value));
+const visibleFilters = computed(() =>
+  configuredFilters.value.filter((filter) => {
+    if (filter.type === 'range') return showRangeFilter.value;
+    if (filter.type === 'resourceTree') return showResourceTypeFilter.value;
+    return filter.visible !== false;
+  })
+);
 
 // FilterDropdowns 只关心展示和交互：哪些框显示、资源类型用树还是单列、是否需要确定按钮。
 // 后端字段形态由通算筛选 composable 统一转换，避免 UI 组件夹带资源池判断。
 const resolvedFilterConfig = computed(() => ({
   region: {
-    visible: props.showRegionFilter,
-    searchable: true,
     ...(regionColumnConfig.value ?? {}),
   },
   az: {
-    visible: props.showAzFilter,
-    searchable: false,
     ...(azColumnConfig.value ?? {}),
   },
   resourceType: {
-    visible: true,
-    variant: "tree",
-    submitMode: "tree",
-    confirmable: true,
-    ...(resourceTypeFilterConfig.value ?? props.filterConfig?.resourceType ?? {}),
+    ...(resourceTypeFilterConfig.value ?? {}),
   },
 }));
 const showRegionFilter = computed(() => resolvedFilterConfig.value.region.visible);
 const showAzFilter = computed(() => resolvedFilterConfig.value.az.visible);
 const showRangeFilter = computed(() => showRegionFilter.value || showAzFilter.value);
 const showRegionSearch = computed(() => resolvedFilterConfig.value.region.searchable);
-const regionColumnLabel = computed(() => resolvedFilterConfig.value.region.label ?? 'Region');
-const azColumnLabel = computed(() => resolvedFilterConfig.value.az.label ?? 'AZ');
+const regionColumnLabel = computed(() => resolvedFilterConfig.value.region.label);
+const azColumnLabel = computed(() => resolvedFilterConfig.value.az.label);
 const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
 const isResourceListFilter = computed(() => resolvedFilterConfig.value.resourceType.variant === "list");
 const isResourceConfirmable = computed(() => resolvedFilterConfig.value.resourceType.confirmable);
@@ -630,7 +610,7 @@ const rangeSummary = computed(() => {
 });
 
 watch(resourceSeriesValue, (nextValue, oldValue) => {
-  if (hasCustomFilters.value) return;
+  if (!hasResourceTreeFilter.value) return;
   if (syncingFromModel) return;
   if (syncingResourceCascade) return;
   syncingResourceCascade = true;
@@ -639,7 +619,7 @@ watch(resourceSeriesValue, (nextValue, oldValue) => {
 }, { flush: 'sync' });
 
 watch(resourceCloudServerValue, (nextValue, oldValue) => {
-  if (hasCustomFilters.value) return;
+  if (!hasResourceTreeFilter.value) return;
   if (syncingFromModel) return;
   if (syncingResourceCascade) return;
   syncingResourceCascade = true;
@@ -648,7 +628,7 @@ watch(resourceCloudServerValue, (nextValue, oldValue) => {
 }, { flush: 'sync' });
 
 watch(resourceFamilyValue, (nextValue, oldValue) => {
-  if (hasCustomFilters.value) return;
+  if (!hasResourceTreeFilter.value) return;
   if (syncingFromModel) return;
   if (syncingResourceCascade) return;
   syncingResourceCascade = true;
@@ -657,7 +637,7 @@ watch(resourceFamilyValue, (nextValue, oldValue) => {
 }, { flush: 'sync' });
 
 watch(resourceVerValue, (nextValue, oldValue) => {
-  if (hasCustomFilters.value) return;
+  if (!hasResourceTreeFilter.value) return;
   if (syncingFromModel) return;
   if (syncingResourceCascade) return;
   syncingResourceCascade = true;
@@ -666,22 +646,16 @@ watch(resourceVerValue, (nextValue, oldValue) => {
 }, { flush: 'sync' });
 
 watch(resourceTypeValue, () => {
+  if (!hasResourceTreeFilter.value) return;
   if (syncingFromModel) return;
-  if (hasCustomFilters.value) {
-    emitCurrentValue();
-    return;
-  }
   // list 型资源类型保持即时提交；tree 型仍等用户点击“确定”。
   if (!isResourceListFilter.value) return;
   emitCurrentValue();
 }, { deep: true, flush: 'sync' });
 
 watch(regionValue, () => {
+  if (!hasRangeFilter.value) return;
   if (syncingFromModel) return;
-  if (hasCustomFilters.value) {
-    emitCurrentValue();
-    return;
-  }
   syncingLocationCascade = true;
   azValue.value = filteredAzOptions.value.map(item => item.value);
   syncingLocationCascade = false;
@@ -690,7 +664,7 @@ watch(regionValue, () => {
 }, { deep: true, flush: 'sync' });
 
 watch(azValue, () => {
-  if (hasCustomFilters.value) return;
+  if (!hasRangeFilter.value) return;
   if (syncingFromModel) return;
   if (syncingLocationCascade) return;
   if (rangeVisible.value) return;
@@ -698,7 +672,7 @@ watch(azValue, () => {
 }, { deep: true, flush: 'sync' });
 
 watch(rangeVisible, (visible) => {
-  if (hasCustomFilters.value) return;
+  if (!hasRangeFilter.value) return;
   if (loading.value) {
     rangeVisible.value = false;
     return;
@@ -714,7 +688,7 @@ watch(rangeVisible, (visible) => {
 });
 
 watch(resourceVisible, (visible) => {
-  if (hasCustomFilters.value) return;
+  if (!hasResourceTreeFilter.value) return;
   if (loading.value) {
     resourceVisible.value = false;
     return;
@@ -815,18 +789,26 @@ function getFilterConfigByKey(key) {
   return getConfiguredFilters().find(filter => filter.key === key);
 }
 
+function isCustomFilter(filter) {
+  return ['list', 'cascade'].includes(filter.type);
+}
+
 function allSelectedValue() {
-  if (hasCustomFilters.value) {
-    return customAllSelectedValue();
+  const value = {};
+  if (hasRangeFilter.value) {
+    value.regionNameList = regionOptions.value.map(item => item.value);
+    value.azNameList = azOptions.value.map(item => item.value);
+  }
+  if (hasResourceTreeFilter.value) {
+    value.cloudServerType = currentResourceCloudServers.value.map(item => item.value);
+    value.resourceSeries = isResourceListFilter.value ? [] : allResourceSeries.value.map(item => item.value);
+    value.resourceFamily = isResourceListFilter.value ? [] : allResourceFamilies.value.map(item => item.value);
+    value.resourceVer = isResourceListFilter.value ? [] : allResourceGenerations.value.map(item => item.value);
+    value.resourceType = allResourceTypes.value.map(item => item.value);
   }
   return {
-    regionNameList: regionOptions.value.map(item => item.value),
-    azNameList: azOptions.value.map(item => item.value),
-    cloudServerType: currentResourceCloudServers.value.map(item => item.value),
-    resourceSeries: isResourceListFilter.value ? [] : allResourceSeries.value.map(item => item.value),
-    resourceFamily: isResourceListFilter.value ? [] : allResourceFamilies.value.map(item => item.value),
-    resourceVer: isResourceListFilter.value ? [] : allResourceGenerations.value.map(item => item.value),
-    resourceType: allResourceTypes.value.map(item => item.value),
+    ...value,
+    ...customAllSelectedValue(),
   };
 }
 
@@ -843,33 +825,31 @@ function customAllSelectedValue() {
 }
 
 function applyModelValue(value) {
-  if (hasCustomFilters.value) {
-    applyCustomModelValue(value);
-    return;
-  }
   syncingFromModel = true;
   const fallback = allSelectedValue();
   const next = value ?? fallback;
-  regionValue.value = keepValid(getModelGroupValue(next, 'regionNameList', fallback), regionOptions.value, fallback.regionNameList);
-  azValue.value = keepValid(getModelGroupValue(next, 'azNameList', fallback), filteredAzOptions.value, fallback.azNameList);
-  resourceCloudServerValue.value = keepValid(getModelGroupValue(next, 'cloudServerType', fallback), currentResourceCloudServers.value, fallback.cloudServerType);
-  resourceSeriesValue.value = keepValid(getModelGroupValue(next, 'resourceSeries', fallback), allResourceSeries.value, fallback.resourceSeries);
-  resourceFamilyValue.value = keepValid(getModelGroupValue(next, 'resourceFamily', fallback), allResourceFamilies.value, fallback.resourceFamily);
-  resourceVerValue.value = keepValid(getModelGroupValue(next, 'resourceVer', fallback), allResourceGenerations.value, fallback.resourceVer);
-  resourceTypeValue.value = keepValid(getModelGroupValue(next, 'resourceType', fallback), allResourceTypes.value, fallback.resourceType);
-  rangeSnapshot.value = getRangeValue();
-  resourceSnapshot.value = getResourceValue();
-  activeCloudServer.value = currentResourceCloudServers.value[0]?.value ?? '';
-  activeSeries.value = visibleResourceSeries.value[0]?.value ?? '';
-  activeFamily.value = allResourceFamilies.value[0]?.value ?? '';
-  activeGeneration.value = allResourceGenerations.value[0]?.value ?? '';
+  if (hasRangeFilter.value) {
+    regionValue.value = keepValid(getModelGroupValue(next, 'regionNameList', fallback), regionOptions.value, fallback.regionNameList);
+    azValue.value = keepValid(getModelGroupValue(next, 'azNameList', fallback), filteredAzOptions.value, fallback.azNameList);
+    rangeSnapshot.value = getRangeValue();
+  }
+  if (hasResourceTreeFilter.value) {
+    resourceCloudServerValue.value = keepValid(getModelGroupValue(next, 'cloudServerType', fallback), currentResourceCloudServers.value, fallback.cloudServerType);
+    resourceSeriesValue.value = keepValid(getModelGroupValue(next, 'resourceSeries', fallback), allResourceSeries.value, fallback.resourceSeries);
+    resourceFamilyValue.value = keepValid(getModelGroupValue(next, 'resourceFamily', fallback), allResourceFamilies.value, fallback.resourceFamily);
+    resourceVerValue.value = keepValid(getModelGroupValue(next, 'resourceVer', fallback), allResourceGenerations.value, fallback.resourceVer);
+    resourceTypeValue.value = keepValid(getModelGroupValue(next, 'resourceType', fallback), allResourceTypes.value, fallback.resourceType);
+    resourceSnapshot.value = getResourceValue();
+    activeCloudServer.value = currentResourceCloudServers.value[0]?.value ?? '';
+    activeSeries.value = visibleResourceSeries.value[0]?.value ?? '';
+    activeFamily.value = allResourceFamilies.value[0]?.value ?? '';
+    activeGeneration.value = allResourceGenerations.value[0]?.value ?? '';
+  }
+  applyCustomModelValue(next, fallback);
   syncingFromModel = false;
 }
 
-function applyCustomModelValue(value) {
-  syncingFromModel = true;
-  const fallback = customAllSelectedValue();
-  const next = value ?? fallback;
+function applyCustomModelValue(next, fallback) {
   customFilters.value.forEach((filter) => {
     if (filter.type === 'list') {
       customValueMap.value[filter.valueKey] = keepValid(
@@ -891,7 +871,6 @@ function applyCustomModelValue(value) {
     );
     customActive.value[filter.key] = getCustomRootOptions(filter)[0]?.value ?? '';
   });
-  syncingFromModel = false;
 }
 
 function getModelGroupValue(value, key, fallback) {
@@ -930,33 +909,31 @@ function filterAzOptionsByRegions(options, selectedRegions) {
 
 function emitCurrentValue() {
   if (syncingFromModel) return;
-  if (hasCustomFilters.value) {
-    emitCustomCurrentValue();
-    return;
+  const value = {};
+  if (hasRangeFilter.value) {
+    value.regionNameList = [...regionValue.value];
+    value.azNameList = [...azValue.value];
   }
-  const value = {
-    regionNameList: [...regionValue.value],
-    azNameList: [...azValue.value],
-    cloudServerType: [...resourceCloudServerValue.value],
-    resourceSeries: [...resourceSeriesValue.value],
-    resourceFamily: [...resourceFamilyValue.value],
-    resourceVer: [...resourceVerValue.value],
-    resourceType: [...resourceTypeValue.value],
-  };
+  if (hasResourceTreeFilter.value) {
+    value.cloudServerType = [...resourceCloudServerValue.value];
+    value.resourceSeries = [...resourceSeriesValue.value];
+    value.resourceFamily = [...resourceFamilyValue.value];
+    value.resourceVer = [...resourceVerValue.value];
+    value.resourceType = [...resourceTypeValue.value];
+  }
+  Object.assign(value, getCustomCurrentValue());
   emit('update:modelValue', value);
   emit('change', value);
 }
 
-function emitCustomCurrentValue() {
-  const value = customFilters.value.reduce((result, filter) => {
+function getCustomCurrentValue() {
+  return customFilters.value.reduce((result, filter) => {
     if (filter.type !== 'list') {
       result[filter.parentValueKey] = [...getCustomValue(filter.parentValueKey)];
     }
     result[filter.valueKey] = [...getCustomValue(filter.valueKey)];
     return result;
   }, {});
-  emit('update:modelValue', value);
-  emit('change', value);
 }
 
 function getCustomRootOptions(filter) {
