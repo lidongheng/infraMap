@@ -39,6 +39,16 @@ import { ref, computed } from 'vue';
 import FilterDropdowns from '@/components/FilterDropdowns.vue';
 
 const filterValue = ref(null);
+
+/**
+ * OBS 关键信息筛选配置说明：
+ * - filterConfig 是筛选框声明，filterOptions 是筛选框数据源。
+ * - optionKey 指向 filterOptions 里的同名字段，所以 region 筛选会读取 regionAreaTree。
+ * - regionAreaTree 是两层树：第一层是大区，第二层是 Region。
+ * - 第一层选中值写入 parentValueKey 对应的 regionAreaList。
+ * - 第二层选中值写入 valueKey 对应的 regionNameList。
+ * - label 是页面展示文案，value 是最终写入 filterValue 的值。
+ */
 const filterConfig = [
   {
     key: 'region',
@@ -56,6 +66,7 @@ const filterConfig = [
   },
 ];
 const filterOptions = {
+  // regionAreaTree 被 Region 筛选引用；用于渲染“大区 / Region”两列级联面板。
   regionAreaTree: [
     {
       label: '非洲',

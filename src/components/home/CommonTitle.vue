@@ -28,14 +28,16 @@
     </div>
 
     <div class="flex-center current">
-      <FilterDropdowns
-        v-if="showGeneralComputeFilter"
-        v-model="filterValue"
-        :options="filterOptions"
-        :filter-config="filterConfig"
-        :loading="directoryTreeLoading"
-        @change="onFilterChange"
-      />
+      <slot name="select">
+        <FilterDropdowns
+          v-if="showGeneralComputeFilter"
+          v-model="filterValue"
+          :options="filterOptions"
+          :filter-config="filterConfig"
+          :loading="directoryTreeLoading"
+          @change="onFilterChange"
+        />
+      </slot>
       <div class="text">时间</div>
       <el-date-picker
         class="current-month"

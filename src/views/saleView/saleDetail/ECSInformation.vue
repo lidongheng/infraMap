@@ -50,7 +50,14 @@ import FilterDropdowns from '@/components/FilterDropdowns.vue';
  * - parentValueKey：仅 type 为 cascade 时使用，表示左侧父级列选中结果回写字段名。
  * - searchable：仅 type 为 cascade 时使用，控制右侧子级列是否展示搜索框。
  * - columns：仅 type 为 cascade 时使用，配置左右两列的标题。
- * - filterOptions：筛选项选项数据；list 使用一维数组，cascade 使用带 children 的树形数组。
+ * - filterOptions：筛选项选项数据；key 必须和 filterConfig.optionKey 保持一致。
+ * - resourceSpecList：资源规格筛选的数据源，因为资源规格是 type=list，所以这里是一维数组。
+ * - regionAreaTree：Region 筛选的数据源，因为 Region 是 type=cascade，所以这里是两层树。
+ * - resourceGenerationTree：资源代数筛选的数据源，也是 type=cascade 的两层树。
+ * - label：选项在下拉面板中展示的文案。
+ * - value：选项选中后写入 filterValue 的值。
+ * - children：仅 cascade 使用，表示右侧子级列的数据。
+ * - list 型筛选只回写 valueKey；cascade 型筛选会同时回写 parentValueKey 和 valueKey。
  */
 const filterValue = ref(null);
 const filterConfig = [
@@ -89,11 +96,13 @@ const filterConfig = [
   },
 ];
 const filterOptions = {
+  // resourceSpecList 被“资源规格”筛选的 optionKey 引用；选中后写入 filterValue.resourceType。
   resourceSpecList: [
     { label: 'c6.large', value: 'c6.large' },
     { label: 'c6.xlarge', value: 'c6.xlarge' },
     { label: 'm6.large', value: 'm6.large' },
   ],
+  // regionAreaTree 被“Region”筛选的 optionKey 引用；左列大区写入 regionAreaList，右列 Region 写入 regionNameList。
   regionAreaTree: [
     {
       label: '非洲',
@@ -112,6 +121,7 @@ const filterOptions = {
       ],
     },
   ],
+  // resourceGenerationTree 被“资源代数”筛选的 optionKey 引用；左列资源族写入 resourceFamily，右列资源代数写入 resourceVer。
   resourceGenerationTree: [
     {
       label: 'c',
