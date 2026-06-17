@@ -148,7 +148,7 @@
           </div>
           <div class="range-columns" :class="{ 'range-columns--single': !showRegionFilter || !showAzFilter }">
             <div v-if="showRegionFilter" class="range-column">
-              <div class="column-title">{{ regionColumnLabel }}</div>
+              <div class="column-title">{{ regionColumnConfig.label }}</div>
               <div class="option-list">
                 <label class="option-row checked-row">
                   <el-checkbox
@@ -173,7 +173,7 @@
             </div>
 
             <div v-if="showAzFilter" class="range-column">
-              <div class="column-title">{{ azColumnLabel }}</div>
+              <div class="column-title">{{ azColumnConfig.label }}</div>
               <div class="option-list">
                 <label class="option-row checked-row">
                   <el-checkbox
@@ -430,7 +430,7 @@ const props = defineProps({
     type: Object,
     default: null,
   },
-  filterConfig: { type: [Array, Object], required: true },
+  filterConfig: { type: Array, required: true },
   loading: { type: Boolean, default: false },
 });
 
@@ -452,42 +452,24 @@ const resourceTypeFilterConfig = computed(() => getFilterConfigByKey('resourceTy
 const rangeColumns = computed(() => rangeFilterConfig.value?.columns ?? []);
 const regionColumnConfig = computed(() => rangeColumns.value[0] ?? {});
 const azColumnConfig = computed(() => rangeColumns.value[1] ?? {});
-const configuredFilters = computed(() => getConfiguredFilters());
-const customFilters = computed(() =>
-  configuredFilters.value.filter(filter => isCustomFilter(filter))
-);
+const customFilters = computed(() => props.filterConfig.filter(filter => isCustomFilter(filter)));
 const hasRangeFilter = computed(() => Boolean(rangeFilterConfig.value));
 const hasResourceTreeFilter = computed(() => Boolean(resourceTypeFilterConfig.value));
 const visibleFilters = computed(() =>
-  configuredFilters.value.filter((filter) => {
+  props.filterConfig.filter((filter) => {
     if (filter.type === 'range') return showRangeFilter.value;
     if (filter.type === 'resourceTree') return showResourceTypeFilter.value;
     return filter.visible !== false;
   })
 );
 
-// FilterDropdowns 只关心展示和交互：哪些框显示、资源类型用树还是单列、是否需要确定按钮。
-// 后端字段形态由通算筛选 composable 统一转换，避免 UI 组件夹带资源池判断。
-const resolvedFilterConfig = computed(() => ({
-  region: {
-    ...(regionColumnConfig.value ?? {}),
-  },
-  az: {
-    ...(azColumnConfig.value ?? {}),
-  },
-  resourceType: {
-    ...(resourceTypeFilterConfig.value ?? {}),
-  },
-}));
-const showRegionFilter = computed(() => resolvedFilterConfig.value.region.visible);
-const showAzFilter = computed(() => resolvedFilterConfig.value.az.visible);
+const showRegionFilter = computed(() => regionColumnConfig.value.visible);
+const showAzFilter = computed(() => azColumnConfig.value.visible);
 const showRangeFilter = computed(() => showRegionFilter.value || showAzFilter.value);
-const showRegionSearch = computed(() => resolvedFilterConfig.value.region.searchable);
-const regionColumnLabel = computed(() => resolvedFilterConfig.value.region.label);
-const azColumnLabel = computed(() => resolvedFilterConfig.value.az.label);
-const showResourceTypeFilter = computed(() => resolvedFilterConfig.value.resourceType.visible);
-const isResourceListFilter = computed(() => resolvedFilterConfig.value.resourceType.variant === "list");
-const isResourceConfirmable = computed(() => resolvedFilterConfig.value.resourceType.confirmable);
+const showRegionSearch = computed(() => regionColumnConfig.value.searchable);
+const showResourceTypeFilter = computed(() => resourceTypeFilterConfig.value.visible);
+const isResourceListFilter = computed(() => resourceTypeFilterConfig.value.variant === "list");
+const isResourceConfirmable = computed(() => resourceTypeFilterConfig.value.confirmable);
 const rangePopperClass = computed(() => {
   const singleClass = !showRegionFilter.value || !showAzFilter.value ? " filter-popper--range-single" : "";
   return `filter-popper filter-popper--range${singleClass}`;
@@ -775,18 +757,8 @@ function toOptionMeta(item) {
   };
 }
 
-function getConfiguredFilters() {
-  if (Array.isArray(props.filterConfig)) {
-    return props.filterConfig;
-  }
-  if (Array.isArray(props.filterConfig?.filters)) {
-    return props.filterConfig.filters;
-  }
-  return [];
-}
-
 function getFilterConfigByKey(key) {
-  return getConfiguredFilters().find(filter => filter.key === key);
+  return props.filterConfig.find(filter => filter.key === key);
 }
 
 function isCustomFilter(filter) {

@@ -41,7 +41,7 @@ import FilterDropdowns from '@/components/FilterDropdowns.vue';
 /**
  * ECS 关键信息筛选配置说明：
  * - filterValue：FilterDropdowns 的 v-model，保存当前选择结果。
- * - filterConfig.filters：筛选框配置数组；数组里每一项对应页面顶部的一个筛选框。
+ * - filterConfig：筛选框配置数组；数组里每一项对应页面顶部的一个筛选框。
  * - key：筛选项唯一标识，只用于组件内部区分不同筛选框。
  * - label：筛选框左侧展示名称，例如“资源规格”“Region”“资源代数”。
  * - type：筛选框形态；list 表示单列列表，cascade 表示左右两列级联。
@@ -53,43 +53,41 @@ import FilterDropdowns from '@/components/FilterDropdowns.vue';
  * - filterOptions：筛选项选项数据；list 使用一维数组，cascade 使用带 children 的树形数组。
  */
 const filterValue = ref(null);
-const filterConfig = {
-  filters: [
-    {
-      key: 'resourceSpec',
-      label: '资源规格',
-      type: 'list',
-      optionKey: 'resourceSpecList',
-      valueKey: 'resourceType',
-    },
-    {
-      key: 'region',
-      label: 'Region',
-      type: 'cascade',
-      optionKey: 'regionAreaTree',
-      parentValueKey: 'regionAreaList',
-      valueKey: 'regionNameList',
-      searchable: true,
-      columns: [
-        { title: '大区' },
-        { title: 'Region' },
-      ],
-    },
-    {
-      key: 'resourceGeneration',
-      label: '资源代数',
-      type: 'cascade',
-      optionKey: 'resourceGenerationTree',
-      parentValueKey: 'resourceFamily',
-      valueKey: 'resourceVer',
-      searchable: false,
-      columns: [
-        { title: '资源族' },
-        { title: '资源代数' },
-      ],
-    },
-  ],
-};
+const filterConfig = [
+  {
+    key: 'resourceSpec',
+    label: '资源规格',
+    type: 'list',
+    optionKey: 'resourceSpecList',
+    valueKey: 'resourceType',
+  },
+  {
+    key: 'region',
+    label: 'Region',
+    type: 'cascade',
+    optionKey: 'regionAreaTree',
+    parentValueKey: 'regionAreaList',
+    valueKey: 'regionNameList',
+    searchable: true,
+    columns: [
+      { title: '大区' },
+      { title: 'Region' },
+    ],
+  },
+  {
+    key: 'resourceGeneration',
+    label: '资源代数',
+    type: 'cascade',
+    optionKey: 'resourceGenerationTree',
+    parentValueKey: 'resourceFamily',
+    valueKey: 'resourceVer',
+    searchable: false,
+    columns: [
+      { title: '资源族' },
+      { title: '资源代数' },
+    ],
+  },
+];
 const filterOptions = {
   resourceSpecList: [
     { label: 'c6.large', value: 'c6.large' },

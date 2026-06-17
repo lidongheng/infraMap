@@ -21,24 +21,14 @@ export const filterValue = ref(null);
 // 如果初始值直接用空数组对象，气泡图和左侧卡片会先用空条件请求一次，
 // 等选项加载完成后再用全选条件请求一次，造成首屏重复请求。
 export const backendFilters = ref(null);
-export const filterConfig = ref(null);
+export const filterConfig = ref([]);
 export const filterResetKey = ref(0);
 export const visibleTiers = ref([]);
 const hasUserChangedFilter = ref(false);
 const emptyResourceTypeCloudServerNames = new Set(["BMS", "DCC", "DSS"]);
 
-function getConfiguredFilters() {
-  if (Array.isArray(filterConfig.value)) {
-    return filterConfig.value;
-  }
-  if (Array.isArray(filterConfig.value?.filters)) {
-    return filterConfig.value.filters;
-  }
-  return [];
-}
-
 function getFilterConfigByKey(key) {
-  return getConfiguredFilters().find((filter) => filter.key === key);
+  return filterConfig.value.find((filter) => filter.key === key);
 }
 
 function getRangeColumns() {
@@ -61,7 +51,7 @@ const resolvedFilterConfig = computed(() => ({
     variant: "tree",
     submitMode: "tree",
     confirmable: true,
-    ...(getFilterConfigByKey("resourceType") ?? filterConfig.value?.resourceType ?? {}),
+    ...(getFilterConfigByKey("resourceType") ?? {}),
   },
 }));
 

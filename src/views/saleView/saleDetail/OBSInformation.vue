@@ -39,24 +39,22 @@ import { ref, computed } from 'vue';
 import FilterDropdowns from '@/components/FilterDropdowns.vue';
 
 const filterValue = ref(null);
-const filterConfig = {
-  filters: [
-    {
-      key: 'region',
-      label: 'Region',
-      type: 'cascade',
-      optionKey: 'regionAreaTree',
-      parentValueKey: 'regionAreaList',
-      valueKey: 'regionNameList',
-      searchable: true,
-      confirmable: true,
-      columns: [
-        { title: '大区' },
-        { title: 'Region' },
-      ],
-    },
-  ],
-};
+const filterConfig = [
+  {
+    key: 'region',
+    label: 'Region',
+    type: 'cascade',
+    optionKey: 'regionAreaTree',
+    parentValueKey: 'regionAreaList',
+    valueKey: 'regionNameList',
+    searchable: true,
+    confirmable: true,
+    columns: [
+      { title: '大区' },
+      { title: 'Region' },
+    ],
+  },
+];
 const filterOptions = {
   regionAreaTree: [
     {
