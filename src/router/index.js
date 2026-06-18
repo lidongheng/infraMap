@@ -11,6 +11,8 @@ import saleHome from '../views/saleView/saleHome/index.vue'
 import RoleSelect from '../views/RoleSelect.vue'
 import GlobalLayout from '@/components/home/GlobalLayout.vue'
 import SaleDetail from '../views/saleView/saleDetail/index.vue'
+import NoPermission from '../views/noPermission/index.vue'
+import NoPermissionTest from '../views/noPermissionTest/index.vue'
 
 const routes = [
   {
@@ -48,8 +50,18 @@ const routes = [
         path: '/saleDetail',
         name: 'saleDetail',
         component: SaleDetail,
+      },
+      {
+        path: '/noPermissionTest',
+        name: 'noPermissionTest',
+        component: NoPermissionTest,
       }
     ]
+  },
+  {
+    path: '/noPermission',
+    name: 'noPermission',
+    component: NoPermission
   },
   
   {

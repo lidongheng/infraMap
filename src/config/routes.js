@@ -71,6 +71,8 @@ export const ROUTE_CONFIG = {
     '/costOperation',
     '/saleHome',
     '/saleDetail',
+    '/noPermission',
+    '/noPermissionTest',
     '/login',
     '/register',
     '/404',
