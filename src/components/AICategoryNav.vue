@@ -5,17 +5,17 @@
       <div class="top-metrics">
         <div class="metric">
           <span class="metric-label">ST卡数</span>
-          <span class="metric-value">23.17</span>
+          <span class="metric-value">**</span>
           <span class="metric-unit">万卡</span>
         </div>
         <div class="metric">
           <span class="metric-label">超节点</span>
-          <span class="metric-value">254.5</span>
+          <span class="metric-value">**</span>
           <span class="metric-unit">个</span>
         </div>
         <div class="metric">
           <span class="metric-label">Token卡数</span>
-          <span class="metric-value">1,214.5</span>
+          <span class="metric-value">**</span>
           <span class="metric-unit">万卡</span>
         </div>
       </div>
@@ -23,18 +23,18 @@
         <div class="profit">
           <span class="profit-dot"></span>
           <span>盈</span>
-          <strong>8.185</strong>
+          <strong>**</strong>
           <span>亿元</span>
-          <small>▲ 0.06 亿元</small>
+          <small>**</small>
         </div>
         <div class="finance-item">
           <span>流水</span>
-          <strong>79.235</strong>
+          <strong>**</strong>
           <span>亿元</span>
         </div>
         <div class="finance-item">
           <span>成本</span>
-          <strong>71.05</strong>
+          <strong>**</strong>
           <span>亿元</span>
         </div>
       </div>
@@ -80,23 +80,40 @@
           <div class="profit">
             <span class="profit-dot"></span>
             <span>盈</span>
-            <strong>3.69</strong>
+            <strong>**</strong>
             <span>亿元</span>
-            <small>▲ 0.06 亿元</small>
+            <small>**</small>
           </div>
           <div class="finance-item">
             <span>流水</span>
-            <strong>64.235</strong>
+            <strong>**</strong>
             <span>亿元</span>
           </div>
           <div class="finance-item">
             <span>成本</span>
-            <strong>59.235</strong>
+            <strong>**</strong>
             <span>亿元</span>
           </div>
         </div>
         <div class="list-area">
-          <div class="vertical-label">代次</div>
+          <div class="vertical-stack">
+            <button
+              class="vertical-label vertical-button"
+              :class="{ light: parentName !== '代次' }"
+              type="button"
+              @click="selectComputeGroup('代次')"
+            >
+              代次
+            </button>
+            <button
+              class="vertical-label vertical-button"
+              :class="{ light: parentName !== '客户' }"
+              type="button"
+              @click="selectComputeGroup('客户')"
+            >
+              客户
+            </button>
+          </div>
           <div class="table-list">
             <div class="table-head compute-head">
               <span>aiCompute卡数<br />（卡）</span>
@@ -109,9 +126,24 @@
               v-for="item in computeItems"
               :key="item.name"
               class="table-row"
-              :class="{ active: selectedResourceType === item.name }"
+              :class="{ active: parentName === '代次' && selectedResourceType === item.name }"
               type="button"
-              @click="selectedResourceType = item.name"
+              @click="selectComputeGeneration(item.name)"
+            >
+              <span class="item-name">⌄ {{ item.name }}</span>
+              <span>{{ item.cardNum }}</span>
+              <span>{{ item.allocationRate }}</span>
+              <span>{{ item.revenue }}</span>
+              <span>{{ item.cost }}</span>
+              <span>{{ item.margin }}</span>
+            </button>
+            <button
+              v-for="item in computeCustomerItems"
+              :key="item.name"
+              class="table-row"
+              :class="{ active: parentName === '客户' && selectedResourceType === item.name }"
+              type="button"
+              @click="selectComputeCustomer(item.name)"
             >
               <span class="item-name">⌄ {{ item.name }}</span>
               <span>{{ item.cardNum }}</span>
@@ -129,28 +161,28 @@
           <div class="profit">
             <span class="profit-dot"></span>
             <span>盈</span>
-            <strong>4.495</strong>
+            <strong>**</strong>
             <span>亿元</span>
-            <small>▲ 0.06 亿元</small>
+            <small>**</small>
           </div>
           <div class="finance-item">
             <span>流水</span>
-            <strong>79.235</strong>
+            <strong>**</strong>
             <span>亿元</span>
           </div>
           <div class="finance-item">
             <span>成本</span>
-            <strong>56.055</strong>
+            <strong>**</strong>
             <span>亿元</span>
           </div>
           <div class="finance-item wide">
             <span>百万Token流水</span>
-            <strong>305.805</strong>
+            <strong>**</strong>
             <span>MT/元</span>
           </div>
           <div class="finance-item wide">
             <span>百万Token成本</span>
-            <strong>277.36</strong>
+            <strong>**</strong>
             <span>MT/元</span>
           </div>
         </div>
@@ -225,30 +257,51 @@ import {
   selectedModelType,
   selectedResourceType,
   selectedTokenGroup,
+  parentName,
 } from "@/views/useAIComputer";
 
 defineProps({
   computeItems: { type: Array, required: true },
+  computeCustomerItems: { type: Array, required: true },
   tokenItems: { type: Array, required: true },
   tokenCustomerItems: { type: Array, required: true },
 });
 
 const tokenPreviewMetrics = [
-  { label: "Token卡数", value: "914.5", unit: "万卡" },
-  { label: "日Token数", value: "10.725", unit: "亿" },
-  { label: "PUT(百万Token耗电量)", value: "79.235", unit: "kwh" },
-  { label: "token利用率", value: "42.09", unit: "%" },
+  { label: "Token卡数", value: "**", unit: "万卡" },
+  { label: "日Token数", value: "**", unit: "亿" },
+  { label: "PUT(百万Token耗电量)", value: "**", unit: "kwh" },
+  { label: "token利用率", value: "**", unit: "%" },
 ];
 
 const computePreviewMetrics = [
-  { label: "算力卡数", value: "300", unit: "万卡" },
-  { label: "卡时使用率", value: "39.57", unit: "%" },
-  { label: "AI core利用率", value: "41.085", unit: "%" },
-  { label: "HBM利用率", value: "38.055", unit: "%" },
+  { label: "算力卡数", value: "**", unit: "万卡" },
+  { label: "卡时使用率", value: "**", unit: "%" },
+  { label: "AI core利用率", value: "**", unit: "%" },
+  { label: "HBM利用率", value: "**", unit: "%" },
 ];
 
 function switchMode(mode) {
   aiOverviewMode.value = mode;
+}
+
+function selectComputeGroup(name) {
+  parentName.value = name;
+  if (name === "代次") {
+    selectedResourceType.value = "A3";
+    return;
+  }
+  selectedResourceType.value = "内部";
+}
+
+function selectComputeGeneration(name) {
+  parentName.value = "代次";
+  selectedResourceType.value = name;
+}
+
+function selectComputeCustomer(name) {
+  parentName.value = "客户";
+  selectedResourceType.value = name;
 }
 
 function selectModel(name) {

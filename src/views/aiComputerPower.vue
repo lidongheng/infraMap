@@ -9,10 +9,15 @@
     :xRange="xRange"
     :yTicks="chartYTicks"
     :xAxisName="xAxisName"
+    :xAxisValueUnit="xAxisValueUnit"
+    :yAxisTopLabel="yAxisTopLabel"
     :showZoneLabels="false"
     :tooltipYLabel="tooltipYLabel"
+    :tooltipMetricOrder="tooltipMetricOrder"
+    :tooltipShowSize="tooltipShowSize"
     sizeLabel="卡数(卡)"
     :sizeTiers="AI_SIZE_TIERS"
+    :singleLegend="singleLegend"
     :initialVisibleTiers="[true, true, true, true]"
     :trafficLights="trafficLightRules"
     :trafficLightKeys="trafficLightKeys"
@@ -45,7 +50,13 @@ const props = defineProps({
   /** 与 commonComputerPower 一致：设为数字时用数据 ±padding 驱动 Y 轴刻度与过滤范围 */
   axisRangeDataPadding: { type: Number, default: null },
   yTicks: { type: Array, default: null },
+  xRange: { type: Array, default: null },
+  xAxisValueUnit: { type: String, default: "%" },
+  yAxisTopLabel: { type: String, default: "" },
   tooltipYLabel: { type: String, default: "毛利率" },
+  tooltipMetricOrder: { type: Array, default: () => ["x", "y"] },
+  tooltipShowSize: { type: Boolean, default: true },
+  singleLegend: { type: Object, default: null },
   avgXField: { type: String, default: "allocationRate" },
   trafficLightKeys: { type: Object, default: null },
   dataFilter: { type: Function, default: null },
@@ -92,6 +103,7 @@ const { chartYRange, chartYTicks } = useBubbleAxisRange(props, mappedData, {
 });
 
 const xRange = computed(() => {
+  if (props.xRange) return props.xRange;
   const rows = mappedData.value;
   if (!rows.length) return null;
   const filtered = props.dataFilter ? rows.filter(props.dataFilter) : rows;

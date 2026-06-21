@@ -2,12 +2,12 @@
   <div class="common-service">
     <div class="service-title">服务入口</div>
     <button type="button" class="service-button" @click="goTo('/generalCompute')">
-      <span class="service-name">通算页</span>
-      <span class="service-desc">查看通用算力运营</span>
+      <span class="service-name">TS</span>
+      <span class="service-desc">查看TYSL运营</span>
     </button>
     <button type="button" class="service-button" @click="goTo('/aiCompute')">
-      <span class="service-name">智算页</span>
-      <span class="service-desc">查看智能算力运营</span>
+      <span class="service-name">ZS</span>
+      <span class="service-desc">查看ZNSL运营</span>
     </button>
   </div>
 </template>

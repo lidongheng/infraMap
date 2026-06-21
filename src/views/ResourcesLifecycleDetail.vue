@@ -40,7 +40,7 @@
         }"
         @click="onClick(item.resourceName)"
       >
-        <span>{{ item.resourceName }}</span>
+        <span>{{ CLOUD_SERVICE_DISPLAY_NAME[item.resourceName] }}</span>
         <span>{{ item.diskSpaceUseRate }}</span>
         <span>{{ item.grossProfitRate }}</span>
         <span>{{ item.poolNum }}</span>
@@ -55,12 +55,12 @@
 import { computed, watch } from 'vue';
 import { toWan, toBillion } from '@/utils';
 import { fetchHomeCardData, homeCardData } from './hooks/useIndicators';
-import { filterInforData, loadResourcePoolCustomerInfo } from './useDirectoryTree';
+import { CLOUD_SERVICE_DISPLAY_NAME, filterInforData, loadResourcePoolCustomerInfo } from './useDirectoryTree';
 import { useResourcePool, selectedPool } from './ResourcesLifecycle';
 import { backendFilters, resetGeneralComputeFilter } from './useGeneralComputeFilter';
 
 const { poolData, operateData, fetchResourcePoolData } = useResourcePool();
-const enabledPoolNames = ['ECS', 'EVS', 'OBS'];
+const enabledPoolNames = ['ECS', 'OBS', 'EVS'];
 const lifecycleTableData = computed(() =>
   poolData.value.filter((item) => enabledPoolNames.includes(item.resourceName))
 );

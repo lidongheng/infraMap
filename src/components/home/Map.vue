@@ -493,7 +493,7 @@ function buildOption() {
         top: 9 * s,
         z: 100,
         style: {
-          text: "Region销毛率",
+          text: "联赛/俱乐部销毛率",
           fontSize: Math.round(14 * s),
           fontWeight: "normal",
           fill: "#353575",
@@ -548,7 +548,7 @@ function buildOption() {
 
           { type: "text", left: 0, top: 0, style: { text: formatDisplayValue(regionData.value.length), fontSize: Math.round(28 * s), fontWeight: "bold", fill: "#333" } },
           { type: "text", left: 38 * s, top: 10 * s, style: { text: "个", fontSize: Math.round(13 * s), fill: "#999" } },
-          { type: "text", left: 2 * s, top: 36 * s, style: { text: "Region", fontSize: Math.round(12 * s), fill: "#999" } },
+          { type: "text", left: 2 * s, top: 36 * s, style: { text: "联赛/俱乐部", fontSize: Math.round(12 * s), fill: "#999" } },
 
           {
             type: "rect",

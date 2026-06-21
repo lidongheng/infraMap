@@ -4,12 +4,40 @@ import { REGION_COORDS } from "@/config/regionCoords";
 import { useCurrentDate } from "./useCurrentDate";
 
 const isIframeCreated = ref(true);
+
+const LEAGUE_CLUB_LIST = [
+  { name: "英国-英超-曼城", rate: 0.1644, lng: -2.2426, lat: 53.4808 },
+  { name: "英国-英超-阿森纳", rate: 0.1189, lng: -0.1022, lat: 51.5549 },
+  { name: "英国-英超-利物浦", rate: 0.1522, lng: -2.9608, lat: 53.4308 },
+  { name: "西班牙-西甲-皇家马德里", rate: 0.1899, lng: -3.6883, lat: 40.4531 },
+  { name: "西班牙-西甲-巴塞罗那", rate: 0.1318, lng: 2.1228, lat: 41.3809 },
+  { name: "西班牙-西甲-马德里竞技", rate: 0.0782, lng: -3.5994, lat: 40.4362 },
+  { name: "意大利-意甲-国际米兰", rate: 0.1211, lng: 9.124, lat: 45.4781 },
+  { name: "意大利-意甲-尤文图斯", rate: 0.0966, lng: 7.6413, lat: 45.1096 },
+  { name: "意大利-意甲-AC米兰", rate: 0.0872, lng: 9.122, lat: 45.478 },
+  { name: "德国-德甲-拜仁慕尼黑", rate: 0.1533, lng: 11.6247, lat: 48.2188 },
+  { name: "德国-德甲-多特蒙德", rate: 0.0633, lng: 7.4518, lat: 51.4926 },
+  { name: "德国-德甲-勒沃库森", rate: 0.1455, lng: 6.9816, lat: 51.0383 },
+  { name: "法国-法甲-巴黎圣日耳曼", rate: 0.1829, lng: 2.2522, lat: 48.8414 },
+  { name: "法国-法甲-马赛", rate: 0.0422, lng: 5.3959, lat: 43.2699 },
+  { name: "法国-法甲-里昂", rate: 0.0688, lng: 4.9828, lat: 45.7653 },
+  { name: "葡萄牙-葡超-本菲卡", rate: -0.0088, lng: -9.1847, lat: 38.7527 },
+  { name: "荷兰-荷甲-阿贾克斯", rate: 0.0615, lng: 4.9413, lat: 52.3142 },
+  { name: "土耳其-土超-加拉塔萨雷", rate: -0.0211, lng: 28.9917, lat: 41.1036 },
+  { name: "巴西-巴甲-弗拉门戈", rate: 0.1055, lng: -43.2302, lat: -22.9122 },
+  { name: "阿根廷-阿甲-博卡青年", rate: -0.0355, lng: -58.3647, lat: -34.6356 },
+];
+
 /**
  * 根据 name 前缀匹配，补充 lng、lat；无匹配则返回 null（用于过滤）
  * @param {{ name: string, rate: number }} item 后端返回的项（仅 name、rate）
  * @returns {{ name: string, rate: number, lng: number, lat: number } | null}
  */
 export function enrichRegionWithCoords(item) {
+  // 五大联赛资料这类数据直接携带坐标时，优先使用数据自身坐标。
+  if (Number.isFinite(item.lng) && Number.isFinite(item.lat)) {
+    return item;
+  }
   const name = item.name || "";
   for (const [prefix, [lng, lat]] of REGION_COORDS) {
     if (name.startsWith(prefix)) {
@@ -35,55 +63,7 @@ async function mockFetchOperate() {
     status: 200,
     message: "SUCCESS",
     data: {
-      list: [
-        { name: "西南-贵阳一", rate: 0.0644 },
-        { name: "华北-北京四", rate: 0.0517 },
-        { name: "华北-乌兰察布一", rate: 0.0517 },
-        { name: "华东-上海二", rate: 0.1318 },
-        { name: "华南-广州-友好用户环境", rate: 0.1899 },
-        { name: "华南-广州", rate: 0.1829 },
-        { name: "西南-贵阳-汽车二", rate: 0.0644 },
-        { name: "西北-克拉玛依", rate: 0.0644 },
-        { name: "华北三", rate: 0.1111 },
-        { name: "华东-上海一", rate: 0.1318 },
-        { name: "华东-北京金融二", rate: 0.1318 },
-        { name: "腾讯云政务平台-乌兰察布", rate: 0.1318 },
-        { name: "华东专属-金融一", rate: 0.1318 },
-        { name: "华北-北京一", rate: 0.0517 },
-        { name: "中国-香港", rate: 0.0517 },
-        { name: "华北-乌兰察布-汽车一", rate: 0.0517 },
-        { name: "华南-深圳", rate: 0.0517 },
-        { name: "华东二", rate: 0.0517 },
-        { name: "华北-北京二", rate: 0.0517 },
-        { name: "欧洲-巴黎-OP1", rate: 0.0531 },
-        { name: "欧洲-法兰克福", rate: 0.0782 },
-        { name: "欧洲-伦敦", rate: 0.0945 },
-        { name: "欧洲-阿姆斯特丹", rate: 0.0615 },
-        { name: "欧洲-马德里", rate: 0.0488 },
-        { name: "俄罗斯-莫斯科", rate: 0.0531 },
-        { name: "土耳其-伊斯坦布尔", rate: 0.1211 },
-        { name: "中东-迪拜", rate: 0.1455 },
-        { name: "非洲-约翰内斯堡", rate: -0.0211 },
-        { name: "非洲-开罗", rate: 0.0328 },
-        { name: "非洲-拉各斯", rate: -0.0155 },
-        { name: "亚太-雅加达", rate: 0.1211 },
-        { name: "亚太-新加坡", rate: 0.1533 },
-        { name: "亚太-东京", rate: 0.1055 },
-        { name: "亚太-悉尼", rate: 0.0872 },
-        { name: "亚太-首尔", rate: 0.1122 },
-        { name: "亚太-孟买", rate: 0.0966 },
-        { name: "亚太-曼谷", rate: 0.0789 },
-        { name: "亚太-马尼拉", rate: 0.0633 },
-        { name: "亚太-吉隆坡", rate: 0.0811 },
-        { name: "拉美-墨西哥城四", rate: 0.1899 },
-        { name: "拉美-圣保罗", rate: 0.1522 },
-        { name: "拉美-波哥大", rate: 0.0688 },
-        { name: "拉美-布宜诺斯艾利斯", rate: -0.0355 },
-        { name: "拉美-圣地亚哥", rate: 0.0422 },
-        { name: "北美-弗吉尼亚", rate: 0.1189 },
-        { name: "北美-硅谷", rate: 0.1644 },
-        { name: "北美-达拉斯", rate: -0.0088 },
-      ],
+      list: LEAGUE_CLUB_LIST,
     },
   };
 }
@@ -97,55 +77,7 @@ async function mockFetchEfficiency() {
     status: 200,
     message: "SUCCESS",
     data: {
-      list: [
-        { name: "西南-贵阳一", rate: null },
-        { name: "华北-北京四", rate: null },
-        { name: "华北-乌兰察布一", rate: null },
-        { name: "华东-上海二", rate: null },
-        { name: "华南-广州-友好用户环境", rate: null },
-        { name: "华南-广州", rate: null },
-        { name: "西南-贵阳-汽车二", rate: null },
-        { name: "西北-克拉玛依", rate: null },
-        { name: "华北三", rate: null },
-        { name: "华东-上海一", rate: null },
-        { name: "华东-北京金融二", rate: null },
-        { name: "腾讯云政务平台-乌兰察布", rate: null },
-        { name: "华东专属-金融一", rate: null },
-        { name: "华北-北京一", rate: null },
-        { name: "中国-香港", rate: null },
-        { name: "华北-乌兰察布-汽车一", rate: null },
-        { name: "华南-深圳", rate: null },
-        { name: "华东二", rate: null },
-        { name: "华北-北京二", rate: null },
-        { name: "欧洲-巴黎-OP1", rate: null },
-        { name: "欧洲-法兰克福", rate: null },
-        { name: "欧洲-伦敦", rate: null },
-        { name: "欧洲-阿姆斯特丹", rate: null },
-        { name: "欧洲-马德里", rate: null },
-        { name: "俄罗斯-莫斯科", rate: null },
-        { name: "土耳其-伊斯坦布尔", rate: null },
-        { name: "中东-迪拜", rate: null },
-        { name: "非洲-约翰内esburg", rate: null },
-        { name: "非洲-开罗", rate: null },
-        { name: "非洲-拉各斯", rate: null },
-        { name: "亚太-雅加达", rate: null },
-        { name: "亚太-新加坡", rate: null },
-        { name: "亚太-东京", rate: null },
-        { name: "亚太-悉尼", rate: null },
-        { name: "亚太-首尔", rate: null },
-        { name: "亚太-孟买", rate: null },
-        { name: "亚太-曼谷", rate: null },
-        { name: "亚太-马尼拉", rate: null },
-        { name: "亚太-吉隆坡", rate: null },
-        { name: "拉美-墨西哥城四", rate: null },
-        { name: "拉美-圣保罗", rate: null },
-        { name: "拉美-波哥大", rate: null },
-        { name: "拉美-布宜诺斯艾利斯", rate: null },
-        { name: "拉美-圣地亚哥", rate: null },
-        { name: "北美-弗吉尼亚", rate: null },
-        { name: "北美-硅谷", rate: null },
-        { name: "北美-达拉斯", rate: null },
-      ],
+      list: LEAGUE_CLUB_LIST.map(item => ({ ...item, rate: null })),
     },
   };
 }

@@ -24,6 +24,14 @@ let directoryTreeRequestId = 0;
 let resourcePoolCustomerStarted = false;
 let directoryTreeDataCache = [];
 const oneLevelCloudServerNames = new Set(["BMS", "DCC", "DSS"]);
+export const CLOUD_SERVICE_DISPLAY_NAME = {
+  ECS: "ABC",
+  OBS: "DEF",
+  EVS: "GHI",
+  BMS: "JKL",
+  DCC: "MNO",
+  DSS: "PQR",
+};
 
 function createResourceTypes(prefix, sizes) {
   return sizes.map((size) => ({
@@ -228,8 +236,10 @@ function buildCloudServerResourceTreeList(list = []) {
     const obj = {
       cloudServerName: item.cloudServerType,
     };
+    const displayName = CLOUD_SERVICE_DISPLAY_NAME[item.cloudServerType];
     return {
-      name: item.cloudServerType,
+      name: displayName,
+      label: displayName,
       level: 0,
       obj,
       objStr: JSON.stringify(obj),
@@ -263,7 +273,7 @@ const applyLevel = (arr = [], pitem = {}, plevel = 0) => {
     2: 'resourceVer',
     3: 'resourceType',
   };
-  return arr.map((item) => {
+  return arr.map((item, index) => {
     const key = levelKeyMap[plevel] ?? plevel.toString();
     const obj = {
       ...pitem.obj,
@@ -275,8 +285,12 @@ const applyLevel = (arr = [], pitem = {}, plevel = 0) => {
       }
     }
     const objStr = JSON.stringify(obj);
+    // 顶层资源系列只替换展示名，obj 中仍保留接口需要的原始资源系列值。
+    const displayName = plevel === 0 ? `资源系列${index + 1}` : item.name;
     let newItem = {
       ...item,
+      name: displayName,
+      label: displayName,
       level: plevel,
       obj: obj,
       objStr: objStr,

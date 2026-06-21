@@ -4,7 +4,7 @@
     <div class="table-panel">
       <div class="panel-header">
         <span class="panel-icon">📉</span>
-        <span class="panel-title loss-title">亏损资源池-ECS</span>
+        <span class="panel-title loss-title">亏损资源池-{{ selectedPoolDisplayName }}</span>
         <el-input
           v-model="lossSearch"
           placeholder="请输入资源关键字"
@@ -44,7 +44,7 @@
     <div class="table-panel">
       <div class="panel-header">
         <span class="panel-icon">📈</span>
-        <span class="panel-title profit-title">盈利资源池-ECS</span>
+        <span class="panel-title profit-title">盈利资源池-{{ selectedPoolDisplayName }}</span>
         <el-input
           v-model="profitSearch"
           placeholder="请输入资源关键字"
@@ -85,6 +85,8 @@
 <script setup>
 import { ref, computed, nextTick } from "vue";
 import { Search } from "@element-plus/icons-vue";
+import { selectedPool } from "@/views/ResourcesLifecycle";
+import { CLOUD_SERVICE_DISPLAY_NAME } from "@/views/useDirectoryTree";
 
 const props = defineProps({
   data: { type: Array, default: () => [] },
@@ -95,6 +97,7 @@ const profitTableRef = ref(null);
 const lossSearch = ref("");
 const profitSearch = ref("");
 const highlightName = ref("");
+const selectedPoolDisplayName = computed(() => CLOUD_SERVICE_DISPLAY_NAME[selectedPool.value]);
 
 const lossTableData = computed(() => {
   const keyword = lossSearch.value.trim().toLowerCase();

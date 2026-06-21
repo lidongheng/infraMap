@@ -16,16 +16,16 @@ import NoPermissionTest from '../views/noPermissionTest/index.vue'
 
 const routes = [
   {
+    path: '/roleSelect',
+    name: 'roleSelect',
+    component: RoleSelect
+  },
+  {
     path: '/',
     name: '主页',
     component: GlobalLayout,
     redirect: '/roleSelect',
     children: [
-      {
-        path: '/roleSelect',
-        name: 'roleSelect',
-        component: RoleSelect
-      },
       {
         path: '/costOperation',
         name: 'home',

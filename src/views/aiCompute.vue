@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <header class="header">
-      <CommonTitle title="智算" icon-name="type">
+      <CommonTitle title="ZS" icon-name="type">
         <template #select>
           <FilterDropdowns
             v-model="overviewFilterValue"
@@ -15,9 +15,10 @@
     <section class="main flex-center">
       <section class="main-left">
         <AICategoryNav
-          :compute-items="filteredComputeItems"
-          :token-items="filteredTokenItems"
-          :token-customer-items="tokenCustomerItems"
+          :compute-items="maskedFilteredComputeItems"
+          :compute-customer-items="maskedComputeCustomerItems"
+          :token-items="maskedFilteredTokenItems"
+          :token-customer-items="maskedTokenCustomerItems"
         />
       </section>
       <section class="main-right">
@@ -51,10 +52,16 @@
                   :xAxisName="currentConfig.xAxisName"
                   :title="currentConfig.title"
                   :yAxisName="currentConfig.yAxisName"
+                  :xRange="currentConfig.xRange"
                   :yRange="bubbleChartYRange"
                   :y-ticks="bubbleChartYTicks"
                   :axis-range-data-padding="bubbleChartAxisPadding"
+                  :xAxisValueUnit="currentConfig.xAxisValueUnit"
+                  :yAxisTopLabel="currentConfig.yAxisTopLabel"
                   :tooltipYLabel="currentConfig.tooltipYLabel"
+                  :tooltipMetricOrder="currentConfig.tooltipMetricOrder"
+                  :tooltipShowSize="currentConfig.tooltipShowSize"
+                  :singleLegend="currentConfig.singleLegend"
                   :avgXField="currentConfig.xField"
                   :trafficLightKeys="currentConfig.trafficLightKeys"
                   :dataFilter="currentConfig.dataFilter ?? null"
@@ -136,16 +143,17 @@ const NPU_USEAGE_FOR_GENERATION = {
 const NPU_USEAGE_FOR_CUSTOMER = {
   key: "npuUsage",
   label: "资源池",
-  xField: "_npuUseRate",
-  yField: "_npuCardTimeUseRate",
-  xAxisName: "NPU使用率",
-  title: "NPU卡时使用率",
-  yAxisName: "%",
+  xField: "_cardTimeUseRate",
+  yField: "_aiCoreUseRate",
+  xAxisName: "卡时使用率",
+  title: "AI Core利用率",
+  yAxisName: "AI Core利用率",
   axisRangeDataPadding: 5,
   yTicks: [0, 10, 20, 30],
-  tooltipYLabel: "NPU卡时使用率",
-  trafficLightKeys: { x: "NPU使用率", y: "NPU卡时使用率" },
-  dataFilter: (d) => d.x != null && d.y != null && d._npuUseRate > 0,
+  tooltipYLabel: "AI Core利用率",
+  tooltipMetricOrder: ["y", "x"],
+  trafficLightKeys: { x: "卡时使用率", y: "AI Core利用率" },
+  dataFilter: (d) => d.x != null && d.y != null && d._cardTimeUseRate > 0,
 };
 const SUPER_NODE_CONFIG = {
   key: "superNode",
@@ -158,8 +166,9 @@ const TOKEN_MODEL_MODE_CONFIG = {
   xField: "_tokenUseRate",
   yField: "_actualTps",
   xAxisName: "Token利用率",
-  title: "实际TPS",
-  yAxisName: "TPS",
+  title: "模型分析",
+  yAxisName: "模型分析",
+  yAxisTopLabel: "实际TPS",
   yRange: [0, 100],
   tooltipYLabel: "实际TPS",
   trafficLightKeys: { x: "Token利用率", y: "实际TPS" },
@@ -168,15 +177,22 @@ const TOKEN_MODEL_MODE_CONFIG = {
 const TOKEN_CUSTOMER_MODE_CONFIG = {
   key: "tokenUsage",
   label: "资源池",
-  xField: "_token2UseRate",
-  yField: "_actualTps2",
-  xAxisName: "Token2利用率",
-  title: "实际TPS2",
-  yAxisName: "TPS",
+  xField: "_dailyToken",
+  yField: "_avgRpm",
+  xAxisName: "日Token数",
+  title: "客户模型分析",
+  yAxisName: "客户模型分析",
+  yAxisTopLabel: "平均RPM",
+  xAxisValueUnit: "",
+  xRange: [0, 1000],
   yRange: [0, 100],
-  tooltipYLabel: "实际TPS2",
-  trafficLightKeys: { x: "Token2利用率", y: "实际TPS2" },
-  dataFilter: (d) => d.x != null && d.y != null && d._token2UseRate > 0,
+  yTicks: [0, 25, 50, 75, 100],
+  tooltipYLabel: "平均RPM",
+  tooltipMetricOrder: ["y", "x"],
+  tooltipShowSize: false,
+  singleLegend: { label: "客户", color: "#6d5dfc" },
+  trafficLightKeys: { x: "日Token数", y: "平均RPM" },
+  dataFilter: (d) => d.x != null && d.y != null && d._dailyToken > 0,
 };
 
 const { date: currentMonth } = storeToRefs(useCurrentDate());
@@ -234,6 +250,33 @@ const computeOverviewItems = [
   },
 ];
 
+const computeCustomerItems = [
+  {
+    name: "内部",
+    cardNum: "3,415.5",
+    allocationRate: "6.97%",
+    revenue: "64.095",
+    cost: "64.095",
+    margin: "6.97%",
+  },
+  {
+    name: "外部",
+    cardNum: "3,415.5",
+    allocationRate: "6.97%",
+    revenue: "64.095",
+    cost: "64.095",
+    margin: "6.97%",
+  },
+  {
+    name: "YT",
+    cardNum: "3,415.5",
+    allocationRate: "6.97%",
+    revenue: "64.095",
+    cost: "64.095",
+    margin: "6.97%",
+  },
+];
+
 const tokenOverviewItems = [
   {
     name: "DS V4",
@@ -280,7 +323,7 @@ const tokenCustomerItems = [
   },
 ];
 
-const staticChartDataMap = {
+const computeChartDataMap = {
   A3: makeStaticChartData([
     ["华东-A3资源池1", 72, 68, 620],
     ["华北-A3资源池2", 55, 48, 3600],
@@ -303,6 +346,30 @@ const staticChartDataMap = {
     ["西南-A1资源池4", 52, 47, 760],
     ["华东-A1资源池5", 28, 24, 3100],
   ]),
+};
+
+const computeCustomerChartDataMap = {
+  内部: makeComputeCustomerChartData([
+    ["内部客户池-华东", 69, 64, 520],
+    ["内部客户池-华北", 58, 51, 880],
+    ["内部客户池-华南", 77, 70, 340],
+    ["内部客户池-西南", 46, 38, 1360],
+  ]),
+  外部: makeComputeCustomerChartData([
+    ["外部客户池-华东", 57, 50, 840],
+    ["外部客户池-华北", 62, 54, 620],
+    ["外部客户池-华南", 49, 42, 1200],
+    ["外部客户池-西南", 71, 64, 460],
+  ]),
+  YT: makeComputeCustomerChartData([
+    ["YT客户池-华东", 63, 56, 720],
+    ["YT客户池-华北", 52, 45, 960],
+    ["YT客户池-华南", 74, 68, 410],
+    ["YT客户池-西南", 48, 40, 1280],
+  ]),
+};
+
+const staticChartDataMap = {
   "DS V4": makeTokenModelChartData([
     ["DS V4-华东模型池1", 74, 66, 1431],
     ["DS V4-华北模型池2", 61, 57, 980],
@@ -354,6 +421,29 @@ const filteredTokenItems = computed(() => {
   return tokenOverviewItems.filter((item) => selectedModels.includes(item.name));
 });
 
+function maskOverviewItem(item) {
+  // 左侧只脱敏展示数据，name 继续作为点击选择右侧图表的业务标识。
+  return Object.fromEntries(
+    Object.entries(item).map(([key, value]) => [key, key === "name" ? value : "**"])
+  );
+}
+
+const maskedFilteredComputeItems = computed(() =>
+  filteredComputeItems.value.map(maskOverviewItem)
+);
+
+const maskedComputeCustomerItems = computed(() =>
+  computeCustomerItems.map(maskOverviewItem)
+);
+
+const maskedFilteredTokenItems = computed(() =>
+  filteredTokenItems.value.map(maskOverviewItem)
+);
+
+const maskedTokenCustomerItems = computed(() =>
+  tokenCustomerItems.map(maskOverviewItem)
+);
+
 const currentStaticChartData = computed(() => {
   if (aiOverviewMode.value === "token") {
     if (selectedTokenGroup.value === "customer") {
@@ -361,7 +451,10 @@ const currentStaticChartData = computed(() => {
     }
     return staticChartDataMap[selectedModelType.value];
   }
-  return staticChartDataMap[selectedResourceType.value];
+  if (parentName.value === "客户") {
+    return computeCustomerChartDataMap[selectedResourceType.value];
+  }
+  return computeChartDataMap[selectedResourceType.value];
 });
 
 const xpodDetailData = ref({});
@@ -442,6 +535,7 @@ watch(aiOverviewMode, (mode) => {
 
 watch(filteredComputeItems, (items) => {
   if (aiOverviewMode.value !== "compute") return;
+  if (parentName.value !== "代次") return;
   if (!items.length) return;
   const isSelectedVisible = items.some(item => item.name === selectedResourceType.value);
   if (isSelectedVisible) return;
@@ -568,15 +662,27 @@ function makeTokenModelChartData(rows) {
   }, AI_SIZE_TIERS));
 }
 
-function makeTokenCustomerChartData(rows) {
-  return rows.map(([name, token2UseRate, actualTps2, serverNum]) => applyBubbleConfig({
+function makeComputeCustomerChartData(rows) {
+  return rows.map(([name, cardTimeUseRate, aiCoreUseRate, serverNum]) => applyBubbleConfig({
     name,
     azName: name,
-    x: token2UseRate,
-    y: actualTps2,
+    x: cardTimeUseRate,
+    y: aiCoreUseRate,
     serverNum,
-    _token2UseRate: token2UseRate,
-    _actualTps2: actualTps2,
+    _cardTimeUseRate: cardTimeUseRate,
+    _aiCoreUseRate: aiCoreUseRate,
+  }, AI_SIZE_TIERS));
+}
+
+function makeTokenCustomerChartData(rows) {
+  return rows.map(([name, dailyToken, avgRpm, serverNum]) => applyBubbleConfig({
+    name,
+    azName: name,
+    x: dailyToken,
+    y: avgRpm,
+    serverNum,
+    _dailyToken: dailyToken,
+    _avgRpm: avgRpm,
   }, AI_SIZE_TIERS));
 }
 
@@ -614,8 +720,9 @@ const tableRadio = ref('chart');
 
     .main-left {
       flex-shrink: 0;
-      width: 640px;
-      min-width: 640px;
+      flex-basis: 30%;
+      width: 30%;
+      min-width: 0;
     }
 
     .main-right {

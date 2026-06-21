@@ -2,7 +2,7 @@
   <!-- 首页 -->
   <HomeLayout class="cost-operation">
     <template #overview>
-      <CommonTitle title="运营概览" sub-title="(公有云)"/>
+      <CommonTitle title="运营概览" sub-title="(GYY)"/>
     </template>
     <template #top>
       <TopIndicators></TopIndicators>

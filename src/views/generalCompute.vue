@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <header class="header">
-      <CommonTitle title="通算" icon-name="type" />
+      <CommonTitle title="TS" icon-name="type" />
     </header>
     <section class="main flex-center">
       <section class="main-left">
@@ -166,7 +166,7 @@ const CATEGORY_CONFIG = {
         key: "useRate",
         label: "使用率",
         xField: "_useRate",
-        xAxisName: "EVS使用率",
+        xAxisName: "GHI使用率",
         yField: "grossProfitRate",
         title: "毛利率",
         yAxisName: "%",

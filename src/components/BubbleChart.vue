@@ -26,8 +26,12 @@ const props = defineProps({
   yAxisName: { type: String, default: "%" },
   yRange: { type: Array, default: () => [-200, 200] },
   xAxisName: { type: String, default: "CPU使用率" },
+  /** X 轴数值和 tooltip 的单位；百分比类默认展示 %，纯数值传空字符串 */
+  xAxisValueUnit: { type: String, default: "%" },
   /** x 轴末端「最大值%」与 xAxisName 相对箭头：left=箭头左侧（默认），right=箭头尖端右侧 */
   xAxisEndLabelsSide: { type: String, default: "left" },
+  /** Y 轴箭头顶部额外指标名 */
+  yAxisTopLabel: { type: String, default: "" },
   showZoneLabels: { type: Boolean, default: true },
   zoneText: {
     type: Object,
@@ -37,6 +41,10 @@ const props = defineProps({
   tooltipYLabel: { type: String, default: "" },
   /** tooltip 中 Y 值取数据项的哪个字段，不传则取 value[1]（即 y 轴值） */
   tooltipYField: { type: String, default: "" },
+  /** tooltip 中 X/Y 指标行展示顺序，默认先 X 后 Y */
+  tooltipMetricOrder: { type: Array, default: () => ["x", "y"] },
+  /** tooltip 是否展示 sizeLabel 对应的气泡大小行 */
+  tooltipShowSize: { type: Boolean, default: true },
   /** 气泡大小维度的标签，用于图例和 tooltip，如 "服务器规模(台)" 或 "卡数(卡)" */
   sizeLabel: { type: String, default: "服务器规模(台)" },
   /** 气泡大小维度取数据项的哪个字段，不传则取 serverNum */
@@ -55,6 +63,8 @@ const props = defineProps({
   yTicks: { type: Array, default: null },
   /** 图例各档位初始勾选状态，长度需与 sizeTiers 一致 */
   initialVisibleTiers: { type: Array, default: () => [false, true, true, true] },
+  /** 自定义单项图例；不传则展示默认档位图例 */
+  singleLegend: { type: Object, default: null },
   /** 是否显示收起/展开按钮 */
   collapsible: { type: Boolean, default: false },
   /** 是否用当前图表可见资源池名单约束外部 tierFilter。 */
@@ -206,6 +216,7 @@ const tooltipFormatter = (params) => {
     : sizeValue;
 
   const xVal = Number(params.value[0]);
+  const xValueText = `${xVal.toFixed(2)}${props.xAxisValueUnit}`;
   const yVal = Number(yDisplay);
   let xMarker = "";
   let yMarker = "";
@@ -217,18 +228,31 @@ const tooltipFormatter = (params) => {
     if (xLight) xMarker = trafficLightHtml(xLight);
     if (yLight) yMarker = trafficLightHtml(yLight);
   }
+  const metricRows = {
+    x: `
+      <div class="item mgb4">
+        ${xMarker}<div class="name">${props.xAxisName}：</div><div class="value bold">${xValueText}</div>
+      </div>
+    `,
+    y: `
+      <div class="item mgb4">
+        ${yMarker}<div class="name">${yLabel}：</div><div class="value bold">${rateStr}</div>
+      </div>
+    `,
+  };
+  const metricHtml = props.tooltipMetricOrder
+    .map((key) => metricRows[key])
+    .filter(Boolean)
+    .join("");
 
   return `
     <div class="title value">${az}</div>
-    <div class="item mgb4">
-      <div class="name">${props.sizeLabel.replace(/\(.*\)/, '')}：</div><div class="value bold">${sizeValueText} ${sizeUnit}</div>
-    </div>
-    <div class="item mgb4">
-      ${xMarker}<div class="name">${props.xAxisName}：</div><div class="value bold">${xVal.toFixed(2)}%</div>
-    </div>
-    <div class="item">
-      ${yMarker}<div class="name">${yLabel}：</div><div class="value bold">${rateStr}</div>
-    </div>
+    ${props.tooltipShowSize ? `
+      <div class="item mgb4">
+        <div class="name">${props.sizeLabel.replace(/\(.*\)/, '')}：</div><div class="value bold">${sizeValueText} ${sizeUnit}</div>
+      </div>
+    ` : ""}
+    ${metricHtml}
   `;
 };
 
@@ -512,27 +536,79 @@ function updateGraphicLabels() {
   }
 
   // ── Y 轴名称 ──
-  graphics.push({
-    type: "text",
-    position: [gl - 10 * s, gt - 20 * s],
-    style: {
-      text: props.yAxisName,
-      fontSize: Math.round(14 * s),
-      fontWeight: "bold",
-      fontFamily: CHART_FONT_FAMILY,
-      fill: "#353575",
-      align: "left",
-      verticalAlign: "bottom",
-    },
-    z: 5, ...silent,
-  });
+  if (!props.yAxisTopLabel) {
+    graphics.push({
+      type: "text",
+      position: [gl - 10 * s, gt - 20 * s],
+      style: {
+        text: props.yAxisName,
+        fontSize: Math.round(14 * s),
+        fontWeight: "bold",
+        fontFamily: CHART_FONT_FAMILY,
+        fill: "#353575",
+        align: "left",
+        verticalAlign: "bottom",
+      },
+      z: 5, ...silent,
+    });
+  }
 
-  // ── 图例：服务器规模(台) + 4 档位（带 checkbox），右端与趋势图对齐 ──
+  if (props.yAxisTopLabel) {
+    graphics.push({
+      type: "text",
+      position: [gl, gt - 14 * s],
+      style: {
+        text: props.yAxisTopLabel,
+        fontSize: Math.round(14 * s),
+        fontWeight: "bold",
+        fontFamily: CHART_FONT_FAMILY,
+        fill: "#353575",
+        align: "center",
+        verticalAlign: "bottom",
+      },
+      z: 6, ...silent,
+    });
+  }
+
+  // ── 图例：默认展示 size 档位；传 singleLegend 时展示单个图例项 ──
   const legendY = 24 * s;
   const legendFs = Math.round(14 * s);
   const cbSize = 12 * s;
   const _ctx = document.createElement("canvas").getContext("2d");
   _ctx.font = chartCanvasFont(legendFs, "bold");
+
+  if (props.singleLegend) {
+    const labelText = props.singleLegend.label;
+    const color = props.singleLegend.color;
+    const cr = Math.max(4, 6 * s);
+    const textW = _ctx.measureText(labelText).width;
+    const legendTotalW = cr * 2 + 6 * s + textW;
+    const lx = xEnd - legendTotalW;
+
+    graphics.push({
+      type: "circle",
+      shape: { cx: lx + cr, cy: legendY, r: cr },
+      style: { fill: color, stroke: "#2b2b7b", lineWidth: 1 },
+      z: 10,
+      ...silent,
+    });
+
+    graphics.push({
+      type: "text",
+      position: [lx + cr * 2 + 6 * s, legendY],
+      style: {
+        text: labelText,
+        fontSize: legendFs,
+        fontWeight: "bold",
+        fontFamily: CHART_FONT_FAMILY,
+        fill: "#3d3d75",
+        align: "left",
+        verticalAlign: "middle",
+      },
+      z: 10,
+      ...silent,
+    });
+  } else {
 
   const maxTierSymbolSize = Math.max(...props.sizeTiers.map((t) => t.symbolSizeMax));
   const legendCr = Math.max(4, (maxTierSymbolSize / 88) * 14) * s;
@@ -640,6 +716,7 @@ function updateGraphicLabels() {
 
     lx += bgW + 10 * s;
   });
+  }
 
   // ── Y 轴线 + 箭头 ──
   const axisColor = "#9e9ed1";
@@ -692,7 +769,7 @@ function updateGraphicLabels() {
   const endLabelAlign = endLabelsRight ? "left" : "right";
   const lblStyle = { fontSize: lblFs, fill: "#353575", fontWeight: "bold", fontFamily: CHART_FONT_FAMILY };
   graphics.push(
-    { type: "text", position: [txEndLabel, zeroY - 10 * s], style: { text: Math.round(xMax) + "%", ...lblStyle, align: endLabelAlign, verticalAlign: "middle" }, z: 999, ...silent },
+    { type: "text", position: [txEndLabel, zeroY - 10 * s], style: { text: Math.round(xMax) + props.xAxisValueUnit, ...lblStyle, align: endLabelAlign, verticalAlign: "middle" }, z: 999, ...silent },
     { type: "text", position: [txEndLabel, zeroY + 10 * s], style: { text: props.xAxisName, ...lblStyle, align: endLabelAlign, verticalAlign: "middle" }, z: 999, ...silent }
   );
 
@@ -709,7 +786,7 @@ function updateGraphicLabels() {
       graphics.push({
         type: "text",
         position: [tx, zeroY + xTickGap],
-        style: { text: Math.round(val) + "%", fontSize: xTickFs, fontFamily: CHART_FONT_FAMILY, fill: "#353575", align: "center", verticalAlign: "top" },
+        style: { text: Math.round(val) + props.xAxisValueUnit, fontSize: xTickFs, fontFamily: CHART_FONT_FAMILY, fill: "#353575", align: "center", verticalAlign: "top" },
         z: 5, ...silent,
       });
     }
