@@ -49,6 +49,7 @@
         format="YYYY年MM月DD日"
         :clearable="false"
       />
+      <slot name="actions"></slot>
     </div>
   </div>
 </template>
