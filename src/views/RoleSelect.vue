@@ -98,6 +98,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { getRoleTargetPath, roles, saveSelectedRole } from '@/config/role'
 
 const router = useRouter()
 const selectedRole = ref('cxo')
@@ -111,18 +112,9 @@ const mapDots = [
   { className: 'dot dot-5' }
 ]
 
-const roles = [
-  { label: '角色1', value: 'cxo', avatar: '1', theme: 'theme-cxo' },
-  { label: '角色2', value: 'sales', avatar: '2', theme: 'theme-sales' },
-  { label: '角色3', value: 'internalCustomer', avatar: '3', theme: 'theme-customer' },
-  { label: '角色4', value: 'servicePe', avatar: '4', theme: 'theme-pe' },
-  { label: '角色5', value: 'operationAnalysis', avatar: '5', theme: 'theme-operation' }
-]
-
 function handleStart() {
-  // CXO 进入经营视角，其他角色进入销售视角。
-  const targetPath = selectedRole.value === 'cxo' ? '/costOperation' : '/saleHome'
-  router.push(targetPath)
+  saveSelectedRole(selectedRole.value)
+  router.push(getRoleTargetPath(selectedRole.value))
 }
 </script>
 

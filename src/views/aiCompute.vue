@@ -81,19 +81,28 @@
           </div>
         </template>
         
-        <div v-else class="trend common-card-style2 trend-superNode">
+        <div
+          v-else
+          class="trend common-card-style2 trend-superNode"
+          :class="{ 'trend-superNode--collapsed': chartCollapsed }"
+        >
           <div class="trend-header">
             NPU卡时使用率
           </div>
-          <SuperNodeChart
-            ref="superNodeChartRef"
-            :data="superNodeData"
-            :avgRangeList="superNodeAvgRangeList"
-            :avg-x-from-frontend="currentConfig.avgXFromFrontend === true"
-            @bubble-click="onBubbleClick"
-            @visible-change="onVisibleChange"
-            @collapse-change="onCollapseChange"
-          />
+          <div
+            class="chart-area"
+            :class="{ 'chart-area--collapsed': chartCollapsed }"
+          >
+            <SuperNodeChart
+              ref="superNodeChartRef"
+              :data="superNodeData"
+              :avgRangeList="superNodeAvgRangeList"
+              :avg-x-from-frontend="currentConfig.avgXFromFrontend === true"
+              @bubble-click="onBubbleClick"
+              @visible-change="onVisibleChange"
+              @collapse-change="onCollapseChange"
+            />
+          </div>
           <ResourcePoolTable
             ref="tableRef"
             :data="chartData"
@@ -758,6 +767,9 @@ const tableRadio = ref('chart');
 
       .chart-area {
         flex-shrink: 0;
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
         height: 380px;
         transition: height 0.3s ease;
 
@@ -791,6 +803,18 @@ const tableRadio = ref('chart');
         display: flex;
         flex-direction: column;
         gap: 16px;
+
+        &.trend-superNode--collapsed {
+          gap: 28px;
+        }
+
+        :deep(.bubble-chart-wrap) {
+          min-height: 0;
+        }
+
+        :deep(.bubble-chart) {
+          min-height: 0;
+        }
       }
 
       .ai-computer-power {

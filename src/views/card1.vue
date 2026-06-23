@@ -25,8 +25,11 @@
       <section v-if="activeTab === 'role'" class="role-panel">
         <article
           v-for="role in ownedRoles"
-          :key="role.id"
-          class="role-row"
+          :key="role.value"
+          class="role-row role-row--clickable"
+          tabindex="0"
+          @click="handleRoleClick(role.value)"
+          @keyup.enter="handleRoleClick(role.value)"
         >
           <div class="avatar" :class="role.avatarClass" aria-hidden="true">
             <span class="avatar__hair" />
@@ -34,7 +37,7 @@
             <span class="avatar__body" />
           </div>
           <div class="role-row__main">
-            <h2>{{ role.name }}</h2>
+            <h2>{{ role.label }}</h2>
             <p>到期时间：{{ role.expireDate }}</p>
           </div>
           <p class="role-row__approver">审批人：{{ role.approver }} {{ role.orderNo }}</p>
@@ -45,7 +48,7 @@
         <h2 class="empty-title">未有角色权限(点击头像可直接申请业务角色权限)</h2>
         <article
           v-for="role in unavailableRoles"
-          :key="role.id"
+          :key="role.value"
           class="role-row role-row--disabled"
         >
           <div class="avatar avatar--muted" :class="role.avatarClass" aria-hidden="true">
@@ -55,7 +58,7 @@
             <span class="avatar__mark" />
           </div>
           <div class="role-row__main">
-            <h2>{{ role.name }}</h2>
+            <h2>{{ role.label }}</h2>
             <p>有效时间：{{ role.validDate }}</p>
           </div>
           <p class="role-row__approver">审批人：{{ role.approver }} {{ role.orderNo }}</p>
@@ -81,12 +84,15 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { Setting } from "@element-plus/icons-vue";
+import { mockUserRolePermissions, roles } from "@/config/role";
 
 defineProps({
   compact: Boolean,
 });
+
+const emit = defineEmits(["role-change"]);
 
 const tabs = [
   { label: "已有角色权限", name: "role" },
@@ -95,52 +101,13 @@ const tabs = [
 
 const activeTab = ref("role");
 
-// 两个截图分别对应两个 Tab，静态数据用于 1:1 还原卡片视觉。
-const ownedRoles = [
-  {
-    id: "cxo",
-    name: "角色1",
-    expireDate: "2027-02-18",
-    approver: "张三",
-    orderNo: "12345678",
-    avatarClass: "avatar--one",
-  },
-  {
-    id: "sales",
-    name: "角色2",
-    expireDate: "2027-02-18",
-    approver: "张三",
-    orderNo: "12345678",
-    avatarClass: "avatar--two",
-  },
-  {
-    id: "customer",
-    name: "角色3",
-    expireDate: "2027-02-18",
-    approver: "张三",
-    orderNo: "12345678",
-    avatarClass: "avatar--three",
-  },
-  {
-    id: "service-pe",
-    name: "角色4",
-    expireDate: "2027-02-18",
-    approver: "张三",
-    orderNo: "12345678",
-    avatarClass: "avatar--four",
-  },
-];
+const ownedRoles = computed(() => {
+  return roles.filter((role) => mockUserRolePermissions.ownedRoleValues.includes(role.value));
+});
 
-const unavailableRoles = [
-  {
-    id: "operation",
-    name: "角色5",
-    validDate: "--",
-    approver: "张三",
-    orderNo: "12345678",
-    avatarClass: "avatar--five",
-  },
-];
+const unavailableRoles = computed(() => {
+  return roles.filter((role) => !mockUserRolePermissions.ownedRoleValues.includes(role.value));
+});
 
 const dataPermissions = [
   {
@@ -171,6 +138,10 @@ const dataPermissions = [
 
 const handleTabChange = (tabName) => {
   activeTab.value = tabName;
+};
+
+const handleRoleClick = (roleValue) => {
+  emit("role-change", roleValue);
 };
 </script>
 
@@ -278,6 +249,16 @@ const handleTabChange = (tabName) => {
   align-items: center;
   min-height: 126px;
   margin-bottom: 12px;
+}
+
+.role-row--clickable {
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
 }
 
 .role-row__main {

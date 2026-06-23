@@ -950,7 +950,7 @@ function getCustomRootOptions(filter) {
 function getCustomLeafOptions(filter, parentValue) {
   const selectedParents = parentValue ?? getCustomValue(filter.parentValueKey);
   const rootOptions = getCustomRootOptions(filter);
-  const parentValues = selectedParents.length ? selectedParents : rootOptions.map(item => item.value);
+  const parentValues = selectedParents;
   const keyword = (customKeyword.value[filter.key] ?? '').trim().toLowerCase();
   const options = getUniqueOptions(
     rootOptions

@@ -35,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import FilterDropdowns from '@/components/FilterDropdowns.vue';
 
 /**
@@ -63,7 +63,6 @@ import FilterDropdowns from '@/components/FilterDropdowns.vue';
  * - list 型筛选只回写 valueKey；cascade 型筛选会同时回写 parentValueKey 和 valueKey。
  */
 const filterValue = ref(null);
-watch(filterValue, (newV) => console.log(newV))
 const filterConfig = [
   {
     key: 'resourceSpec',
