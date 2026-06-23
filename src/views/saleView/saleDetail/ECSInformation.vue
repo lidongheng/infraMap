@@ -35,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import FilterDropdowns from '@/components/FilterDropdowns.vue';
 
 /**
@@ -45,21 +45,25 @@ import FilterDropdowns from '@/components/FilterDropdowns.vue';
  * - key：筛选项唯一标识，只用于组件内部区分不同筛选框。
  * - label：筛选框左侧展示名称，例如“资源规格”“Region”“资源代数”。
  * - type：筛选框形态；list 表示单列列表，cascade 表示左右两列级联。
- * - optionKey：当前筛选项读取 filterOptions 中哪个字段作为选项数据。
- * - valueKey：当前筛选项选中结果回写到 filterValue 时使用的字段名。
- * - parentValueKey：仅 type 为 cascade 时使用，表示左侧父级列选中结果回写字段名。
+ * - optionKey：当前筛选项读取 filterOptions 中哪个字段作为选项数据；这里是前端自组装的下拉树，不等同于接口入参。
+ * - valueKey：当前筛选项选中结果回写到 filterValue 时使用的前端字段名。
+ * - parentValueKey：仅 type 为 cascade 时使用，表示左侧父级列选中结果回写到 filterValue 的前端字段名。
+ * - outputKey：仅需要对象数组出参时使用，表示最终回填到 filterValue 的字段名。
+ * - outputFields：仅配合 outputKey 使用，表示对象数组里父级值和子级值分别写入哪个字段。
  * - searchable：仅 type 为 cascade 时使用，控制右侧子级列是否展示搜索框。
  * - columns：仅 type 为 cascade 时使用，配置左右两列的标题。
  * - filterOptions：筛选项选项数据；key 必须和 filterConfig.optionKey 保持一致。
  * - resourceSpecList：资源规格筛选的数据源，因为资源规格是 type=list，所以这里是一维数组。
  * - regionAreaTree：Region 筛选的数据源，因为 Region 是 type=cascade，所以这里是两层树。
- * - resourceGenerationTree：资源代数筛选的数据源，也是 type=cascade 的两层树。
+ * - resourceGenerationTree：资源代数筛选的数据源；后端返回结构未定，所以前端先显式列举组件需要的两层树。
+ * - generationDirTreeList：资源代数筛选回填到 filterValue 的接口参数，格式为 [{ family, generation }]。
  * - label：选项在下拉面板中展示的文案。
  * - value：选项选中后写入 filterValue 的值。
  * - children：仅 cascade 使用，表示右侧子级列的数据。
  * - list 型筛选只回写 valueKey；cascade 型筛选会同时回写 parentValueKey 和 valueKey。
  */
 const filterValue = ref(null);
+watch(filterValue, (newV) => console.log(newV))
 const filterConfig = [
   {
     key: 'resourceSpec',
@@ -87,7 +91,12 @@ const filterConfig = [
     type: 'cascade',
     optionKey: 'resourceGenerationTree',
     parentValueKey: 'resourceFamily',
-    valueKey: 'resourceVer',
+    valueKey: 'resourceGeneration',
+    outputKey: 'generationDirTreeList',
+    outputFields: {
+      parent: 'family',
+      value: 'generation',
+    },
     searchable: false,
     columns: [
       { title: '资源族' },
@@ -95,7 +104,8 @@ const filterConfig = [
     ],
   },
 ];
-const filterOptions = {
+
+const filterOptions = computed(() => ({
   // resourceSpecList 被“资源规格”筛选的 optionKey 引用；选中后写入 filterValue.resourceType。
   resourceSpecList: [
     { label: 'c6.large', value: 'c6.large' },
@@ -121,26 +131,25 @@ const filterOptions = {
       ],
     },
   ],
-  // resourceGenerationTree 被“资源代数”筛选的 optionKey 引用；左列资源族写入 resourceFamily，右列资源代数写入 resourceVer。
+  // resourceGenerationTree 被“资源代数”筛选引用；后端树形数据结构未定，前端先显式列举组件需要的两层树。
   resourceGenerationTree: [
     {
-      label: 'c',
-      value: 'c',
+      label: 'ac',
+      value: 'ac',
       children: [
-        { label: 'c6', value: 'c6' },
-        { label: 'c7', value: 'c7' },
+        { label: 'ac7', value: 'ac7' },
       ],
     },
     {
-      label: 'm',
-      value: 'm',
+      label: 'bd',
+      value: 'bd',
       children: [
-        { label: 'm6', value: 'm6' },
-        { label: 'm7', value: 'm7' },
+        { label: 'bd6', value: 'bd6' },
+        { label: 'bd7', value: 'bd7' },
       ],
     },
   ],
-};
+}));
 
 const inforData = ref({});
 const infors = computed(() => {

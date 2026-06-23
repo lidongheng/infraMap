@@ -796,6 +796,12 @@ function customAllSelectedValue() {
       result[filter.valueKey] = getCustomRootOptions(filter).map(item => item.value);
       return result;
     }
+    if (hasCustomCascadeOutput(filter)) {
+      const parentValues = getCustomRootOptions(filter).map(item => item.value);
+      const leafValues = getCustomLeafOptions(filter, parentValues).map(item => item.value);
+      result[filter.outputKey] = getCustomCascadeOutput(filter, parentValues, leafValues);
+      return result;
+    }
     result[filter.parentValueKey] = getCustomRootOptions(filter).map(item => item.value);
     result[filter.valueKey] = getCustomLeafOptions(filter, result[filter.parentValueKey]).map(item => item.value);
     return result;
@@ -835,6 +841,21 @@ function applyCustomModelValue(next, fallback) {
         getCustomRootOptions(filter),
         fallback[filter.valueKey],
       );
+      return;
+    }
+    if (hasCustomCascadeOutput(filter)) {
+      const selectedValue = getCustomCascadeSelectedValue(filter, next, fallback);
+      customValueMap.value[filter.parentValueKey] = keepValid(
+        selectedValue.parentValues,
+        getCustomRootOptions(filter),
+        getCustomCascadeSelectedValue(filter, fallback, fallback).parentValues,
+      );
+      customValueMap.value[filter.valueKey] = keepValid(
+        selectedValue.leafValues,
+        getCustomLeafOptions(filter, customValueMap.value[filter.parentValueKey]),
+        getCustomCascadeSelectedValue(filter, fallback, fallback).leafValues,
+      );
+      customActive.value[filter.key] = getCustomRootOptions(filter)[0]?.value ?? '';
       return;
     }
     customValueMap.value[filter.parentValueKey] = keepValid(
@@ -906,6 +927,14 @@ function emitCurrentValue() {
 
 function getCustomCurrentValue() {
   return customFilters.value.reduce((result, filter) => {
+    if (hasCustomCascadeOutput(filter)) {
+      result[filter.outputKey] = getCustomCascadeOutput(
+        filter,
+        getCustomValue(filter.parentValueKey),
+        getCustomValue(filter.valueKey),
+      );
+      return result;
+    }
     if (filter.type !== 'list') {
       result[filter.parentValueKey] = [...getCustomValue(filter.parentValueKey)];
     }
@@ -936,6 +965,34 @@ function getCustomLeafOptions(filter, parentValue) {
 
 function getCustomValue(key) {
   return customValueMap.value[key] ?? [];
+}
+
+function hasCustomCascadeOutput(filter) {
+  return filter.type === 'cascade' && filter.outputKey && filter.outputFields;
+}
+
+function getCustomCascadeOutput(filter, parentValues, leafValues) {
+  const leafValueSet = new Set(leafValues);
+  return getCustomRootOptions(filter)
+    .filter(parentItem => parentValues.includes(parentItem.value))
+    .flatMap(parentItem =>
+      (parentItem.children ?? [])
+        .filter(leafItem => leafValueSet.has(leafItem.value))
+        .map(leafItem => ({
+          [filter.outputFields.parent]: parentItem.value,
+          [filter.outputFields.value]: leafItem.value,
+        }))
+    );
+}
+
+function getCustomCascadeSelectedValue(filter, value, fallback) {
+  const outputValue = getModelGroupValue(value, filter.outputKey, fallback);
+  const parentField = filter.outputFields.parent;
+  const valueField = filter.outputFields.value;
+  return {
+    parentValues: Array.from(new Set(outputValue.map(item => item[parentField]))),
+    leafValues: Array.from(new Set(outputValue.map(item => item[valueField]))),
+  };
 }
 
 function setCustomValue(filter, key, value) {
