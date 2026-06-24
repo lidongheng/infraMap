@@ -9,9 +9,6 @@
             :filter-config="filterConfig"
           />
         </template>
-        <template #actions>
-          <RoleMenu />
-        </template>
       </CommonTitle>
     </template>
     <template #top>
@@ -38,7 +35,6 @@ import SaleService from "@/components/home/SaleService.vue";
 import Map from "@/components/home/Map.vue";
 import Customer from "@/components/home/Customer.vue";
 import FilterDropdowns from "@/components/FilterDropdowns.vue";
-import RoleMenu from "@/components/RoleMenu.vue";
 
 const filterValue = ref(null);
 

@@ -2,11 +2,7 @@
   <!-- 首页 -->
   <HomeLayout class="cost-operation">
     <template #overview>
-      <CommonTitle title="运营概览" sub-title="(GYY)">
-        <template #actions>
-          <RoleMenu />
-        </template>
-      </CommonTitle>
+      <CommonTitle title="运营概览" sub-title="(GYY)" />
     </template>
     <template #top>
       <TopIndicators></TopIndicators>
@@ -30,5 +26,4 @@ import TopIndicators from "@/components/home/TopIndicators.vue";
 import CommonService from "@/components/home/CommonService.vue";
 import Map from "@/components/home/Map.vue";
 import Customer from "@/components/home/Customer.vue";
-import RoleMenu from "@/components/RoleMenu.vue";
 </script>
