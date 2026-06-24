@@ -31,16 +31,12 @@
           @click="handleRoleClick(role.value)"
           @keyup.enter="handleRoleClick(role.value)"
         >
-          <div class="avatar" :class="role.avatarClass" aria-hidden="true">
-            <span class="avatar__hair" />
-            <span class="avatar__face" />
-            <span class="avatar__body" />
-          </div>
+          <img class="avatar" :src="role.avatar" :alt="role.label">
           <div class="role-row__main">
             <h2>{{ role.label }}</h2>
-            <p>到期时间：{{ role.expireDate }}</p>
+            <p>到期时间：{{ role.validEndTime }}</p>
           </div>
-          <p class="role-row__approver">审批人：{{ role.approver }} {{ role.orderNo }}</p>
+          <p class="role-row__approver">审批人：{{ role.userName }} {{ role.account }}</p>
         </article>
 
         <div class="role-divider" />
@@ -51,32 +47,24 @@
           :key="role.value"
           class="role-row role-row--disabled"
         >
-          <div class="avatar avatar--muted" :class="role.avatarClass" aria-hidden="true">
-            <span class="avatar__hair" />
-            <span class="avatar__face" />
-            <span class="avatar__body" />
-            <span class="avatar__mark" />
-          </div>
+          <img class="avatar avatar--muted" :src="role.avatar" :alt="role.label">
           <div class="role-row__main">
             <h2>{{ role.label }}</h2>
-            <p>有效时间：{{ role.validDate }}</p>
           </div>
-          <p class="role-row__approver">审批人：{{ role.approver }} {{ role.orderNo }}</p>
         </article>
       </section>
 
       <section v-else class="data-panel">
         <article
           v-for="item in dataPermissions"
-          :key="item.id"
+          :key="item.code"
           class="data-card"
         >
           <div class="data-card__meta">
-            <strong>{{ item.name }}</strong>
-            <span>到期时间：{{ item.expireDate }}</span>
-            <span>审批人：{{ item.approver }} {{ item.orderNo }}</span>
+            <strong>{{ item.code }}</strong>
+            <span>到期时间：{{ item.validEndTime }}</span>
           </div>
-          <p>{{ item.regions }}</p>
+          <p>{{ item.regionCodes.join("，") }}</p>
         </article>
       </section>
     </section>
@@ -86,7 +74,12 @@
 <script setup>
 import { computed, ref } from "vue";
 import { Setting } from "@element-plus/icons-vue";
-import { mockUserRolePermissions, roles } from "@/config/role";
+import {
+  cloudServerPermissionList,
+  regionPermissionList,
+  rolePermissionList,
+  roles,
+} from "@/config/role";
 
 defineProps({
   compact: Boolean,
@@ -102,39 +95,34 @@ const tabs = [
 const activeTab = ref("role");
 
 const ownedRoles = computed(() => {
-  return roles.filter((role) => mockUserRolePermissions.ownedRoleValues.includes(role.value));
+  return rolePermissionList.map((permission) => {
+    const role = roles.find((item) => item.value === permission.code);
+
+    return {
+      ...role,
+      validEndTime: permission.validEndTime,
+      userName: permission.userName,
+      account: permission.account,
+    };
+  });
 });
 
 const unavailableRoles = computed(() => {
-  return roles.filter((role) => !mockUserRolePermissions.ownedRoleValues.includes(role.value));
+  const ownedRoleCodes = rolePermissionList.map((permission) => permission.code);
+
+  return roles.filter((role) => !ownedRoleCodes.includes(role.value));
 });
 
-const dataPermissions = [
-  {
-    id: "ecs",
-    name: "ABC",
-    expireDate: "2027-10-31",
-    approver: "张三",
-    orderNo: "12345678",
-    regions: "英超-阿森纳，西甲-皇家马德里，意甲-国际米兰，德甲-拜仁慕尼黑，法甲-巴黎圣日耳曼",
-  },
-  {
-    id: "obs",
-    name: "DEF",
-    expireDate: "2027-10-31",
-    approver: "张三",
-    orderNo: "12345678",
-    regions: "英超-利物浦，西甲-巴塞罗那，意甲-尤文图斯，德甲-多特蒙德，法甲-马赛",
-  },
-  {
-    id: "xpu",
-    name: "GHI",
-    expireDate: "2027-10-31",
-    approver: "张三",
-    orderNo: "12345678",
-    regions: "英超-曼城，西甲-马德里竞技，意甲-AC米兰，德甲-勒沃库森，法甲-里昂",
-  },
-];
+const dataPermissions = computed(() => {
+  const regionCodes = regionPermissionList.map((region) => region.code);
+
+  return cloudServerPermissionList.map((cloudServer) => {
+    return {
+      ...cloudServer,
+      regionCodes,
+    };
+  });
+});
 
 const handleTabChange = (tabName) => {
   activeTab.value = tabName;
@@ -306,140 +294,10 @@ const handleRoleClick = (roleValue) => {
 }
 
 .avatar {
-  position: relative;
   width: 84px;
   height: 84px;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 40%, #f4b99e 0 20%, transparent 21%),
-    linear-gradient(180deg, #d7c7ef 0%, #b7d2ff 100%);
-  overflow: hidden;
-}
-
-.avatar__hair,
-.avatar__face,
-.avatar__body,
-.avatar__mark {
-  position: absolute;
-  display: block;
-}
-
-.avatar__hair {
-  left: 25px;
-  top: 18px;
-  width: 36px;
-  height: 20px;
-  border-radius: 50% 50% 40% 40%;
-  background: #25204f;
-}
-
-.avatar__face {
-  left: 28px;
-  top: 30px;
-  width: 30px;
-  height: 32px;
-  border-radius: 45% 45% 48% 48%;
-  background: #f0b89f;
-}
-
-.avatar__body {
-  left: 21px;
-  bottom: -3px;
-  width: 44px;
-  height: 32px;
-  border-radius: 18px 18px 0 0;
-  background: #ffffff;
-}
-
-.avatar__mark {
-  right: 4px;
-  bottom: 2px;
-  width: 22px;
-  height: 22px;
-
-  &::before,
-  &::after {
-    position: absolute;
-    left: 10px;
-    top: -2px;
-    width: 3px;
-    height: 28px;
-    border-radius: 3px;
-    background: #d84b73;
-    content: "";
-  }
-
-  &::before {
-    transform: rotate(42deg);
-  }
-
-  &::after {
-    transform: rotate(-42deg);
-  }
-}
-
-.avatar--two {
-  background:
-    radial-gradient(circle at 50% 40%, #e9b093 0 20%, transparent 21%),
-    linear-gradient(180deg, #94c0ff 0%, #78a2f8 100%);
-
-  .avatar__hair {
-    top: 16px;
-    background: #232050;
-    transform: rotate(-8deg);
-  }
-
-  .avatar__body {
-    background: #f4f6ff;
-  }
-}
-
-.avatar--three {
-  background:
-    radial-gradient(circle at 50% 40%, #efb7a3 0 21%, transparent 22%),
-    linear-gradient(180deg, #d5b7fa 0%, #dcd8ff 100%);
-
-  .avatar__hair {
-    left: 20px;
-    top: 20px;
-    width: 44px;
-    height: 42px;
-    border-radius: 48% 48% 44% 44%;
-    background: #4c2967;
-  }
-
-  .avatar__body {
-    background: #8877df;
-  }
-}
-
-.avatar--four {
-  background:
-    radial-gradient(circle at 50% 40%, #e8b69d 0 20%, transparent 21%),
-    linear-gradient(180deg, #b5c9ff 0%, #96b4fa 100%);
-
-  .avatar__body {
-    background: #313060;
-  }
-}
-
-.avatar--five {
-  background:
-    radial-gradient(circle at 50% 40%, #ebbaa3 0 21%, transparent 22%),
-    linear-gradient(180deg, #d7e5ff 0%, #cad9ff 100%);
-
-  .avatar__hair {
-    left: 21px;
-    top: 19px;
-    width: 42px;
-    height: 43px;
-    border-radius: 48% 48% 44% 44%;
-    background: #6a477a;
-  }
-
-  .avatar__body {
-    background: #fff4f4;
-  }
+  object-fit: cover;
 }
 
 .avatar--muted {
@@ -474,7 +332,7 @@ const handleRoleClick = (roleValue) => {
 
 .data-card__meta {
   display: grid;
-  grid-template-columns: 170px 1fr auto;
+  grid-template-columns: 170px 1fr;
   gap: 12px;
   align-items: center;
   color: rgba(57, 40, 117, 0.34);
@@ -598,53 +456,6 @@ const handleRoleClick = (roleValue) => {
     width: 38px;
     height: 38px;
     align-self: start;
-  }
-
-  .avatar__hair {
-    left: 11px;
-    top: 8px;
-    width: 17px;
-    height: 10px;
-  }
-
-  .avatar__face {
-    left: 13px;
-    top: 14px;
-    width: 13px;
-    height: 15px;
-  }
-
-  .avatar__body {
-    left: 10px;
-    bottom: -2px;
-    width: 20px;
-    height: 15px;
-    border-radius: 9px 9px 0 0;
-  }
-
-  .avatar__mark {
-    right: 2px;
-    bottom: 1px;
-    width: 10px;
-    height: 10px;
-
-    &::before,
-    &::after {
-      left: 4px;
-      top: -1px;
-      width: 2px;
-      height: 13px;
-    }
-  }
-
-  .avatar--three,
-  .avatar--five {
-    .avatar__hair {
-      left: 9px;
-      top: 9px;
-      width: 20px;
-      height: 19px;
-    }
   }
 
   .data-panel {

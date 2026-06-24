@@ -7,7 +7,11 @@
       aria-label="切换角色"
       @click.stop="toggleRoleCard"
     >
-      <span class="role-avatar-face">{{ selectedRole.avatar }}</span>
+      <img
+        class="role-avatar-image"
+        :src="selectedRole.avatar"
+        :alt="selectedRole.label"
+      >
       <span class="role-avatar-name">{{ selectedRole.label }}</span>
     </button>
     <div v-if="showRoleCard" class="role-card-popover" @click.stop>
@@ -22,15 +26,14 @@ import { useRouter } from "vue-router";
 import Card1 from "@/views/card1.vue";
 import {
   getRoleTargetPath,
-  getSelectedRoleValue,
   roles,
   saveSelectedRole,
+  selectedRoleValue,
 } from "@/config/role";
 
 const router = useRouter();
 const showRoleCard = ref(false);
 const roleMenuRef = ref(null);
-const selectedRoleValue = ref(getSelectedRoleValue());
 
 const selectedRole = computed(() => {
   return roles.find((role) => role.value === selectedRoleValue.value);
@@ -55,7 +58,6 @@ const closeRoleCard = (event) => {
 
 const handleRoleChange = (roleValue) => {
   saveSelectedRole(roleValue);
-  selectedRoleValue.value = roleValue;
   showRoleCard.value = false;
   router.push(getRoleTargetPath(roleValue));
 };
@@ -89,17 +91,11 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-.role-avatar-face {
+.role-avatar-image {
   width: 28px;
   height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  font-size: 14px;
-  line-height: 1;
-  font-weight: 800;
+  object-fit: cover;
 }
 
 .role-avatar-name {

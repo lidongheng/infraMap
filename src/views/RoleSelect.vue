@@ -79,8 +79,8 @@
             type="button"
             @click="selectedRole = role.value"
           >
-            <span class="avatar-wrap" :class="role.theme">
-              <span class="avatar-face">{{ role.avatar }}</span>
+            <span class="avatar-wrap">
+              <img class="avatar-image" :src="role.avatar" :alt="role.label">
               <span v-if="selectedRole === role.value" class="check-mark">✓</span>
             </span>
             <span class="role-name">{{ role.label }}</span>
@@ -101,13 +101,15 @@ import { useRouter } from 'vue-router'
 import { getUserRoleRules } from '@/api/role'
 import {
   getRoleTargetPath,
+  initializeRolePermissions,
   ROLE_CODE_ORDER,
+  rolePermissionList,
   roles,
   saveSelectedRole
 } from '@/config/role'
 
 const router = useRouter()
-const selectedRole = ref('cxo')
+const selectedRole = ref()
 const showRoleSelector = ref(false)
 
 const metrics = ['273.59', '798.41', '379.15', '103.8']
@@ -125,15 +127,22 @@ function handleStart() {
 }
 
 onMounted(async () => {
-  const { ruleCodeList } = await getUserRoleRules()
+  const response = await getUserRoleRules()
 
-  if (ruleCodeList.length === 0) {
+  if (response.status !== 200) {
+    throw new Error(response.massage)
+  }
+
+  initializeRolePermissions(response.data)
+
+  if (rolePermissionList.length === 0) {
+    selectedRole.value = roles[0].value
     showRoleSelector.value = true
     return
   }
 
   // 按产品定义的角色优先级确定默认进入角色，不依赖接口返回顺序。
-  const sortedRuleCodeList = [...ruleCodeList].sort((currentRole, nextRole) => {
+  const sortedRuleCodeList = [...rolePermissionList].sort((currentRole, nextRole) => {
     return ROLE_CODE_ORDER.indexOf(currentRole.code) - ROLE_CODE_ORDER.indexOf(nextRole.code)
   })
   const roleCode = sortedRuleCodeList[0].code
@@ -516,44 +525,14 @@ onMounted(async () => {
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
   box-shadow: 0 14px 28px rgba(70, 82, 150, 0.16);
 }
 
-.avatar-face {
-  width: 42px;
-  height: 42px;
+.avatar-image {
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.theme-cxo {
-  background: linear-gradient(135deg, #9a86cf, #5d76e7);
-}
-
-.theme-sales {
-  background: linear-gradient(135deg, #d991bd, #7d75e8);
-}
-
-.theme-customer {
-  background: linear-gradient(135deg, #74b5ff, #5e77d9);
-}
-
-.theme-pe {
-  background: linear-gradient(135deg, #65a7ff, #416fd6);
-}
-
-.theme-operation {
-  background: linear-gradient(135deg, #9387e5, #5b83d7);
+  object-fit: cover;
 }
 
 .check-mark {
