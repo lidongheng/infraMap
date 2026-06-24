@@ -1,5 +1,5 @@
 <template>
-  <div class="role-select-page">
+  <div v-if="showRoleSelector" class="role-select-page">
     <div class="role-select-modal">
       <section class="intro-panel">
         <div class="dashboard-visual">
@@ -96,12 +96,19 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getRoleTargetPath, roles, saveSelectedRole } from '@/config/role'
+import { getUserRoleRules } from '@/api/role'
+import {
+  getRoleTargetPath,
+  ROLE_CODE_ORDER,
+  roles,
+  saveSelectedRole
+} from '@/config/role'
 
 const router = useRouter()
 const selectedRole = ref('cxo')
+const showRoleSelector = ref(false)
 
 const metrics = ['273.59', '798.41', '379.15', '103.8']
 const mapDots = [
@@ -116,6 +123,24 @@ function handleStart() {
   saveSelectedRole(selectedRole.value)
   router.push(getRoleTargetPath(selectedRole.value))
 }
+
+onMounted(async () => {
+  const { ruleCodeList } = await getUserRoleRules()
+
+  if (ruleCodeList.length === 0) {
+    showRoleSelector.value = true
+    return
+  }
+
+  // 按产品定义的角色优先级确定默认进入角色，不依赖接口返回顺序。
+  const sortedRuleCodeList = [...ruleCodeList].sort((currentRole, nextRole) => {
+    return ROLE_CODE_ORDER.indexOf(currentRole.code) - ROLE_CODE_ORDER.indexOf(nextRole.code)
+  })
+  const roleCode = sortedRuleCodeList[0].code
+
+  saveSelectedRole(roleCode)
+  router.replace(getRoleTargetPath(roleCode))
+})
 </script>
 
 <style scoped lang="less">

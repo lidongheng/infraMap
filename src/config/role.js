@@ -1,5 +1,13 @@
 export const ROLE_STORAGE_KEY = "infraMap:selectedRole";
 
+export const ROLE_CODE_ORDER = [
+  "cxo",
+  "sales",
+  "internalCustomer",
+  "servicePe",
+  "operationAnalysis",
+];
+
 export const roles = [
   {
     label: "角色1",
