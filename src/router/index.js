@@ -13,6 +13,7 @@ import GlobalLayout from '@/components/home/GlobalLayout.vue'
 import SaleDetail from '../views/saleView/saleDetail/index.vue'
 import NoPermission from '../views/noPermission/index.vue'
 import NoPermissionTest from '../views/noPermissionTest/index.vue'
+import Unauthorized from '../views/Unauthorized.vue'
 
 const routes = [
   {
@@ -62,6 +63,11 @@ const routes = [
     path: '/noPermission',
     name: 'noPermission',
     component: NoPermission
+  },
+  {
+    path: '/401',
+    name: 'unauthorized',
+    component: Unauthorized
   },
   
   {

@@ -98,11 +98,14 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getUserRoleRules } from '@/api/role'
+import { getPermissionConfig, getUserRoleRules } from '@/api/role'
 import {
   getRoleTargetPath,
-  initializeRolePermissions,
+  initializePermissionConfig,
+  initializeUserRoleRules,
   ROLE_CODE_ORDER,
+  cloudServerPermissionList,
+  regionPermissionList,
   rolePermissionList,
   roles,
   saveSelectedRole
@@ -127,13 +130,22 @@ function handleStart() {
 }
 
 onMounted(async () => {
-  const response = await getUserRoleRules()
+  const [permissionResponse, roleResponse] = await Promise.all([
+    getPermissionConfig(),
+    getUserRoleRules()
+  ])
 
-  if (response.status !== 200) {
-    throw new Error(response.massage)
+  initializePermissionConfig(permissionResponse.data)
+  initializeUserRoleRules(roleResponse.data)
+
+  if (regionPermissionList.length === 0 && cloudServerPermissionList.length === 0) {
+    router.replace('/401')
+    return
   }
 
-  initializeRolePermissions(response.data)
+  if (roles.length === 0) {
+    return
+  }
 
   if (rolePermissionList.length === 0) {
     selectedRole.value = roles[0].value

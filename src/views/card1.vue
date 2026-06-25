@@ -3,7 +3,7 @@
     <section class="permission-card">
       <header class="permission-card__header">
         <h1>切换角色</h1>
-        <button class="apply-entry" type="button">
+        <button class="apply-entry" type="button" @click="handlePermissionApply">
           <el-icon><Setting /></el-icon>
           <span>数据权限申请</span>
         </button>
@@ -73,6 +73,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
 import { Setting } from "@element-plus/icons-vue";
 import {
   cloudServerPermissionList,
@@ -86,6 +87,7 @@ defineProps({
 });
 
 const emit = defineEmits(["role-change"]);
+const router = useRouter();
 
 const tabs = [
   { label: "已有角色权限", name: "role" },
@@ -130,6 +132,10 @@ const handleTabChange = (tabName) => {
 
 const handleRoleClick = (roleValue) => {
   emit("role-change", roleValue);
+};
+
+const handlePermissionApply = () => {
+  router.push("/401");
 };
 </script>
 

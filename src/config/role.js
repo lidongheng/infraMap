@@ -35,7 +35,14 @@ export const regionPermissionList = reactive([]);
 export const cloudServerPermissionList = reactive([]);
 export const selectedRoleValue = ref(sessionStorage.getItem(ROLE_STORAGE_KEY));
 
-export function initializeRolePermissions(data) {
+export function initializePermissionConfig(data) {
+  if (Array.isArray(data)) {
+    roles.splice(0, roles.length);
+    regionPermissionList.splice(0, regionPermissionList.length);
+    cloudServerPermissionList.splice(0, cloudServerPermissionList.length);
+    return;
+  }
+
   const roleDimension = data.totalDimenPermConfigList.find(
     (item) => item.permDimenTypeCode === "1",
   );
@@ -48,13 +55,16 @@ export function initializeRolePermissions(data) {
   });
 
   roles.splice(0, roles.length, ...roleList);
-  rolePermissionList.splice(0, rolePermissionList.length, ...data.ruleCodeList);
   regionPermissionList.splice(0, regionPermissionList.length, ...data.regionCodeList);
   cloudServerPermissionList.splice(
     0,
     cloudServerPermissionList.length,
     ...data.cloudServerNameList,
   );
+}
+
+export function initializeUserRoleRules(data) {
+  rolePermissionList.splice(0, rolePermissionList.length, ...data);
 }
 
 export function getRoleTargetPath(roleValue) {
