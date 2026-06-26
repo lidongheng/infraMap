@@ -36,8 +36,10 @@ export const cloudServerPermissionList = reactive([]);
 export const selectedRoleValue = ref(sessionStorage.getItem(ROLE_STORAGE_KEY));
 
 export function initializePermissionConfig(data) {
-  if (Array.isArray(data)) {
+  if (data === null || Array.isArray(data)) {
+    // 接口异常时 data 可能为 null，业务上按空权限数据处理。
     roles.splice(0, roles.length);
+    rolePermissionList.splice(0, rolePermissionList.length);
     regionPermissionList.splice(0, regionPermissionList.length);
     cloudServerPermissionList.splice(0, cloudServerPermissionList.length);
     return;
@@ -55,16 +57,13 @@ export function initializePermissionConfig(data) {
   });
 
   roles.splice(0, roles.length, ...roleList);
+  rolePermissionList.splice(0, rolePermissionList.length, ...data.ruleCodeList);
   regionPermissionList.splice(0, regionPermissionList.length, ...data.regionCodeList);
   cloudServerPermissionList.splice(
     0,
     cloudServerPermissionList.length,
     ...data.cloudServerNameList,
   );
-}
-
-export function initializeUserRoleRules(data) {
-  rolePermissionList.splice(0, rolePermissionList.length, ...data);
 }
 
 export function getRoleTargetPath(roleValue) {
@@ -79,4 +78,8 @@ export function getRoleTargetPath(roleValue) {
 export function saveSelectedRole(roleValue) {
   sessionStorage.setItem(ROLE_STORAGE_KEY, roleValue);
   selectedRoleValue.value = roleValue;
+}
+
+export function syncSelectedRoleFromSession() {
+  selectedRoleValue.value = sessionStorage.getItem(ROLE_STORAGE_KEY);
 }

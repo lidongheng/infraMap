@@ -98,11 +98,10 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getPermissionConfig, getUserRoleRules } from '@/api/role'
+import { getPermissionConfig } from '@/api/role'
 import {
   getRoleTargetPath,
   initializePermissionConfig,
-  initializeUserRoleRules,
   ROLE_CODE_ORDER,
   cloudServerPermissionList,
   regionPermissionList,
@@ -130,13 +129,12 @@ function handleStart() {
 }
 
 onMounted(async () => {
-  const [permissionResponse, roleResponse] = await Promise.all([
-    getPermissionConfig(),
-    getUserRoleRules()
-  ])
-
+  const permissionResponse = await getPermissionConfig()
   initializePermissionConfig(permissionResponse.data)
-  initializeUserRoleRules(roleResponse.data)
+
+  if (permissionResponse.data === null) {
+    return
+  }
 
   if (regionPermissionList.length === 0 && cloudServerPermissionList.length === 0) {
     router.replace('/401')

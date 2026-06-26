@@ -6,6 +6,15 @@ export function getPermissionConfig() {
         massage: "success",
         data: {
           account: "12345678",
+          ruleCodeList: [
+            {
+              name: "张三",
+              code: "ROLE_CXO",
+              validEndTime: "2027-10-31",
+              account: "12345678",
+              userName: "张三",
+            },
+          ],
           totalDimenPermConfigList: [
             {
               permDimenTypeCode: "1",
@@ -72,26 +81,6 @@ export function getPermissionConfig() {
             },
           ],
         },
-      });
-    }, 500);
-  });
-}
-
-export function getUserRoleRules() {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        status: 200,
-        massage: "success",
-        data: [
-          {
-            name: "张三",
-            code: "ROLE_CXO",
-            validEndTime: "2027-10-31",
-            account: "12345678",
-            userName: "张三",
-          },
-        ],
       });
     }, 500);
   });

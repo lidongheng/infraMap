@@ -24,11 +24,18 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Card1 from "@/views/card1.vue";
+import { getPermissionConfig } from "@/api/role";
 import {
+  cloudServerPermissionList,
   getRoleTargetPath,
+  initializePermissionConfig,
+  ROLE_CODE_ORDER,
+  regionPermissionList,
+  rolePermissionList,
   roles,
   saveSelectedRole,
   selectedRoleValue,
+  syncSelectedRoleFromSession,
 } from "@/config/role";
 
 const router = useRouter();
@@ -62,8 +69,38 @@ const handleRoleChange = (roleValue) => {
   router.push(getRoleTargetPath(roleValue));
 };
 
+const initializeRoleMenuData = async () => {
+  syncSelectedRoleFromSession();
+
+  if (selectedRoleValue.value && roles.length > 0) {
+    return;
+  }
+
+  // 刷新业务页面时不会经过 RoleSelect，需要在 Header 内补齐共享权限数据。
+  const permissionResponse = await getPermissionConfig();
+  initializePermissionConfig(permissionResponse.data);
+
+  if (permissionResponse.data === null) {
+    router.replace("/roleSelect");
+    return;
+  }
+
+  if (regionPermissionList.length === 0 && cloudServerPermissionList.length === 0) {
+    router.replace("/401");
+    return;
+  }
+
+  if (!selectedRoleValue.value && rolePermissionList.length > 0) {
+    const sortedRuleCodeList = [...rolePermissionList].sort((currentRole, nextRole) => {
+      return ROLE_CODE_ORDER.indexOf(currentRole.code) - ROLE_CODE_ORDER.indexOf(nextRole.code);
+    });
+    saveSelectedRole(sortedRuleCodeList[0].code);
+  }
+};
+
 onMounted(() => {
   document.addEventListener("click", closeRoleCard);
+  initializeRoleMenuData();
 });
 
 onBeforeUnmount(() => {
