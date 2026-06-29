@@ -10,6 +10,12 @@ export const ROLE_CODE_ORDER = [
   "ROLE_OPS_ANALYST",
 ];
 
+export const DISABLED_ROLE_CODES = [
+  "ROLE_INTERNAL_CUSTOMER",
+  "ROLE_SERVICE_PE",
+  "ROLE_OPS_ANALYST",
+];
+
 // 正式头像提供后，在这里引入 PNG 文件，并将下方 null 替换为对应的变量。
 // import roleCxoAvatar from "@/assets/images/role/role-cxo.png";
 // import roleFrontSalesAvatar from "@/assets/images/role/role-front-sales.png";
@@ -30,15 +36,29 @@ const ROLE_AVATAR_MAP = {
 };
 
 export const roles = reactive([]);
+export const allRegionPermissionList = reactive([]);
+export const allCloudServerPermissionList = reactive([]);
 export const rolePermissionList = reactive([]);
 export const regionPermissionList = reactive([]);
 export const cloudServerPermissionList = reactive([]);
 export const selectedRoleValue = ref(sessionStorage.getItem(ROLE_STORAGE_KEY));
 
+function createPermissionItems(detailList) {
+  return detailList.map((item) => {
+    return {
+      label: item.permName,
+      value: item.permCode,
+      code: item.permCode,
+    };
+  });
+}
+
 export function initializePermissionConfig(data) {
   if (data === null || Array.isArray(data)) {
     // 接口异常时 data 可能为 null，业务上按空权限数据处理。
     roles.splice(0, roles.length);
+    allRegionPermissionList.splice(0, allRegionPermissionList.length);
+    allCloudServerPermissionList.splice(0, allCloudServerPermissionList.length);
     rolePermissionList.splice(0, rolePermissionList.length);
     regionPermissionList.splice(0, regionPermissionList.length);
     cloudServerPermissionList.splice(0, cloudServerPermissionList.length);
@@ -48,15 +68,32 @@ export function initializePermissionConfig(data) {
   const roleDimension = data.totalDimenPermConfigList.find(
     (item) => item.permDimenTypeCode === "1",
   );
+  const regionDimension = data.totalDimenPermConfigList.find(
+    (item) => item.permDimenTypeCode === "2",
+  );
+  const cloudServerDimension = data.totalDimenPermConfigList.find(
+    (item) => item.permDimenTypeCode === "4",
+  );
   const roleList = roleDimension.detailList.map((role) => {
     return {
       label: role.permName,
       value: role.permCode,
       avatar: ROLE_AVATAR_MAP[role.permCode],
+      disabled: DISABLED_ROLE_CODES.includes(role.permCode),
     };
   });
 
   roles.splice(0, roles.length, ...roleList);
+  allRegionPermissionList.splice(
+    0,
+    allRegionPermissionList.length,
+    ...createPermissionItems(regionDimension.detailList),
+  );
+  allCloudServerPermissionList.splice(
+    0,
+    allCloudServerPermissionList.length,
+    ...createPermissionItems(cloudServerDimension.detailList),
+  );
   rolePermissionList.splice(0, rolePermissionList.length, ...data.ruleCodeList);
   regionPermissionList.splice(0, regionPermissionList.length, ...data.regionCodeList);
   cloudServerPermissionList.splice(
@@ -73,6 +110,10 @@ export function getRoleTargetPath(roleValue) {
   }
 
   return "/saleHome";
+}
+
+export function isRoleDisabled(roleValue) {
+  return DISABLED_ROLE_CODES.includes(roleValue);
 }
 
 export function saveSelectedRole(roleValue) {

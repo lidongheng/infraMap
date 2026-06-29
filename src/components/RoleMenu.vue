@@ -15,7 +15,12 @@
       <span class="role-avatar-name">{{ selectedRole.label }}</span>
     </button>
     <div v-if="showRoleCard" class="role-card-popover" @click.stop>
-      <Card1 compact @role-change="handleRoleChange" />
+      <RolePermissionCard
+        compact
+        immediate-role-change
+        @role-change="handleRoleChange"
+        @start="handleRoleChange"
+      />
     </div>
   </div>
 </template>
@@ -23,12 +28,13 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import Card1 from "@/views/card1.vue";
+import RolePermissionCard from "@/components/RolePermissionCard.vue";
 import { getPermissionConfig } from "@/api/role";
 import {
   cloudServerPermissionList,
   getRoleTargetPath,
   initializePermissionConfig,
+  isRoleDisabled,
   ROLE_CODE_ORDER,
   regionPermissionList,
   rolePermissionList,
@@ -86,14 +92,19 @@ const initializeRoleMenuData = async () => {
   }
 
   if (regionPermissionList.length === 0 && cloudServerPermissionList.length === 0) {
-    router.replace("/401");
+    router.replace("/roleSelect");
     return;
   }
 
   if (!selectedRoleValue.value && rolePermissionList.length > 0) {
-    const sortedRuleCodeList = [...rolePermissionList].sort((currentRole, nextRole) => {
-      return ROLE_CODE_ORDER.indexOf(currentRole.code) - ROLE_CODE_ORDER.indexOf(nextRole.code);
-    });
+    const sortedRuleCodeList = rolePermissionList
+      .filter((role) => !isRoleDisabled(role.code))
+      .sort((currentRole, nextRole) => {
+        return ROLE_CODE_ORDER.indexOf(currentRole.code) - ROLE_CODE_ORDER.indexOf(nextRole.code);
+      });
+    if (sortedRuleCodeList.length === 0) {
+      return;
+    }
     saveSelectedRole(sortedRuleCodeList[0].code);
   }
 };

@@ -554,9 +554,12 @@ function updateGraphicLabels() {
   }
 
   if (props.yAxisTopLabel) {
+    const isAvgLabelNearYAxis = showAvgLabel && Math.abs(avgLineX - gl) <= 24 * s;
+    // 平均值为 0 时，平均值标签会贴在 Y 轴顶部，需要把顶部指标名上移避免重叠。
+    const yAxisTopLabelOffset = isAvgLabelNearYAxis ? 34 * s : 14 * s;
     graphics.push({
       type: "text",
-      position: [gl, gt - 14 * s],
+      position: [gl, gt - yAxisTopLabelOffset],
       style: {
         text: props.yAxisTopLabel,
         fontSize: Math.round(14 * s),

@@ -5,9 +5,90 @@
       :key="filter.key"
       class="filter-item"
     >
-      <span class="filter-label">{{ filter.label }}</span>
+      <span v-if="!filter.hideLabel" class="filter-label">{{ filter.label }}</span>
       <el-popover
-        v-if="isCustomFilter(filter)"
+        v-if="filter.type === 'areaCascade'"
+        :visible="areaVisible[filter.key]"
+        @update:visible="visible => setAreaVisible(filter, visible)"
+        placement="bottom-start"
+        :trigger="loading ? 'manual' : 'click'"
+        width="fit-content"
+        :show-arrow="false"
+        :popper-class="getAreaPopperClass(filter)"
+      >
+        <template #reference>
+          <button class="select-trigger area-trigger" type="button" :disabled="loading">
+            <el-icon v-if="filter.icon === 'location'" class="area-trigger-icon"><Location /></el-icon>
+            <span>{{ getAreaSummary(filter) }}</span>
+            <el-icon><ArrowDown /></el-icon>
+          </button>
+        </template>
+        <div class="dropdown-panel area-cascade-panel">
+          <div class="area-cascade-columns">
+            <div class="area-cascade-column">
+              <div class="column-title">{{ filter.columns[0].title }}</div>
+              <div class="resource-scroll">
+                <el-checkbox-group
+                  :model-value="getAreaValue(filter.areaValueKey)"
+                  @update:model-value="value => setAreaValue(filter, filter.areaValueKey, value)"
+                >
+                  <label
+                    v-for="item in getAreaRootOptions(filter)"
+                    :key="item.value"
+                    :class="['resource-row', { active: areaActive[filter.key] === item.value }]"
+                    @mouseenter="setAreaActive(filter, item.value)"
+                  >
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+                    <el-icon><ArrowRight /></el-icon>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
+            <div class="area-cascade-column">
+              <div class="column-title">{{ filter.columns[1].title }}</div>
+              <div class="resource-scroll">
+                <el-checkbox-group
+                  :model-value="getAreaValue(filter.districtValueKey)"
+                  @update:model-value="value => setAreaValue(filter, filter.districtValueKey, value)"
+                >
+                  <label
+                    v-for="item in getAreaDistrictOptions(filter)"
+                    :key="item.value"
+                    :class="['resource-row', { active: areaDistrictActive[filter.key] === item.value }]"
+                    @mouseenter="setAreaDistrictActive(filter, item.value)"
+                  >
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+                    <el-icon><ArrowRight /></el-icon>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
+            <div class="area-cascade-column">
+              <div class="column-title">{{ filter.columns[2].title }}</div>
+              <div class="resource-scroll">
+                <el-checkbox-group
+                  :model-value="getAreaValue(filter.regionValueKey)"
+                  @update:model-value="value => setAreaValue(filter, filter.regionValueKey, value)"
+                >
+                  <label
+                    v-for="item in getAreaRegionOptions(filter)"
+                    :key="item.value"
+                    class="resource-row"
+                  >
+                    <el-checkbox :value="item.value">{{ item.label }}</el-checkbox>
+                  </label>
+                </el-checkbox-group>
+              </div>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="plain-btn" type="button" @click="cancelAreaFilter(filter)">取消</button>
+            <button class="primary-btn" type="button" @click="confirmAreaFilter(filter)">确定</button>
+          </div>
+        </div>
+      </el-popover>
+      <el-popover
+        v-else-if="isCustomFilter(filter)"
         :visible="customVisible[filter.key]"
         @update:visible="visible => setCustomVisible(filter, visible)"
         placement="bottom-start"
@@ -415,7 +496,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { ArrowDown, ArrowRight, Search } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowRight, Location, Search } from '@element-plus/icons-vue';
 
 const props = defineProps({
   options: {
@@ -444,6 +525,11 @@ const customKeyword = ref({});
 const customActive = ref({});
 const customValueMap = ref({});
 const customSnapshotMap = ref({});
+const areaVisible = ref({});
+const areaActive = ref({});
+const areaDistrictActive = ref({});
+const areaValueMap = ref({});
+const areaSnapshotMap = ref({});
 
 const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.regionNameList)));
 const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azNameList)));
@@ -459,6 +545,7 @@ const resourceFamilyColumn = computed(() => resourceTreeColumns.value[2]);
 const resourceGenerationColumn = computed(() => resourceTreeColumns.value[3]);
 const resourceTypeColumn = computed(() => resourceTreeColumns.value[4]);
 const customFilters = computed(() => props.filterConfig.filter(filter => isCustomFilter(filter)));
+const areaFilters = computed(() => props.filterConfig.filter(filter => filter.type === 'areaCascade'));
 const hasRangeFilter = computed(() => Boolean(rangeFilterConfig.value));
 const hasResourceTreeFilter = computed(() => Boolean(resourceTypeFilterConfig.value));
 const visibleFilters = computed(() =>
@@ -715,6 +802,7 @@ watch(loading, (value) => {
   rangeVisible.value = false;
   resourceVisible.value = false;
   customVisible.value = {};
+  areaVisible.value = {};
 });
 
 function normalizeOptions(options) {
@@ -787,6 +875,7 @@ function allSelectedValue() {
   return {
     ...value,
     ...customAllSelectedValue(),
+    ...areaSelectedValue(),
   };
 }
 
@@ -830,7 +919,37 @@ function applyModelValue(value) {
     activeGeneration.value = allResourceGenerations.value[0]?.value ?? '';
   }
   applyCustomModelValue(next, fallback);
+  applyAreaModelValue(next);
   syncingFromModel = false;
+}
+
+function applyAreaModelValue(next) {
+  areaFilters.value.forEach((filter) => {
+    areaValueMap.value[filter.areaValueKey] = keepValid(
+      getAreaModelGroupValue(next, filter.areaValueKey),
+      getAreaRootOptions(filter),
+      [],
+    );
+    areaValueMap.value[filter.districtValueKey] = keepValid(
+      getAreaModelGroupValue(next, filter.districtValueKey),
+      getAreaAllDistrictOptions(filter),
+      [],
+    );
+    areaValueMap.value[filter.regionValueKey] = keepValid(
+      getAreaModelGroupValue(next, filter.regionValueKey),
+      getAreaAllRegionOptions(filter),
+      [],
+    );
+    areaActive.value[filter.key] = getFirstActiveValue(
+      getAreaValue(filter.areaValueKey),
+      getAreaRootOptions(filter),
+    );
+    areaDistrictActive.value[filter.key] = getFirstActiveValue(
+      getAreaValue(filter.districtValueKey),
+      getAreaDistrictOptions(filter),
+    );
+    saveAreaSnapshot(filter);
+  });
 }
 
 function applyCustomModelValue(next, fallback) {
@@ -921,6 +1040,7 @@ function emitCurrentValue() {
     value[resourceTypeColumn.value.valueKey] = [...resourceTypeValue.value];
   }
   Object.assign(value, getCustomCurrentValue());
+  Object.assign(value, getAreaCurrentValue());
   emit('update:modelValue', value);
   emit('change', value);
 }
@@ -1083,6 +1203,182 @@ function cancelCustomFilter(filter) {
 function confirmCustomFilter(filter) {
   saveCustomSnapshot(filter);
   customVisible.value[filter.key] = false;
+  emitCurrentValue();
+}
+
+function getAreaRootOptions(filter) {
+  return normalizeOptions(props.options?.[filter.optionKey]);
+}
+
+function getAreaAllDistrictOptions(filter) {
+  return getUniqueOptions(
+    getAreaRootOptions(filter).flatMap(item => item.children ?? [])
+  );
+}
+
+function getAreaAllRegionOptions(filter) {
+  return getUniqueOptions(
+    getAreaAllDistrictOptions(filter).flatMap(item => item.children ?? [])
+  );
+}
+
+function getAreaDistrictOptions(filter) {
+  const activeValue = areaActive.value[filter.key];
+  const activeArea = getAreaRootOptions(filter).find(item => item.value === activeValue);
+  return activeArea?.children ?? [];
+}
+
+function getAreaRegionOptions(filter) {
+  const activeValue = areaDistrictActive.value[filter.key];
+  const activeDistrict = getAreaDistrictOptions(filter).find(item => item.value === activeValue);
+  return activeDistrict?.children ?? [];
+}
+
+function getAreaValue(key) {
+  return areaValueMap.value[key] ?? [];
+}
+
+function getAreaModelGroupValue(value, key) {
+  if (Object.prototype.hasOwnProperty.call(value, key)) {
+    return value[key];
+  }
+  return [];
+}
+
+function getFirstActiveValue(values, options) {
+  const matched = options.find(item => values.includes(item.value));
+  if (matched) {
+    return matched.value;
+  }
+  return options[0]?.value ?? '';
+}
+
+function areaSelectedValue() {
+  return areaFilters.value.reduce((result, filter) => {
+    result[filter.areaValueKey] = [];
+    result[filter.districtValueKey] = [];
+    result[filter.regionValueKey] = [];
+    return result;
+  }, {});
+}
+
+function getAreaCurrentValue() {
+  return areaFilters.value.reduce((result, filter) => {
+    result[filter.areaValueKey] = [...getAreaValue(filter.areaValueKey)];
+    result[filter.districtValueKey] = [...getAreaValue(filter.districtValueKey)];
+    result[filter.regionValueKey] = [...getAreaValue(filter.regionValueKey)];
+    return result;
+  }, {});
+}
+
+function setAreaValue(filter, key, value) {
+  areaValueMap.value[key] = value;
+  if (key === filter.areaValueKey) {
+    syncAreaSelection(filter);
+  }
+  if (key === filter.districtValueKey) {
+    syncDistrictSelection(filter);
+  }
+}
+
+function syncAreaSelection(filter) {
+  const selectedArea = getAreaValue(filter.areaValueKey);
+  areaActive.value[filter.key] = getFirstActiveValue(selectedArea, getAreaRootOptions(filter));
+  const districtOptions = getAreaAllDistrictOptions(filter)
+    .filter(item => selectedArea.some(area => getAreaChildren(filter, area).includes(item.value)));
+  areaValueMap.value[filter.districtValueKey] = keepValid(
+    getAreaValue(filter.districtValueKey),
+    districtOptions,
+    [],
+  );
+  syncDistrictSelection(filter);
+}
+
+function syncDistrictSelection(filter) {
+  const selectedDistrict = getAreaValue(filter.districtValueKey);
+  const regionOptions = getAreaAllRegionOptions(filter)
+    .filter(item => selectedDistrict.some(district => getDistrictChildren(filter, district).includes(item.value)));
+  areaValueMap.value[filter.regionValueKey] = keepValid(
+    getAreaValue(filter.regionValueKey),
+    regionOptions,
+    [],
+  );
+  areaDistrictActive.value[filter.key] = getFirstActiveValue(selectedDistrict, getAreaDistrictOptions(filter));
+}
+
+function getAreaChildren(filter, areaValue) {
+  const area = getAreaRootOptions(filter).find(item => item.value === areaValue);
+  return (area?.children ?? []).map(item => item.value);
+}
+
+function getDistrictChildren(filter, districtValue) {
+  const district = getAreaAllDistrictOptions(filter).find(item => item.value === districtValue);
+  return (district?.children ?? []).map(item => item.value);
+}
+
+function setAreaVisible(filter, visible) {
+  if (loading.value) {
+    areaVisible.value[filter.key] = false;
+    return;
+  }
+  if (visible) {
+    saveAreaSnapshot(filter);
+  }
+  if (!visible) {
+    restoreAreaSnapshot(filter);
+  }
+  areaVisible.value[filter.key] = visible;
+}
+
+function setAreaActive(filter, value) {
+  areaActive.value[filter.key] = value;
+}
+
+function setAreaDistrictActive(filter, value) {
+  areaDistrictActive.value[filter.key] = value;
+}
+
+function getAreaSummary(filter) {
+  return getSummary(getAreaValue(filter.regionValueKey), getAreaAllRegionOptions(filter));
+}
+
+function getAreaPopperClass() {
+  return 'filter-popper filter-popper--area-cascade';
+}
+
+function getAreaValueKeys(filter) {
+  return [filter.areaValueKey, filter.districtValueKey, filter.regionValueKey];
+}
+
+function saveAreaSnapshot(filter) {
+  areaSnapshotMap.value[filter.key] = {
+    values: getAreaValueKeys(filter).reduce((result, key) => {
+      result[key] = [...getAreaValue(key)];
+      return result;
+    }, {}),
+    active: areaActive.value[filter.key],
+    districtActive: areaDistrictActive.value[filter.key],
+  };
+}
+
+function restoreAreaSnapshot(filter) {
+  const snapshot = areaSnapshotMap.value[filter.key];
+  if (!snapshot) return;
+  Object.entries(snapshot.values).forEach(([key, value]) => {
+    areaValueMap.value[key] = [...value];
+  });
+  areaActive.value[filter.key] = snapshot.active;
+  areaDistrictActive.value[filter.key] = snapshot.districtActive;
+}
+
+function cancelAreaFilter(filter) {
+  restoreAreaSnapshot(filter);
+  areaVisible.value[filter.key] = false;
+}
+
+function confirmAreaFilter(filter) {
+  saveAreaSnapshot(filter);
+  areaVisible.value[filter.key] = false;
   emitCurrentValue();
 }
 
@@ -1470,6 +1766,30 @@ function confirmResource() {
   width: 126px;
 }
 
+.area-trigger {
+  width: auto;
+  min-width: 176px;
+  height: 34px;
+  padding: 0 12px 0 10px;
+  gap: 8px;
+  border: 1px solid #dfe2ec;
+  border-radius: 18px;
+  box-shadow: 0 2px 10px rgba(50, 50, 93, 0.08);
+  color: #1f2440;
+  font-size: 15px;
+  font-weight: 700;
+
+  span {
+    flex: 1;
+  }
+}
+
+.area-trigger-icon {
+  flex: 0 0 auto;
+  color: #4a4abd;
+  font-size: 18px;
+}
+
 .dropdown-panel {
   background: #fff;
   color: #252b3a;
@@ -1669,12 +1989,22 @@ function confirmResource() {
   padding: 10px;
 }
 
+:global(.filter-popper--area-cascade) {
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #e1e4ee;
+}
+
 .custom-list-panel {
   width: 220px;
 }
 
 .custom-cascade-panel {
   width: min(440px, calc(100vw - 32px));
+}
+
+.area-cascade-panel {
+  width: min(760px, calc(100vw - 32px));
 }
 
 .custom-search {
@@ -1687,7 +2017,18 @@ function confirmResource() {
   gap: 8px;
 }
 
+.area-cascade-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 8px;
+  padding: 0 10px 8px;
+}
+
 .custom-column {
+  min-width: 0;
+}
+
+.area-cascade-column {
   min-width: 0;
 }
 

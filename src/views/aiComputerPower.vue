@@ -60,7 +60,6 @@ const props = defineProps({
   avgXField: { type: String, default: "allocationRate" },
   trafficLightKeys: { type: Object, default: null },
   dataFilter: { type: Function, default: null },
-  staticData: { type: Array, default: null },
 });
 
 const emit = defineEmits(["bubble-click", "visible-change"]);
@@ -85,13 +84,8 @@ const avgX = computed(() =>
   )
 );
 
-const chartSourceData = computed(() => {
-  if (props.staticData) return props.staticData;
-  return data.value;
-});
-
 const mappedData = computed(() =>
-  chartSourceData.value.map((d) => ({
+  data.value.map((d) => ({
     ...d,
     x: d[props.xField] ?? d.x,
     ...(props.yField ? { y: d[props.yField] ?? d.y } : {}),

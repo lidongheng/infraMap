@@ -14,12 +14,22 @@
     </header>
     <section class="main flex-center">
       <section class="main-left">
-        <AICategoryNav
-          :compute-items="maskedFilteredComputeItems"
-          :compute-customer-items="maskedComputeCustomerItems"
-          :token-items="maskedFilteredTokenItems"
-          :token-customer-items="maskedTokenCustomerItems"
-        />
+        <template v-if="isToken">
+          <AICategoryNav
+            :compute-items="maskedFilteredComputeItems"
+            :compute-customer-items="maskedComputeCustomerItems"
+            :token-items="maskedFilteredTokenItems"
+            :token-customer-items="maskedTokenCustomerItems"
+          />
+        </template>
+        <template v-if="!isToken">
+          <AICategoryNav
+            :compute-items="maskedFilteredComputeItems"
+            :compute-customer-items="maskedComputeCustomerItems"
+            :token-items="maskedFilteredTokenItems"
+            :token-customer-items="maskedTokenCustomerItems"
+          />
+        </template>
       </section>
       <section class="main-right">
         <div v-if="tabs.length > 1" class="tab-bar">
@@ -65,7 +75,6 @@
                   :avgXField="currentConfig.xField"
                   :trafficLightKeys="currentConfig.trafficLightKeys"
                   :dataFilter="currentConfig.dataFilter ?? null"
-                  :static-data="currentStaticChartData"
                   @bubble-click="onBubbleClick"
                   @visible-change="onVisibleChange"
                 />
@@ -123,8 +132,7 @@ import AIComputerPower from "./aiComputerPower.vue";
 import SuperNodeChart from "./superNodeChart.vue";
 import ResourcePoolTable from "@/components/ResourcePoolTable.vue";
 import {
-  aiOverviewMode,
-  selectedCustomerType,
+  mode,
   selectedModelType,
   selectedResourceType,
   selectedTokenGroup,
@@ -134,7 +142,6 @@ import {
 import { mockFetchEfficiency2, toSuperNodeChartData } from "./useSuperNodeChart";
 import { useCurrentDate } from "./useCurrentDate";
 import SwitchTableOrChart from "@/components/SwitchTableOrChart.vue";
-import { AI_SIZE_TIERS, applyBubbleConfig } from "./commonComputerPowerConfig";
 
 const NPU_USEAGE_FOR_GENERATION = {
   key: "npuUsage",
@@ -231,6 +238,7 @@ const overviewFilterOptions = {
 const overviewFilterValue = ref({
   [CARD_TYPE_VALUE_KEY]: CARD_TYPE_OPTIONS,
 });
+const isToken = computed(() => mode.value === 'token');
 
 const computeOverviewItems = [
   {
@@ -332,87 +340,8 @@ const tokenCustomerItems = [
   },
 ];
 
-const computeChartDataMap = {
-  A3: makeStaticChartData([
-    ["华东-A3资源池1", 72, 68, 620],
-    ["华北-A3资源池2", 55, 48, 3600],
-    ["华南-A3资源池3", 88, 82, 120],
-    ["西南-A3资源池4", 43, 39, 250],
-    ["华东-A3资源池5", 31, 27, 4200],
-    ["华北-A3资源池6", 65, 60, 80],
-  ]),
-  A2: makeStaticChartData([
-    ["华东-A2资源池1", 62, 56, 520],
-    ["华北-A2资源池2", 49, 42, 2800],
-    ["华南-A2资源池3", 76, 70, 180],
-    ["西南-A2资源池4", 38, 34, 350],
-    ["华东-A2资源池5", 58, 52, 1600],
-  ]),
-  A1: makeStaticChartData([
-    ["华东-A1资源池1", 46, 40, 460],
-    ["华北-A1资源池2", 34, 29, 1300],
-    ["华南-A1资源池3", 69, 63, 220],
-    ["西南-A1资源池4", 52, 47, 760],
-    ["华东-A1资源池5", 28, 24, 3100],
-  ]),
-};
-
-const computeCustomerChartDataMap = {
-  内部: makeComputeCustomerChartData([
-    ["内部客户池-华东", 69, 64, 520],
-    ["内部客户池-华北", 58, 51, 880],
-    ["内部客户池-华南", 77, 70, 340],
-    ["内部客户池-西南", 46, 38, 1360],
-  ]),
-  外部: makeComputeCustomerChartData([
-    ["外部客户池-华东", 57, 50, 840],
-    ["外部客户池-华北", 62, 54, 620],
-    ["外部客户池-华南", 49, 42, 1200],
-    ["外部客户池-西南", 71, 64, 460],
-  ]),
-  YT: makeComputeCustomerChartData([
-    ["YT客户池-华东", 63, 56, 720],
-    ["YT客户池-华北", 52, 45, 960],
-    ["YT客户池-华南", 74, 68, 410],
-    ["YT客户池-西南", 48, 40, 1280],
-  ]),
-};
-
-const staticChartDataMap = {
-  "DS V4": makeTokenModelChartData([
-    ["DS V4-华东模型池1", 74, 66, 1431],
-    ["DS V4-华北模型池2", 61, 57, 980],
-    ["DS V4-华南模型池3", 83, 72, 360],
-    ["DS V4-西南模型池4", 48, 41, 2100],
-  ]),
-  "DS V3": makeTokenModelChartData([
-    ["DS V3-华东模型池1", 68, 60, 1280],
-    ["DS V3-华北模型池2", 53, 47, 860],
-    ["DS V3-华南模型池3", 79, 69, 420],
-    ["DS V3-西南模型池4", 44, 38, 1800],
-  ]),
-  Minimax: makeTokenModelChartData([
-    ["Minimax-华东模型池1", 71, 63, 1180],
-    ["Minimax-华北模型池2", 59, 52, 760],
-    ["Minimax-华南模型池3", 82, 74, 390],
-    ["Minimax-西南模型池4", 51, 45, 1680],
-  ]),
-  外部: makeTokenCustomerChartData([
-    ["外部客户池-华东", 57, 50, 840],
-    ["外部客户池-华北", 62, 54, 620],
-    ["外部客户池-华南", 49, 42, 1200],
-    ["外部客户池-西南", 71, 64, 460],
-  ]),
-  内部: makeTokenCustomerChartData([
-    ["内部客户池-华东", 69, 64, 520],
-    ["内部客户池-华北", 58, 51, 880],
-    ["内部客户池-华南", 77, 70, 340],
-    ["内部客户池-西南", 46, 38, 1360],
-  ]),
-};
-
 const overviewFilterConfig = computed(() => {
-  if (aiOverviewMode.value === "token") {
+  if (isToken.value) {
     return [modelTypeFilterConfig];
   }
   return [cardTypeFilterConfig];
@@ -453,19 +382,6 @@ const maskedTokenCustomerItems = computed(() =>
   tokenCustomerItems.map(maskOverviewItem)
 );
 
-const currentStaticChartData = computed(() => {
-  if (aiOverviewMode.value === "token") {
-    if (selectedTokenGroup.value === "customer") {
-      return staticChartDataMap[selectedCustomerType.value];
-    }
-    return staticChartDataMap[selectedModelType.value];
-  }
-  if (parentName.value === "客户") {
-    return computeCustomerChartDataMap[selectedResourceType.value];
-  }
-  return computeChartDataMap[selectedResourceType.value];
-});
-
 const xpodDetailData = ref({});
 const fetchXpodDetail = async () => {
   const response = await mockFetchEfficiency2();
@@ -481,7 +397,7 @@ const superNodeAvgRangeList = computed(() =>
 );
 
 const tabs = computed(() => {
-  if (aiOverviewMode.value === "token") {
+  if (isToken.value) {
     if (selectedTokenGroup.value === "customer") {
       return [TOKEN_CUSTOMER_MODE_CONFIG];
     }
@@ -528,10 +444,10 @@ watch(activeTab, () => {
   chartCollapsed.value = false;
 });
 
-watch(aiOverviewMode, (mode) => {
+watch(mode, (nextMode) => {
   tierFilter.value = null;
   chartCollapsed.value = false;
-  if (mode === "token") {
+  if (nextMode === "token") {
     overviewFilterValue.value = {
       [MODEL_TYPE_VALUE_KEY]: MODEL_TYPE_OPTIONS,
     };
@@ -543,7 +459,7 @@ watch(aiOverviewMode, (mode) => {
 });
 
 watch(filteredComputeItems, (items) => {
-  if (aiOverviewMode.value !== "compute") return;
+  if (isToken.value) return;
   if (parentName.value !== "代次") return;
   if (!items.length) return;
   const isSelectedVisible = items.some(item => item.name === selectedResourceType.value);
@@ -552,7 +468,7 @@ watch(filteredComputeItems, (items) => {
 });
 
 watch(filteredTokenItems, (items) => {
-  if (aiOverviewMode.value !== "token") return;
+  if (!isToken.value) return;
   if (!items.length) return;
   const isSelectedVisible = items.some(item => item.name === selectedModelType.value);
   if (isSelectedVisible) return;
@@ -628,7 +544,7 @@ function onBubbleClick(detail) {
 
 function onOverviewFilterChange(value) {
   overviewFilterValue.value = value;
-  if (aiOverviewMode.value === "token") {
+  if (isToken.value) {
     updateSelectedModelType(value[MODEL_TYPE_VALUE_KEY]);
     return;
   }
@@ -645,54 +561,6 @@ function updateSelectedModelType(modelTypes) {
   if (!modelTypes.length) return;
   if (modelTypes.includes(selectedModelType.value)) return;
   selectedModelType.value = modelTypes[0];
-}
-
-function makeStaticChartData(rows) {
-  return rows.map(([name, npuUseRate, allocationRate, serverNum]) => applyBubbleConfig({
-    name,
-    azName: name,
-    x: allocationRate,
-    y: allocationRate,
-    serverNum,
-    _allocationRate: allocationRate,
-    _npuUseRate: npuUseRate,
-  }, AI_SIZE_TIERS));
-}
-
-function makeTokenModelChartData(rows) {
-  return rows.map(([name, tokenUseRate, actualTps, serverNum]) => applyBubbleConfig({
-    name,
-    azName: name,
-    x: tokenUseRate,
-    y: actualTps,
-    serverNum,
-    _tokenUseRate: tokenUseRate,
-    _actualTps: actualTps,
-  }, AI_SIZE_TIERS));
-}
-
-function makeComputeCustomerChartData(rows) {
-  return rows.map(([name, cardTimeUseRate, aiCoreUseRate, serverNum]) => applyBubbleConfig({
-    name,
-    azName: name,
-    x: cardTimeUseRate,
-    y: aiCoreUseRate,
-    serverNum,
-    _cardTimeUseRate: cardTimeUseRate,
-    _aiCoreUseRate: aiCoreUseRate,
-  }, AI_SIZE_TIERS));
-}
-
-function makeTokenCustomerChartData(rows) {
-  return rows.map(([name, dailyToken, avgRpm, serverNum]) => applyBubbleConfig({
-    name,
-    azName: name,
-    x: dailyToken,
-    y: avgRpm,
-    serverNum,
-    _dailyToken: dailyToken,
-    _avgRpm: avgRpm,
-  }, AI_SIZE_TIERS));
 }
 
 const tableRadio = ref('chart');

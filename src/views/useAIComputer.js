@@ -1,6 +1,6 @@
 import { computed, ref } from "vue";
 
-export const aiOverviewMode = ref("compute");
+export const mode = ref("compute");
 export const selectedResourceType = ref("A3");
 export const selectedModelType = ref("DS V4");
 export const selectedTokenGroup = ref("model");

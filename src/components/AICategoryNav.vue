@@ -43,7 +43,7 @@
     <section class="mode-grid">
       <button
         class="mode-card"
-        :class="{ active: aiOverviewMode === 'token' }"
+        :class="{ active: mode === 'token' }"
         type="button"
         @click="switchMode('token')"
       >
@@ -59,7 +59,7 @@
 
       <button
         class="mode-card"
-        :class="{ active: aiOverviewMode === 'compute' }"
+        :class="{ active: mode === 'compute' }"
         type="button"
         @click="switchMode('compute')"
       >
@@ -75,7 +75,7 @@
     </section>
 
     <section class="detail-card">
-      <template v-if="aiOverviewMode === 'compute'">
+      <template v-if="mode === 'compute'">
         <div class="detail-summary">
           <div class="profit">
             <span class="profit-dot"></span>
@@ -252,7 +252,7 @@
 
 <script setup>
 import {
-  aiOverviewMode,
+  mode,
   selectedCustomerType,
   selectedModelType,
   selectedResourceType,
@@ -281,8 +281,8 @@ const computePreviewMetrics = [
   { label: "HBM利用率", value: "**", unit: "%" },
 ];
 
-function switchMode(mode) {
-  aiOverviewMode.value = mode;
+function switchMode(nextMode) {
+  mode.value = nextMode;
 }
 
 function selectComputeGroup(name) {
