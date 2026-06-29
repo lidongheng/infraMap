@@ -214,14 +214,23 @@
         :popper-class="rangePopperClass"
       >
         <template #reference>
-          <button class="select-trigger" type="button" :disabled="loading">
+          <button
+            class="select-trigger"
+            :class="{ 'area-trigger': isRangeAreaCascader }"
+            type="button"
+            :disabled="loading"
+          >
+            <el-icon v-if="isRangeAreaCascader && filter.icon === 'location'" class="area-trigger-icon"><Location /></el-icon>
             <span>{{ rangeSummary }}</span>
             <el-icon><ArrowDown /></el-icon>
           </button>
         </template>
         <div
           class="dropdown-panel range-panel"
-          :class="{ 'range-panel--single': !showRegionFilter || !showAzFilter }"
+          :class="{
+            'range-panel--single': !showRegionFilter || !showAzFilter,
+            'range-panel--area-cascader': isRangeAreaCascader,
+          }"
         >
           <div v-if="showRegionSearch" class="search-box range-search">
             <el-icon><Search /></el-icon>
@@ -231,7 +240,7 @@
             <div v-if="showRegionFilter" class="range-column">
               <div class="column-title">{{ regionColumnConfig.label }}</div>
               <div class="option-list">
-                <label class="option-row checked-row">
+                <label v-if="showRangeFirstAll" class="option-row checked-row">
                   <el-checkbox
                     :model-value="isAllSelected(regionValue, filteredRegionOptions)"
                     :indeterminate="isIndeterminate(regionValue, filteredRegionOptions)"
@@ -256,7 +265,7 @@
             <div v-if="showAzFilter" class="range-column">
               <div class="column-title">{{ azColumnConfig.label }}</div>
               <div class="option-list">
-                <label class="option-row checked-row">
+                <label v-if="showRangeSecondAll" class="option-row checked-row">
                   <el-checkbox
                     :model-value="isAllSelected(azValue, filteredAzOptions)"
                     :indeterminate="isIndeterminate(azValue, filteredAzOptions)"
@@ -531,13 +540,13 @@ const areaDistrictActive = ref({});
 const areaValueMap = ref({});
 const areaSnapshotMap = ref({});
 
-const regionOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.regionNameList)));
-const azOptions = computed(() => sortOptionsByInitial(normalizeOptions(props.options?.azNameList)));
 const rangeFilterConfig = computed(() => getFilterConfigByKey('range'));
 const resourceTypeFilterConfig = computed(() => getFilterConfigByKey('resourceType'));
 const rangeColumns = computed(() => rangeFilterConfig.value?.columns ?? []);
 const regionColumnConfig = computed(() => rangeColumns.value[0] ?? {});
 const azColumnConfig = computed(() => rangeColumns.value[1] ?? {});
+const regionOptions = computed(() => getRangeColumnOptions(regionColumnConfig.value, 'regionNameList'));
+const azOptions = computed(() => getRangeColumnOptions(azColumnConfig.value, 'azNameList'));
 const resourceTreeColumns = computed(() => resourceTypeFilterConfig.value.columns);
 const resourceCloudServerColumn = computed(() => resourceTreeColumns.value[0]);
 const resourceSeriesColumn = computed(() => resourceTreeColumns.value[1]);
@@ -560,12 +569,18 @@ const showRegionFilter = computed(() => regionColumnConfig.value.visible);
 const showAzFilter = computed(() => azColumnConfig.value.visible);
 const showRangeFilter = computed(() => showRegionFilter.value || showAzFilter.value);
 const showRegionSearch = computed(() => regionColumnConfig.value.searchable);
+const showRangeFirstAll = computed(() => regionColumnConfig.value.showAll !== false);
+const showRangeSecondAll = computed(() => azColumnConfig.value.showAll !== false);
 const showResourceTypeFilter = computed(() => resourceTypeFilterConfig.value.visible);
 const isResourceListFilter = computed(() => resourceTypeFilterConfig.value.variant === "list");
 const isResourceConfirmable = computed(() => resourceTypeFilterConfig.value.confirmable);
+const isRangeAreaCascader = computed(() => rangeFilterConfig.value?.variant === 'areaCascader');
+const useRangeColumnOptionKeys = computed(() => rangeFilterConfig.value?.optionKeyMode === 'valueKeyList');
+const rangeAutoSelectChild = computed(() => rangeFilterConfig.value?.autoSelectChild !== false);
 const rangePopperClass = computed(() => {
   const singleClass = !showRegionFilter.value || !showAzFilter.value ? " filter-popper--range-single" : "";
-  return `filter-popper filter-popper--range${singleClass}`;
+  const areaClass = isRangeAreaCascader.value ? " filter-popper--area-cascade" : "";
+  return `filter-popper filter-popper--range${singleClass}${areaClass}`;
 });
 const resourcePopperClass = computed(() => "filter-popper");
 const loading = computed(() => props.loading);
@@ -670,6 +685,9 @@ const resourceSummary = computed(() => {
 });
 
 const rangeSummary = computed(() => {
+  if (isRangeAreaCascader.value) {
+    return getSummary(azValue.value, filteredAzOptions.value);
+  }
   const regionComplete = !showRegionFilter.value || isAllSelected(regionValue.value, regionOptions.value);
   const azComplete = !showAzFilter.value || isAllSelected(azValue.value, filteredAzOptions.value);
   if (regionComplete && azComplete) {
@@ -732,7 +750,11 @@ watch(regionValue, () => {
   if (!hasRangeFilter.value) return;
   if (syncingFromModel) return;
   syncingLocationCascade = true;
-  azValue.value = filteredAzOptions.value.map(item => item.value);
+  if (rangeAutoSelectChild.value) {
+    azValue.value = filteredAzOptions.value.map(item => item.value);
+  } else {
+    azValue.value = keepValid(azValue.value, filteredAzOptions.value, []);
+  }
   syncingLocationCascade = false;
   if (rangeVisible.value) return;
   emitCurrentValue();
@@ -853,6 +875,24 @@ function toOptionMeta(item) {
 
 function getFilterConfigByKey(key) {
   return props.filterConfig.find(filter => filter.key === key);
+}
+
+function getRangeColumnOptions(column, legacyOptionKey) {
+  const optionKey = getRangeColumnOptionKey(column, legacyOptionKey);
+  return sortOptionsByInitial(normalizeOptions(props.options?.[optionKey]));
+}
+
+function getRangeColumnOptionKey(column, legacyOptionKey) {
+  if (column.optionKey) {
+    return column.optionKey;
+  }
+  if (!useRangeColumnOptionKeys.value) {
+    return legacyOptionKey;
+  }
+  if (column.valueKey.endsWith('List')) {
+    return column.valueKey;
+  }
+  return `${column.valueKey}List`;
 }
 
 function isCustomFilter(filter) {
