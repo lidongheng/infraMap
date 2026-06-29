@@ -13,7 +13,7 @@ import GlobalLayout from '@/components/home/GlobalLayout.vue'
 import SaleDetail from '../views/saleView/saleDetail/index.vue'
 import NoPermission from '../views/noPermission/index.vue'
 import NoPermissionTest from '../views/noPermissionTest/index.vue'
-import Unauthorized from '../views/Unauthorized.vue'
+import Unauthorized from '../views/noPermission/noDataAuth.vue'
 
 const routes = [
   {

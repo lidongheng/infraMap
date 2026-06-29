@@ -2,15 +2,6 @@
   <section :class="['role-permission-card', { 'role-permission-card--compact': compact }]">
     <header class="card-header">
       <h1>请选择你的角色</h1>
-      <button
-        v-if="showApplyButton"
-        class="apply-entry"
-        type="button"
-        @click="handlePermissionApply"
-      >
-        <el-icon><Setting /></el-icon>
-        <span>数据权限申请</span>
-      </button>
     </header>
 
     <div class="role-list">
@@ -115,7 +106,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { Check, Setting } from "@element-plus/icons-vue";
+import { Check } from "@element-plus/icons-vue";
 import {
   allCloudServerPermissionList,
   allRegionPermissionList,
@@ -156,7 +147,7 @@ const unavailableRegions = computed(() => {
 });
 
 const showApplyButton = computed(() => {
-  return unavailableRegions.value.length > 0;
+  return selectedRegionCodes.value.length > 0;
 });
 
 const showStartButton = computed(() => {
@@ -193,7 +184,12 @@ const handleStart = () => {
 };
 
 const handlePermissionApply = () => {
-  router.push("/401");
+  router.push({
+    path: "/401",
+    query: {
+      regionCodes: selectedRegionCodes.value.join(","),
+    },
+  });
 };
 
 watch(
@@ -234,24 +230,6 @@ watch(
     line-height: 30px;
     font-weight: 800;
     letter-spacing: 0;
-  }
-}
-
-.apply-entry {
-  border: 0;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  color: #393076;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 700;
-  cursor: pointer;
-
-  .el-icon {
-    font-size: 16px;
   }
 }
 
