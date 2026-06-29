@@ -6,10 +6,90 @@ export function getPermissionConfig() {
         massage: "success",
         data: {
           account: "12345678",
+          geoTree: [
+            {
+              name: "英超",
+              code: "PREMIER_LEAGUE",
+              children: [
+                {
+                  name: "英超-曼城",
+                  code: "REGION_CN_EAST",
+                },
+                {
+                  name: "英超-阿森纳",
+                  code: "REGION_CN_NORTH",
+                },
+                {
+                  name: "英超-利物浦",
+                  code: "REGION_CN_SOUTH",
+                },
+              ],
+            },
+            {
+              name: "西甲",
+              code: "LA_LIGA",
+              children: [
+                {
+                  name: "西甲-皇家马德里",
+                  code: "REGION_CN_WEST",
+                },
+                {
+                  name: "西甲-巴塞罗那",
+                  code: "REGION_CN_BEIJING_ONE",
+                },
+                {
+                  name: "西甲-马德里竞技",
+                  code: "REGION_CN_SHANGHAI_ONE",
+                },
+              ],
+            },
+            {
+              name: "意甲",
+              code: "SERIE_A",
+              children: [
+                {
+                  name: "意甲-国际米兰",
+                  code: "REGION_CN_SHENZHEN",
+                },
+                {
+                  name: "意甲-尤文图斯",
+                  code: "REGION_CN_HONGKONG",
+                },
+              ],
+            },
+            {
+              name: "德甲",
+              code: "BUNDESLIGA",
+              children: [
+                {
+                  name: "德甲-拜仁慕尼黑",
+                  code: "REGION_AP_SINGAPORE",
+                },
+                {
+                  name: "德甲-多特蒙德",
+                  code: "REGION_AP_JAKARTA",
+                },
+              ],
+            },
+            {
+              name: "法甲",
+              code: "LIGUE_1",
+              children: [
+                {
+                  name: "法甲-巴黎圣日耳曼",
+                  code: "REGION_EU_FRANKFURT",
+                },
+                {
+                  name: "法甲-马赛",
+                  code: "REGION_US_SILICON_VALLEY",
+                },
+              ],
+            },
+          ],
           ruleCodeList: [
             {
               name: "张三",
-              code: "ROLE_CXO",
+              code: "ROLE_FRONT_SALES",
               validEndTime: "2027-10-31",
               account: "12345678",
               userName: "张三",
@@ -39,62 +119,6 @@ export function getPermissionConfig() {
                 {
                   permCode: "ROLE_OPS_ANALYST",
                   permName: "角色5",
-                },
-              ],
-            },
-            {
-              permDimenTypeCode: "2",
-              permDimenTypeName: "Region",
-              // Region 展示名脱敏片段：下方 permName 使用“五大联赛-俱乐部”。
-              // 恢复真实 Region 名时，只需把本 detailList 内的 permName 改回真实 Region 名。
-              detailList: [
-                {
-                  permCode: "REGION_CN_EAST",
-                  permName: "英超-曼城",
-                },
-                {
-                  permCode: "REGION_CN_NORTH",
-                  permName: "英超-阿森纳",
-                },
-                {
-                  permCode: "REGION_CN_SOUTH",
-                  permName: "英超-利物浦",
-                },
-                {
-                  permCode: "REGION_CN_WEST",
-                  permName: "西甲-皇家马德里",
-                },
-                {
-                  permCode: "REGION_CN_BEIJING_ONE",
-                  permName: "西甲-巴塞罗那",
-                },
-                {
-                  permCode: "REGION_CN_SHANGHAI_ONE",
-                  permName: "西甲-马德里竞技",
-                },
-                {
-                  permCode: "REGION_CN_SHENZHEN",
-                  permName: "意甲-国际米兰",
-                },
-                {
-                  permCode: "REGION_CN_HONGKONG",
-                  permName: "意甲-尤文图斯",
-                },
-                {
-                  permCode: "REGION_AP_SINGAPORE",
-                  permName: "德甲-拜仁慕尼黑",
-                },
-                {
-                  permCode: "REGION_AP_JAKARTA",
-                  permName: "德甲-多特蒙德",
-                },
-                {
-                  permCode: "REGION_EU_FRANKFURT",
-                  permName: "法甲-巴黎圣日耳曼",
-                },
-                {
-                  permCode: "REGION_US_SILICON_VALLEY",
-                  permName: "法甲-马赛",
                 },
               ],
             },

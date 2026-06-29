@@ -110,6 +110,7 @@ import { Check } from "@element-plus/icons-vue";
 import {
   allCloudServerPermissionList,
   allRegionPermissionList,
+  canEnterRolePage,
   cloudServerPermissionList,
   regionPermissionList,
   roles,
@@ -151,7 +152,7 @@ const showApplyButton = computed(() => {
 });
 
 const showStartButton = computed(() => {
-  return ownedRegions.value.length > 0 && Boolean(selectedRole.value);
+  return Boolean(selectedRole.value) && canEnterRolePage(selectedRole.value);
 });
 
 const syncSelectedRole = () => {
@@ -185,7 +186,7 @@ const handleStart = () => {
 
 const handlePermissionApply = () => {
   router.push({
-    path: "/401",
+    path: "/Unauthorized",
     query: {
       regionCodes: selectedRegionCodes.value.join(","),
     },

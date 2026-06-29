@@ -65,7 +65,7 @@ const routes = [
     component: NoPermission
   },
   {
-    path: '/401',
+    path: '/Unauthorized',
     name: 'unauthorized',
     component: Unauthorized
   },

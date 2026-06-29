@@ -44,7 +44,7 @@
             >
               <span class="owned-card__name">
                 <FourGridIcon />
-                {{ region.code }}
+                {{ region.name }}
               </span>
               <span class="owned-card__meta" />
             </button>
@@ -142,15 +142,15 @@
               </button>
               <div
                 v-for="group in visibleRegionGroups"
-                :key="group.id"
+                :key="group.code"
                 class="region-group"
               >
                 <div class="region-group__title">
                   <button
                     class="region-group__arrow"
-                    :class="{ 'region-group__arrow--open': openedGroups.includes(group.id) }"
+                    :class="{ 'region-group__arrow--open': openedGroups.includes(group.code) }"
                     type="button"
-                    @click="toggleGroup(group.id)"
+                    @click="toggleGroup(group.code)"
                   >
                     ›
                   </button>
@@ -171,7 +171,7 @@
                   {{ group.name }}
                 </div>
                 <div
-                  v-if="openedGroups.includes(group.id)"
+                  v-if="openedGroups.includes(group.code)"
                   class="region-grid"
                 >
                   <button
@@ -210,6 +210,9 @@
           <el-button class="quick-apply-button" :loading="submitLoading" @click="handleSubmit">
             快捷申请
           </el-button>
+          <el-button class="back-button" @click="handleBack">
+            返回
+          </el-button>
         </div>
       </el-form>
     </section>
@@ -218,7 +221,7 @@
 
 <script setup>
 import { computed, h, onMounted, reactive, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { QuestionFilled, Search } from "@element-plus/icons-vue";
 import {
@@ -243,6 +246,7 @@ const FourGridIcon = {
 
 const activeStatus = ref("waiting");
 const route = useRoute();
+const router = useRouter();
 const areaFilter = ref("all");
 const formRef = ref();
 const keyword = ref("");
@@ -314,6 +318,14 @@ const parseQueryCodes = (value) => {
   return String(value).split(",").filter(Boolean);
 };
 
+const createRegionNameMap = (regionGroups) => {
+  return new Map(
+    regionGroups.flatMap((group) => {
+      return group.children.map((region) => [region.code, region.name]);
+    })
+  );
+};
+
 const initializeDefaultSelection = () => {
   const selectedRegionCodeSet = new Set(parseQueryCodes(route.query.regionCodes));
 
@@ -339,52 +351,20 @@ const loadOptions = async () => {
   const cloudServerDimension = optionData.totalDimenPermConfigList.find(
     (dimension) => dimension.permDimenTypeCode === "4"
   );
-  const regionDimension = optionData.totalDimenPermConfigList.find(
-    (dimension) => dimension.permDimenTypeCode === "5"
-  );
-  const maskedLeagues = ["英超", "西甲", "意甲", "德甲", "法甲"];
-  const maskedTeams = [
-    "阿森纳",
-    "切尔西",
-    "利物浦",
-    "皇家马德里",
-    "巴塞罗那",
-    "国际米兰",
-    "拜仁慕尼黑",
-    "巴黎圣日耳曼",
-  ];
-  const regionGroupMap = new Map();
-
-  // 分组依据使用真实名称，子项只替换展示名称，权限编码保持接口原值。
-  regionDimension.detailList.forEach((region, index) => {
-    const groupName = region.permName.split("-")[0];
-
-    if (!regionGroupMap.has(groupName)) {
-      regionGroupMap.set(groupName, {
-        id: groupName,
-        name: groupName,
-        children: [],
-      });
-    }
-
-    regionGroupMap.get(groupName).children.push({
-      code: region.permCode,
-      name: `${maskedLeagues[index % maskedLeagues.length]}-${
-        maskedTeams[index % maskedTeams.length]
-      }`,
-    });
-  });
-
-  const unownedRegionGroupsByCode = Array.from(regionGroupMap.values());
+  // geoTree 父节点只作为展开分组标题，Region 卡片展示子节点完整名称。
+  const regionNameMap = createRegionNameMap(optionData.geoTree);
 
   unownedCloudServers.value = cloudServerDimension.detailList.map((item) => ({
     code: item.permCode,
     name: item.permName,
   }));
-  unownedRegionGroups.value = unownedRegionGroupsByCode;
+  unownedRegionGroups.value = optionData.geoTree;
   ownedCloudServers.value = optionData.cloudServerNameList;
-  ownedRegions.value = optionData.regionCodeList;
-  openedGroups.value = unownedRegionGroupsByCode.map((group) => group.id);
+  ownedRegions.value = optionData.regionCodeList.map((region) => ({
+    ...region,
+    name: regionNameMap.get(region.code),
+  }));
+  openedGroups.value = optionData.geoTree.map((group) => group.code);
   initializeDefaultSelection();
 };
 
@@ -470,11 +450,11 @@ const toggleGroup = (id) => {
 };
 
 const handleAreaChange = () => {
-  openedGroups.value = visibleRegionGroups.value.map((group) => group.id);
+  openedGroups.value = visibleRegionGroups.value.map((group) => group.code);
 };
 
 const handleKeywordChange = () => {
-  openedGroups.value = visibleRegionGroups.value.map((group) => group.id);
+  openedGroups.value = visibleRegionGroups.value.map((group) => group.code);
 };
 
 const resetForm = () => {
@@ -521,6 +501,10 @@ const handleStatusChange = async (status) => {
   if (status === "approving") {
     await loadApprovingRows();
   }
+};
+
+const handleBack = () => {
+  router.back();
 };
 
 onMounted(async () => {
@@ -929,6 +913,14 @@ onMounted(async () => {
   border-color: #4865d9;
   color: #fff;
   background: #4865d9;
+}
+
+.back-button {
+  width: 96px;
+  height: 34px;
+  border-color: #d4d8e8;
+  color: #4a5270;
+  background: #fff;
 }
 
 :deep(.el-tabs__item) {

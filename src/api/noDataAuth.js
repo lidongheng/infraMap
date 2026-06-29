@@ -1,5 +1,85 @@
 const userAuthMock = {
   account: "12345678",
+  geoTree: [
+    {
+      name: "英超",
+      code: "PREMIER_LEAGUE",
+      children: [
+        {
+          name: "英超-曼城",
+          code: "REGION_CN_EAST",
+        },
+        {
+          name: "英超-阿森纳",
+          code: "REGION_CN_NORTH",
+        },
+        {
+          name: "英超-利物浦",
+          code: "REGION_CN_SOUTH",
+        },
+      ],
+    },
+    {
+      name: "西甲",
+      code: "LA_LIGA",
+      children: [
+        {
+          name: "西甲-皇家马德里",
+          code: "REGION_CN_WEST",
+        },
+        {
+          name: "西甲-巴塞罗那",
+          code: "REGION_CN_BEIJING_ONE",
+        },
+        {
+          name: "西甲-马德里竞技",
+          code: "REGION_CN_SHANGHAI_ONE",
+        },
+      ],
+    },
+    {
+      name: "意甲",
+      code: "SERIE_A",
+      children: [
+        {
+          name: "意甲-国际米兰",
+          code: "REGION_CN_SHENZHEN",
+        },
+        {
+          name: "意甲-尤文图斯",
+          code: "REGION_CN_HONGKONG",
+        },
+      ],
+    },
+    {
+      name: "德甲",
+      code: "BUNDESLIGA",
+      children: [
+        {
+          name: "德甲-拜仁慕尼黑",
+          code: "REGION_AP_SINGAPORE",
+        },
+        {
+          name: "德甲-多特蒙德",
+          code: "REGION_AP_JAKARTA",
+        },
+      ],
+    },
+    {
+      name: "法甲",
+      code: "LIGUE_1",
+      children: [
+        {
+          name: "法甲-巴黎圣日耳曼",
+          code: "REGION_EU_FRANKFURT",
+        },
+        {
+          name: "法甲-马赛",
+          code: "REGION_US_SILICON_VALLEY",
+        },
+      ],
+    },
+  ],
   totalDimenPermConfigList: [
     {
       permDimenTypeCode: "1",
@@ -44,60 +124,6 @@ const userAuthMock = {
         {
           permCode: "CLOUD_XPU",
           permName: "XPU",
-        },
-      ],
-    },
-    {
-      permDimenTypeCode: "5",
-      permDimenTypeName: "Region",
-      detailList: [
-        {
-          permCode: "REGION_CN_EAST",
-          permName: "东北-长春-一汽",
-        },
-        {
-          permCode: "REGION_CN_NORTH",
-          permName: "东北-沈阳一",
-        },
-        {
-          permCode: "REGION_CN_SOUTH",
-          permName: "华北-北京一",
-        },
-        {
-          permCode: "REGION_CN_WEST",
-          permName: "华北-北京二",
-        },
-        {
-          permCode: "REGION_CN_BEIJING_ONE",
-          permName: "华东-上海一",
-        },
-        {
-          permCode: "REGION_CN_SHANGHAI_ONE",
-          permName: "华东-上海二",
-        },
-        {
-          permCode: "REGION_CN_SHENZHEN",
-          permName: "华南-广州一",
-        },
-        {
-          permCode: "REGION_CN_HONGKONG",
-          permName: "西南-贵阳一",
-        },
-        {
-          permCode: "REGION_AP_SINGAPORE",
-          permName: "亚太-新加坡",
-        },
-        {
-          permCode: "REGION_AP_JAKARTA",
-          permName: "亚太-雅加达",
-        },
-        {
-          permCode: "REGION_EU_FRANKFURT",
-          permName: "欧洲-法兰克福",
-        },
-        {
-          permCode: "REGION_US_SILICON_VALLEY",
-          permName: "北美-硅谷",
         },
       ],
     },
@@ -174,7 +200,7 @@ let applications = [
         validityPeriod: "2027-10-31",
       },
       {
-        dataRoleId: "REGION_CN_EAST_ARSENAL",
+        dataRoleId: "REGION_CN_EAST",
         validityPeriod: "2027-10-31",
       },
     ],

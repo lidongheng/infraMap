@@ -31,12 +31,11 @@ import { useRouter } from "vue-router";
 import RolePermissionCard from "@/components/RolePermissionCard.vue";
 import { getPermissionConfig } from "@/api/role";
 import {
-  cloudServerPermissionList,
+  canEnterRolePage,
   getRoleTargetPath,
   initializePermissionConfig,
   isRoleDisabled,
   ROLE_CODE_ORDER,
-  regionPermissionList,
   rolePermissionList,
   roles,
   saveSelectedRole,
@@ -72,7 +71,13 @@ const closeRoleCard = (event) => {
 const handleRoleChange = (roleValue) => {
   saveSelectedRole(roleValue);
   showRoleCard.value = false;
-  router.push(getRoleTargetPath(roleValue));
+
+  if (canEnterRolePage(roleValue)) {
+    router.push(getRoleTargetPath(roleValue));
+    return;
+  }
+
+  router.push("/Unauthorized");
 };
 
 const initializeRoleMenuData = async () => {
@@ -91,11 +96,6 @@ const initializeRoleMenuData = async () => {
     return;
   }
 
-  if (regionPermissionList.length === 0 && cloudServerPermissionList.length === 0) {
-    router.replace("/roleSelect");
-    return;
-  }
-
   if (!selectedRoleValue.value && rolePermissionList.length > 0) {
     const sortedRuleCodeList = rolePermissionList
       .filter((role) => !isRoleDisabled(role.code))
@@ -106,6 +106,10 @@ const initializeRoleMenuData = async () => {
       return;
     }
     saveSelectedRole(sortedRuleCodeList[0].code);
+  }
+
+  if (selectedRoleValue.value && !canEnterRolePage(selectedRoleValue.value)) {
+    router.replace("/Unauthorized");
   }
 };
 

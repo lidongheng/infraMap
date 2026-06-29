@@ -135,7 +135,7 @@ const handleRoleClick = (roleValue) => {
 };
 
 const handlePermissionApply = () => {
-  router.push("/401");
+  router.push("/Unauthorized");
 };
 </script>
 

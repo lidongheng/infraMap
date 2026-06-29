@@ -53,6 +53,20 @@ function createPermissionItems(detailList) {
   });
 }
 
+function createRegionItemsFromGeoTree(geoTree) {
+  return geoTree.flatMap((area) => {
+    return area.children.map((region) => {
+      return {
+        label: region.name,
+        value: region.code,
+        code: region.code,
+        areaCode: area.code,
+        areaName: area.name,
+      };
+    });
+  });
+}
+
 export function initializePermissionConfig(data) {
   if (data === null || Array.isArray(data)) {
     // 接口异常时 data 可能为 null，业务上按空权限数据处理。
@@ -67,9 +81,6 @@ export function initializePermissionConfig(data) {
 
   const roleDimension = data.totalDimenPermConfigList.find(
     (item) => item.permDimenTypeCode === "1",
-  );
-  const regionDimension = data.totalDimenPermConfigList.find(
-    (item) => item.permDimenTypeCode === "2",
   );
   const cloudServerDimension = data.totalDimenPermConfigList.find(
     (item) => item.permDimenTypeCode === "4",
@@ -87,7 +98,7 @@ export function initializePermissionConfig(data) {
   allRegionPermissionList.splice(
     0,
     allRegionPermissionList.length,
-    ...createPermissionItems(regionDimension.detailList),
+    ...createRegionItemsFromGeoTree(data.geoTree),
   );
   allCloudServerPermissionList.splice(
     0,
@@ -110,6 +121,22 @@ export function getRoleTargetPath(roleValue) {
   }
 
   return "/saleHome";
+}
+
+export function isRoleWithoutDataPermissionControl(roleValue) {
+  return roleValue === "ROLE_CXO";
+}
+
+export function hasDataPermission() {
+  return regionPermissionList.length > 0 || cloudServerPermissionList.length > 0;
+}
+
+export function canEnterRolePage(roleValue) {
+  if (isRoleWithoutDataPermissionControl(roleValue)) {
+    return true;
+  }
+
+  return hasDataPermission();
 }
 
 export function isRoleDisabled(roleValue) {
