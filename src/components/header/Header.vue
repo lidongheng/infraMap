@@ -2,7 +2,7 @@
   <header class="global-header-content">
     <div class="header-left">
       <FilterDropdowns
-        v-if="showSaleHomeAreaFilter"
+        v-if="showSaleAreaFilter"
         v-model="areaFilterValue"
         :options="areaFilterOptions"
         :filter-config="areaFilterConfig"
@@ -20,7 +20,7 @@ import FilterDropdowns from "@/components/FilterDropdowns.vue";
 import RoleMenu from "@/components/RoleMenu.vue";
 
 const route = useRoute();
-const showSaleHomeAreaFilter = computed(() => route.name === "saleHome");
+const showSaleAreaFilter = computed(() => ["saleHome", "saleDetail"].includes(route.name));
 
 const areaFilterValue = ref({
   areaName: ["华东"],
