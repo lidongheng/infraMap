@@ -17,8 +17,6 @@
     <div v-if="showRoleCard" class="role-card-popover" @click.stop>
       <RolePermissionCard
         compact
-        immediate-role-change
-        @role-change="handleRoleChange"
         @start="handleRoleChange"
       />
     </div>

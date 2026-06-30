@@ -29,7 +29,7 @@
       </button>
     </div>
 
-    <section class="permission-section">
+    <section v-if="showPermissionSection" class="permission-section">
       <h2>数据权限</h2>
       <p class="section-label">云服务</p>
       <div class="cloud-list">
@@ -70,6 +70,7 @@
             v-for="region in unavailableRegions"
             :key="region.value"
             class="region-item region-item--selectable"
+            :class="{ 'region-item--selected': selectedRegionCodes.includes(region.value) }"
           >
             <input
               v-model="selectedRegionCodes"
@@ -112,6 +113,7 @@ import {
   allRegionPermissionList,
   canEnterRolePage,
   cloudServerPermissionList,
+  isRoleWithoutDataPermissionControl,
   regionPermissionList,
   roles,
   selectedRoleValue,
@@ -147,8 +149,12 @@ const unavailableRegions = computed(() => {
   });
 });
 
+const showPermissionSection = computed(() => {
+  return !isRoleWithoutDataPermissionControl(selectedRole.value);
+});
+
 const showApplyButton = computed(() => {
-  return selectedRegionCodes.value.length > 0;
+  return showPermissionSection.value && selectedRegionCodes.value.length > 0;
 });
 
 const showStartButton = computed(() => {
@@ -455,6 +461,9 @@ watch(
 
 .region-item--selectable {
   gap: 6px;
+  border: 1px solid #dcdfe6;
+  background: #f5f7fa;
+  color: #a8abb2;
 
   input {
     width: 14px;
@@ -468,6 +477,12 @@ watch(
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+.region-item--selected {
+  border-color: #409eff;
+  background: #ecf5ff;
+  color: #409eff;
 }
 
 .region-item--owned {
