@@ -85,12 +85,15 @@ export function initializePermissionConfig(data) {
   const cloudServerDimension = data.totalDimenPermConfigList.find(
     (item) => item.permDimenTypeCode === "4",
   );
+  const onlyFrontSalesRole = data.ruleCodeList.length === 1
+    && data.ruleCodeList[0].code === "ROLE_FRONT_SALES";
   const roleList = roleDimension.detailList.map((role) => {
     return {
       label: role.permName,
       value: role.permCode,
       avatar: ROLE_AVATAR_MAP[role.permCode],
-      disabled: DISABLED_ROLE_CODES.includes(role.permCode),
+      disabled: DISABLED_ROLE_CODES.includes(role.permCode)
+        || (onlyFrontSalesRole && role.permCode === "ROLE_CXO"),
     };
   });
 
