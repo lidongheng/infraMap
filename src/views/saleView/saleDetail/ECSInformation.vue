@@ -1,252 +1,336 @@
 <template>
-  <div class="container">
-    <div class="filter-card">
-      <div class="section-title">关键信息</div>
-      <FilterDropdowns
-        v-model="filterValue"
-        :options="filterOptions"
-        :filter-config="filterConfig"
-      />
+  <div class="information-panel">
+    <div class="panel-row header-row">
+      <div class="section-title">算力类型</div>
+      <div class="header-actions">
+        <button
+          type="button"
+          class="distribution-button"
+          @click="toggleDistribution"
+        >
+          {{ distributionButtonText }}
+        </button>
+        <div class="filters">
+          <el-select model-value="全部" size="small">
+            <el-option label="全部" value="全部" />
+          </el-select>
+          <el-select model-value="全部" size="small">
+            <el-option label="全部" value="全部" />
+          </el-select>
+        </div>
+      </div>
     </div>
-    <div class="overview-cards">
+
+    <div class="metric-grid">
       <div
-        class="overview-card"
-        v-for="item in infors"
+        v-for="item in ecsMetrics"
         :key="item.title"
+        class="metric-card"
       >
-        <div class="card-title">关键信息</div>
-        <div class="info">
-          <div class="info-row">
-            <span class="label">Title</span>
-            <span class="value">{{ item.title }}</span>
+        <div class="metric-title">
+          <span class="title-icon">✦</span>
+          {{ item.title }}
+        </div>
+        <div class="metric-body">
+          <div class="metric-number">
+            {{ item.value }}<span>{{ item.unit }}</span>
           </div>
-          <div class="info-row">
-            <span class="label">Title</span>
-            <span class="value">{{ item.value }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">Title</span>
-            <span class="value">{{ item.newValue }}</span>
+          <div class="metric-trend">▼{{ item.trend }}</div>
+        </div>
+        <div class="spec-list">
+          <div
+            v-for="spec in item.specs"
+            :key="spec.label"
+            class="spec-item"
+          >
+            <span>{{ spec.label }}</span>
+            <strong>{{ spec.value }}</strong>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showDistribution"
+      class="bar-row"
+    >
+      <div
+        v-for="item in ecsBars"
+        :key="item.title"
+        class="bar-card"
+      >
+        <StaticChart :option="createBarOption(item)" />
+      </div>
+    </div>
+
+    <div class="generation-row">
+      <div
+        v-for="item in ecsGenerationMetrics"
+        :key="item.title"
+        class="generation-card"
+      >
+        <span class="title-icon">✹</span>
+        <span class="generation-title">{{ item.title }}</span>
+        <strong>{{ item.value }}</strong>
+        <span class="unit">{{ item.unit }}</span>
+        <span class="trend">环比 ▼{{ item.trend }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import FilterDropdowns from '@/components/FilterDropdowns.vue';
+import { computed, ref } from 'vue';
+import StaticChart from './StaticChart.vue';
+import { ecsBars, ecsGenerationMetrics, ecsMetrics } from './staticData';
 
-/**
- * ECS 关键信息筛选配置说明：
- * - filterValue：FilterDropdowns 的 v-model，保存当前选择结果。
- * - filterConfig：筛选框配置数组；数组里每一项对应页面顶部的一个筛选框。
- * - key：筛选项唯一标识，只用于组件内部区分不同筛选框。
- * - label：筛选框左侧展示名称，例如“资源规格”“Region”“资源代数”。
- * - type：筛选框形态；list 表示单列列表，cascade 表示左右两列级联。
- * - optionKey：当前筛选项读取 filterOptions 中哪个字段作为选项数据；这里是前端自组装的下拉树，不等同于接口入参。
- * - valueKey：当前筛选项选中结果回写到 filterValue 时使用的前端字段名。
- * - parentValueKey：仅 type 为 cascade 时使用，表示左侧父级列选中结果回写到 filterValue 的前端字段名。
- * - outputKey：仅需要对象数组出参时使用，表示最终回填到 filterValue 的字段名。
- * - outputFields：仅配合 outputKey 使用，表示对象数组里父级值和子级值分别写入哪个字段。
- * - searchable：仅 type 为 cascade 时使用，控制右侧子级列是否展示搜索框。
- * - columns：仅 type 为 cascade 时使用，配置左右两列的标题。
- * - filterOptions：筛选项选项数据；key 必须和 filterConfig.optionKey 保持一致。
- * - resourceSpecList：资源规格筛选的数据源，因为资源规格是 type=list，所以这里是一维数组。
- * - regionAreaTree：Region 筛选的数据源，因为 Region 是 type=cascade，所以这里是两层树。
- * - resourceGenerationTree：资源代数筛选的数据源；后端返回结构未定，所以前端先显式列举组件需要的两层树。
- * - generationDirTreeList：资源代数筛选回填到 filterValue 的接口参数，格式为 [{ family, generation }]。
- * - label：选项在下拉面板中展示的文案。
- * - value：选项选中后写入 filterValue 的值。
- * - children：仅 cascade 使用，表示右侧子级列的数据。
- * - list 型筛选只回写 valueKey；cascade 型筛选会同时回写 parentValueKey 和 valueKey。
- */
-const filterValue = ref(null);
-const filterConfig = [
-  {
-    key: 'resourceSpec',
-    label: '资源规格',
-    type: 'list',
-    optionKey: 'resourceSpecList',
-    valueKey: 'resourceType',
-  },
-  {
-    key: 'region',
-    label: 'Region',
-    type: 'cascade',
-    optionKey: 'regionAreaTree',
-    parentValueKey: 'regionAreaList',
-    valueKey: 'regionNameList',
-    searchable: true,
-    columns: [
-      { title: '大区' },
-      { title: 'Region' },
-    ],
-  },
-  {
-    key: 'resourceGeneration',
-    label: '资源代数',
-    type: 'cascade',
-    optionKey: 'resourceGenerationTree',
-    parentValueKey: 'resourceFamily',
-    valueKey: 'resourceGeneration',
-    outputKey: 'generationDirTreeList',
-    outputFields: {
-      parent: 'family',
-      value: 'generation',
-    },
-    searchable: false,
-    columns: [
-      { title: '资源族' },
-      { title: '资源代数' },
-    ],
-  },
-];
+const showDistribution = ref(false);
+const distributionButtonText = computed(() => {
+  if (showDistribution.value) {
+    return '收起算力分布';
+  }
 
-const filterOptions = computed(() => ({
-  // resourceSpecList 被“资源规格”筛选的 optionKey 引用；选中后写入 filterValue.resourceType。
-  resourceSpecList: [
-    { label: 'c6.large', value: 'c6.large' },
-    { label: 'c6.xlarge', value: 'c6.xlarge' },
-    { label: 'm6.large', value: 'm6.large' },
-  ],
-  // regionAreaTree 被“Region”筛选的 optionKey 引用；左列大区写入 regionAreaList，右列 Region 写入 regionNameList。
-  regionAreaTree: [
-    {
-      label: '非洲',
-      value: 'africa',
-      children: [
-        { label: '非洲-开罗', value: '非洲-开罗' },
-        { label: '非洲-约翰内斯堡', value: '非洲-约翰内斯堡' },
-      ],
-    },
-    {
-      label: '拉美',
-      value: 'latam',
-      children: [
-        { label: '拉美-圣保罗一', value: '拉美-圣保罗一' },
-        { label: '拉美-圣地亚哥', value: '拉美-圣地亚哥' },
-      ],
-    },
-  ],
-  // resourceGenerationTree 被“资源代数”筛选引用；后端树形数据结构未定，前端先显式列举组件需要的两层树。
-  resourceGenerationTree: [
-    {
-      label: 'ac',
-      value: 'ac',
-      children: [
-        { label: 'ac7', value: 'ac7' },
-      ],
-    },
-    {
-      label: 'bd',
-      value: 'bd',
-      children: [
-        { label: 'bd6', value: 'bd6' },
-        { label: 'bd7', value: 'bd7' },
-      ],
-    },
-  ],
-}));
-
-const inforData = ref({});
-const infors = computed(() => {
-  return [
-    {
-      title: 1,
-      value: 2,
-      newValue: 3,
-    },
-    {
-      title: 4,
-      value: 5,
-      newValue: 6,
-    },
-    {
-      title: 7,
-      value: 8,
-      newValue: 9,
-    },
-  ]
+  return '展开算力分布';
 });
+
+function toggleDistribution() {
+  showDistribution.value = !showDistribution.value;
+}
+
+function createBarOption(item) {
+  return {
+    grid: {
+      left: 36,
+      right: 16,
+      top: 18,
+      bottom: 48,
+    },
+    xAxis: {
+      type: 'category',
+      data: item.data.map((barItem) => barItem.name),
+      axisLabel: {
+        color: '#8b8cae',
+        rotate: 38,
+        fontSize: 10,
+      },
+      axisLine: {
+        lineStyle: {
+          color: '#eef0f8',
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      name: '万核',
+      nameTextStyle: {
+        color: '#8b8cae',
+        fontSize: 10,
+      },
+      axisLabel: {
+        color: '#8b8cae',
+        fontSize: 10,
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#edf0f8',
+        },
+      },
+    },
+    series: [
+      {
+        name: item.title,
+        type: 'bar',
+        barWidth: 22,
+        data: item.data.map((barItem) => barItem.value),
+        itemStyle: {
+          color: '#78a9e8',
+          borderRadius: [3, 3, 0, 0],
+        },
+        label: {
+          show: true,
+          position: 'top',
+          color: '#34356f',
+          fontSize: 10,
+        },
+      },
+    ],
+  };
+}
 </script>
 
 <style scoped lang="less">
-.container {
-  height: 100%;
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
+.information-panel {
+  min-width: 0;
+  padding: 18px 20px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 26px rgba(60, 65, 118, 0.08);
 }
 
-.filter-card {
-  min-width: 0;
-  padding: 12px 16px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  background: #fff;
+.panel-row,
+.metric-title,
+.metric-body,
+.generation-card,
+.header-actions,
+.filters {
   display: flex;
   align-items: center;
+}
+
+.header-row {
   justify-content: space-between;
-  gap: 16px;
-}
-
-.section-title {
-  flex-shrink: 0;
-  color: #0f172a;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 22px;
-}
-
-.overview-cards {
-  min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.overview-card {
-  min-width: 0;
-  min-height: 120px;
-  padding: 16px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  background: #fff;
-}
-
-.card-title {
-  color: #0f172a;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 22px;
   margin-bottom: 12px;
 }
 
-.info {
-  display: flex;
-  flex-direction: column;
+.section-title {
+  color: #34356f;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.header-actions {
+  gap: 14px;
+}
+
+.distribution-button {
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #6262a8;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.distribution-button::after {
+  margin-left: 4px;
+  content: '⌄';
+  font-size: 12px;
+}
+
+.filters {
+  gap: 12px;
+}
+
+.filters :deep(.el-select) {
+  width: 128px;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1.35fr 1fr;
+  gap: 22px;
+}
+
+.metric-card {
+  min-width: 0;
+  padding: 8px 4px 12px;
+  border-right: 1px solid #eef0f8;
+}
+
+.metric-card:last-child {
+  border-right: 0;
+}
+
+.metric-title {
+  color: #34356f;
+  font-size: 16px;
+  font-weight: 700;
+  gap: 7px;
+}
+
+.title-icon {
+  color: #6262c6;
+  font-size: 14px;
+}
+
+.metric-body {
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.metric-number {
+  color: #333376;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.metric-number span {
+  margin-left: 5px;
+  color: #7b7da3;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.metric-trend,
+.trend {
+  color: #34356f;
+  font-size: 12px;
+}
+
+.spec-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  margin-top: 16px;
+}
+
+.spec-item {
+  color: #7b7da3;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.spec-item strong {
+  margin-left: 6px;
+  color: #34356f;
+  font-size: 17px;
+}
+
+.generation-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  margin-top: 12px;
+}
+
+.generation-card {
+  min-height: 78px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  color: #34356f;
   gap: 8px;
 }
 
-.info-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: #475569;
+.generation-title {
   font-size: 14px;
-  line-height: 20px;
-}
-
-.label {
-  color: #64748b;
-}
-
-.value {
-  color: #1e293b;
   font-weight: 700;
+}
+
+.generation-card strong {
+  margin-left: auto;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.unit {
+  color: #7b7da3;
+  font-size: 13px;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.bar-card {
+  height: 176px;
 }
 </style>

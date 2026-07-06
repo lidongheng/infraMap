@@ -1,189 +1,170 @@
 <template>
-  <div class="container">
-    <div class="filter-card">
-      <div class="section-title">关键信息</div>
-      <FilterDropdowns
-        v-model="filterValue"
-        :options="filterOptions"
-        :filter-config="filterConfig"
-      />
-    </div>
-    <div class="overview-cards">
+  <div class="information-panel">
+    <div class="metric-row">
       <div
-        class="overview-card"
-        v-for="item in infors"
+        v-for="item in obsMetrics"
         :key="item.title"
+        class="metric-card"
       >
-        <div class="card-title">关键信息</div>
-        <div class="info">
-          <div class="info-row">
-            <span class="label">Title</span>
-            <span class="value">{{ item.title }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">Title</span>
-            <span class="value">{{ item.value }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">Title</span>
-            <span class="value">{{ item.newValue }}</span>
-          </div>
+        <div class="metric-title">▣ {{ item.title }}</div>
+        <div class="metric-value">
+          {{ item.value }}<span>{{ item.unit }} ▲{{ item.trend }}</span>
         </div>
       </div>
+    </div>
+
+    <div class="chart-section">
+      <div class="section-title">Region Top10</div>
+      <StaticChart :option="stackOption" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import FilterDropdowns from '@/components/FilterDropdowns.vue';
+import StaticChart from './StaticChart.vue';
+import { obsMetrics, obsStackBars } from './staticData';
 
-const filterValue = ref(null);
-
-/**
- * OBS 关键信息筛选配置说明：
- * - filterConfig 是筛选框声明，filterOptions 是筛选框数据源。
- * - optionKey 指向 filterOptions 里的同名字段，所以 region 筛选会读取 regionAreaTree。
- * - regionAreaTree 是两层树：第一层是大区，第二层是 Region。
- * - 第一层选中值写入 parentValueKey 对应的 regionAreaList。
- * - 第二层选中值写入 valueKey 对应的 regionNameList。
- * - label 是页面展示文案，value 是最终写入 filterValue 的值。
- */
-const filterConfig = [
-  {
-    key: 'region',
-    label: 'Region',
-    type: 'cascade',
-    optionKey: 'regionAreaTree',
-    parentValueKey: 'regionAreaList',
-    valueKey: 'regionNameList',
-    searchable: true,
-    confirmable: true,
-    columns: [
-      { title: '大区' },
-      { title: 'Region' },
-    ],
+const stackOption = {
+  grid: {
+    left: 48,
+    right: 24,
+    top: 36,
+    bottom: 42,
   },
-];
-const filterOptions = {
-  // regionAreaTree 被 Region 筛选引用；用于渲染“大区 / Region”两列级联面板。
-  regionAreaTree: [
+  legend: {
+    right: 10,
+    top: 4,
+    itemWidth: 9,
+    itemHeight: 9,
+    textStyle: {
+      color: '#5e5f91',
+      fontSize: 12,
+    },
+  },
+  xAxis: {
+    type: 'category',
+    data: obsStackBars.map((item) => item.name),
+    axisLabel: {
+      color: '#7c7da4',
+      fontSize: 11,
+    },
+    axisTick: {
+      show: false,
+    },
+    axisLine: {
+      lineStyle: {
+        color: '#eef0f8',
+      },
+    },
+  },
+  yAxis: {
+    type: 'value',
+    name: 'PB',
+    nameTextStyle: {
+      color: '#7c7da4',
+    },
+    axisLabel: {
+      color: '#7c7da4',
+    },
+    splitLine: {
+      lineStyle: {
+        color: '#edf0f8',
+      },
+    },
+  },
+  series: [
     {
-      label: '非洲',
-      value: 'africa',
-      children: [
-        { label: '非洲-开罗', value: '非洲-开罗' },
-        { label: '非洲-约翰内斯堡', value: '非洲-约翰内斯堡' },
-      ],
+      name: '单AZ',
+      type: 'bar',
+      stack: 'total',
+      barWidth: 30,
+      data: obsStackBars.map((item) => item.single),
+      itemStyle: {
+        color: '#7db8f0',
+      },
+      label: {
+        show: true,
+        color: '#fff',
+        fontSize: 10,
+      },
     },
     {
-      label: '拉美',
-      value: 'latam',
-      children: [
-        { label: '拉美-圣保罗一', value: '拉美-圣保罗一' },
-        { label: '拉美-圣地亚哥', value: '拉美-圣地亚哥' },
-      ],
+      name: '三AZ',
+      type: 'bar',
+      stack: 'total',
+      barWidth: 30,
+      data: obsStackBars.map((item) => item.multi),
+      itemStyle: {
+        color: '#6d62bb',
+      },
+      label: {
+        show: true,
+        color: '#fff',
+        fontSize: 10,
+      },
     },
   ],
 };
-
-const inforData = ref({});
-const infors = computed(() => {
-  return [
-    {
-      title: 1,
-      value: 2,
-      newValue: 3,
-    },
-    {
-      title: 4,
-      value: 5,
-      newValue: 6,
-    },
-    {
-      title: 7,
-      value: 8,
-      newValue: 9,
-    },
-  ]
-});
 </script>
 
 <style scoped lang="less">
-.container {
-  height: 100%;
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
+.information-panel {
+  min-width: 0;
+  padding: 18px 20px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 26px rgba(60, 65, 118, 0.08);
 }
 
-.filter-card {
-  min-width: 0;
-  padding: 12px 16px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.metric-card {
+  min-height: 92px;
+  padding: 8px 20px 8px 0;
+  border-right: 1px solid #eef0f8;
+}
+
+.metric-card:last-child {
+  border-right: 0;
+}
+
+.metric-title,
+.section-title {
+  color: #34356f;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.metric-value {
+  margin-top: 16px;
+  color: #333376;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.metric-value span {
+  margin-left: 8px;
+  color: #77799e;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.chart-section {
+  height: 230px;
+  margin-top: 12px;
 }
 
 .section-title {
-  flex-shrink: 0;
-  color: #0f172a;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 22px;
+  height: 24px;
 }
 
-.overview-cards {
-  min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.overview-card {
-  min-width: 0;
-  min-height: 120px;
-  padding: 16px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  background: #fff;
-}
-
-.card-title {
-  color: #0f172a;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 22px;
-  margin-bottom: 12px;
-}
-
-.info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.info-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: #475569;
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.label {
-  color: #64748b;
-}
-
-.value {
-  color: #1e293b;
-  font-weight: 700;
+.chart-section :deep(.static-chart) {
+  height: calc(100% - 24px);
 }
 </style>
