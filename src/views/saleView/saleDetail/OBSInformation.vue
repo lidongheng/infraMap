@@ -15,14 +15,22 @@
 
     <div class="chart-section">
       <div class="section-title">Region Top10</div>
-      <StaticChart :option="stackOption" />
+      <CommonChart
+        :options="stackOption"
+        :style="stackChartStyle"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import StaticChart from './StaticChart.vue';
+import CommonChart from '@/components/CommonChart.vue';
 import { obsMetrics, obsStackBars } from './staticData';
+
+const stackChartStyle = {
+  width: 980,
+  height: 206,
+};
 
 const stackOption = {
   grid: {

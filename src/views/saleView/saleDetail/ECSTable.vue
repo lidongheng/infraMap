@@ -28,7 +28,10 @@
       </div>
 
       <div class="trend-chart">
-        <StaticChart :option="lineOption" />
+        <CommonChart
+          :options="lineOption"
+          :style="lineChartStyle"
+        />
       </div>
 
       <el-table
@@ -67,8 +70,13 @@
 </template>
 
 <script setup>
-import StaticChart from './StaticChart.vue';
+import CommonChart from '@/components/CommonChart.vue';
 import { ecsTableRows, resourceTree, trendValues } from './staticData';
+
+const lineChartStyle = {
+  width: 900,
+  height: 248,
+};
 
 const lineOption = {
   grid: {

@@ -55,7 +55,10 @@
           v-if="expandedTrendIndex === row.index"
           class="trend-row"
         >
-          <StaticChart :option="xpuTrendOption" />
+          <CommonChart
+            :options="xpuTrendOption"
+            :style="xpuTrendChartStyle"
+          />
         </div>
       </template>
     </div>
@@ -94,7 +97,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import StaticChart from './StaticChart.vue';
+import CommonChart from '@/components/CommonChart.vue';
 import { networkRows, obsRows, trendValues, xpuRows } from './staticData';
 
 const props = defineProps({
@@ -105,6 +108,10 @@ const props = defineProps({
 });
 
 const rangeValue = ref('全部');
+const xpuTrendChartStyle = {
+  width: 900,
+  height: 236,
+};
 const tableRows = computed(() => {
   if (props.active === 'network') {
     return networkRows;

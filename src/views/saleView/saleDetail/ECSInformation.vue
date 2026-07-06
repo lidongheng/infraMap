@@ -59,7 +59,10 @@
         :key="item.title"
         class="bar-card"
       >
-        <StaticChart :option="createBarOption(item)" />
+        <CommonChart
+          :options="createBarOption(item)"
+          :style="barChartStyle"
+        />
       </div>
     </div>
 
@@ -81,10 +84,14 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import StaticChart from './StaticChart.vue';
+import CommonChart from '@/components/CommonChart.vue';
 import { ecsBars, ecsGenerationMetrics, ecsMetrics } from './staticData';
 
 const showDistribution = ref(false);
+const barChartStyle = {
+  width: 300,
+  height: 176,
+};
 const distributionButtonText = computed(() => {
   if (showDistribution.value) {
     return '收起算力分布';
