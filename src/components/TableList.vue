@@ -117,7 +117,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { changeValueByScale } from '@/composables/autoLayout/index';
-import { useForceCastTablePagination } from '@shared/business/useForceCastTablePagination';
+import { useForceCastTablePagination } from './useForceCastTablePagination';
 // import Indicators from '@/components/indicator-tips/index.vue';
 
 const table = ref();
@@ -160,6 +160,7 @@ pageSizeChange } = useForceCastTablePagination(props);
 const tableDataByPage = computed(() => {
 if (!props.showPage) return props.tableData;
 
+// showPage 开启时 TableList 自己按当前页切片，避免每个业务表重复写分页截取。
 return props.tableData?.slice((pages.pageNo - 1) * pages.pageSize,
 pages.pageNo * pages.pageSize);
 });
@@ -168,7 +169,7 @@ pages.pageNo * pages.pageSize);
 
 const sort = (...args) => table.value?.sort(...args);
 const toggleRowExpansion = (...args) => table.value?.toggleRowExpansion(...args);
-const clearSort = () => table.value?.clearSort():
+const clearSort = () => table.value?.clearSort();
 
 defineExpose ({
     sort,

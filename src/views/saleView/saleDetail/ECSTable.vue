@@ -34,29 +34,19 @@
         />
       </div>
 
-      <el-table
+      <TableList
         class="detail-table"
-        :data="ecsTableRows"
-        height="210"
+        :table-column="ecsTableColumns"
+        :table-data="ecsTableRows"
+        :table-config="ecsTableConfig"
       >
-        <el-table-column prop="index" label="序号" width="70" />
-        <el-table-column prop="area" label="大区" min-width="110" />
-        <el-table-column prop="region" label="Region" min-width="150" />
-        <el-table-column prop="az" label="AZ" min-width="160" />
-        <el-table-column prop="family" label="资源族" min-width="110" />
-        <el-table-column prop="generation" label="资源代次" min-width="110" />
-        <el-table-column prop="type" label="资源类型" min-width="110" />
-        <el-table-column prop="stock" label="可售量(核)" min-width="120">
-          <template #default="{ row }">
-            <span class="stock-value">{{ row.stock }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" min-width="100">
-          <template #default>
-            <button type="button" class="link-button">查看趋势</button>
-          </template>
-        </el-table-column>
-      </el-table>
+        <template #stock="{ scope }">
+          <span class="stock-value">{{ scope.row.stock }}</span>
+        </template>
+        <template #operation>
+          <button type="button" class="link-button">查看趋势</button>
+        </template>
+      </TableList>
 
       <div class="pagination-row">
         <span>共 2228 条</span>
@@ -71,12 +61,31 @@
 
 <script setup>
 import CommonChart from '@/components/CommonChart.vue';
+import TableList from '@/components/TableList.vue';
 import { ecsTableRows, resourceTree, trendValues } from './staticData';
 
 const lineChartStyle = {
   width: 900,
   height: 248,
 };
+
+const ecsTableConfig = {
+  height: 210,
+};
+
+// ECS 资源详情统一交给 TableList 渲染，列配置保留原 el-table 的字段和宽度。
+const ecsTableColumns = [
+  { prop: 'index', label: '序号', width: 70 },
+  { prop: 'area', label: '大区', minWidth: 110 },
+  { prop: 'region', label: 'Region', minWidth: 150 },
+  { prop: 'az', label: 'AZ', minWidth: 160 },
+  { prop: 'family', label: '资源族', minWidth: 110 },
+  { prop: 'generation', label: '资源代次', minWidth: 110 },
+  { prop: 'type', label: '资源类型', minWidth: 110 },
+  // stock 和 operation 使用插槽，是为了保留绿色数值和“查看趋势”按钮样式。
+  { prop: 'stock', label: '可售量(核)', minWidth: 120, showSlot: true },
+  { prop: 'operation', label: '操作', minWidth: 100, showSlot: true },
+];
 
 const lineOption = {
   grid: {

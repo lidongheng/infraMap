@@ -3,7 +3,7 @@
     <div class="header-row">
       <div class="section-title">关键信息</div>
       <FilterDropdowns
-        v-model="filterValue"
+        v-model="filterOtherValue"
         class="xpu-filter"
         :options="filterOptions"
         :filter-config="filterConfig"
@@ -26,11 +26,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed } from 'vue';
 import FilterDropdowns from '@/components/FilterDropdowns.vue';
-import { xpuMetrics } from './staticData';
-
-const filterValue = ref(null);
+import { filterOtherValue, keyInfor, tableSummary } from './useResourceData';
 
 const filterConfig = [
   {
@@ -42,15 +40,84 @@ const filterConfig = [
   },
 ];
 
-const filterOptions = {
-  cardTypeList: [
-    { label: 'A1', value: 'A1' },
-    { label: 'A2', value: 'A2' },
-    { label: 'A3', value: 'A3' },
-    { label: 'A800', value: 'A800' },
-    { label: 'H800', value: 'H800' },
-  ],
+// XPU 卡片里的卡数统一用千分位展示，保持和表格数值风格一致。
+const formatCardCount = (value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return Number(value).toLocaleString();
 };
+
+// 关键信息和筛选选项都来自 XPU 趋势接口，避免和静态 mock 分叉。
+const xpuTrendList = computed(() => {
+  if (!Array.isArray(keyInfor.xpu.trend)) {
+    return [];
+  }
+
+  return keyInfor.xpu.trend;
+});
+
+// 卡类型筛选项由接口数据反推，后续真实接口新增卡型时不用同步改静态枚举。
+const filterOptions = computed(() => {
+  const cardTypeList = Array.from(
+    new Set(xpuTrendList.value.map((item) => item.cardModel))
+  ).map((item) => {
+    return {
+      label: item,
+      value: item,
+    };
+  });
+
+  return {
+    cardTypeList,
+  };
+});
+
+// 某个卡型的待分配量需要从趋势数据里按 cardModel 聚合。
+const getCardCount = (cardModel) => {
+  return xpuTrendList.value.reduce((total, item) => {
+    if (item.cardModel !== cardModel) {
+      return total;
+    }
+
+    return total + Number(item.unallocatedXpu);
+  }, 0);
+};
+
+// 顶部四个指标卡保留截图文案，数值接入 useResourceData 中的接口状态。
+const xpuMetrics = computed(() => {
+  const totalCount = xpuTrendList.value.reduce((total, item) => {
+    return total + Number(item.unallocatedXpu);
+  }, 0);
+
+  return [
+    {
+      title: '总待分配量（卡）',
+      value: formatCardCount(totalCount),
+      unit: '纳上月',
+      trend: formatCardCount(tableSummary.xpu.unallocatedXpu),
+    },
+    {
+      title: 'A3待分配量（卡）',
+      value: formatCardCount(getCardCount('A3')),
+      unit: '纳上月',
+      trend: formatCardCount(tableSummary.xpu.allocatedXpu),
+    },
+    {
+      title: 'A2待分配量（卡）',
+      value: formatCardCount(getCardCount('A2')),
+      unit: '纳上月',
+      trend: formatCardCount(tableSummary.xpu.sellableXpu),
+    },
+    {
+      title: 'A1待分配量（卡）',
+      value: formatCardCount(getCardCount('A1')),
+      unit: '纳上月',
+      trend: formatCardCount(tableSummary.xpu.totalXpu),
+    },
+  ];
+});
 </script>
 
 <style scoped lang="less">
