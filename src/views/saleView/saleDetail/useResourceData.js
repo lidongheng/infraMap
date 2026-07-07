@@ -1,7 +1,9 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useCurrentDate } from '@/views/useCurrentDate';
+import obsDetailResponse from '@/api/obsDetail.json';
 import obsPageResponse from '@/api/obsPage.json';
 import obsTrendResponse from '@/api/obsTrend.json';
+import xpuDetailResponse from '@/api/xpuDetail.json';
 import xpuPageResponse from '@/api/xpuPage.json';
 import xpuTrendResponse from '@/api/xpuTrend.json';
 
@@ -18,8 +20,8 @@ function debounce(fn, delay) {
 // mock 数据会被页面侧赋值和加工，先深拷贝，避免一次请求污染下一次请求。
 const cloneResponse = (response) => JSON.parse(JSON.stringify(response));
 
-// 后端样例里 OBS 使用 regionid，小写字段在这里统一成页面侧使用的 regionId。
-const normalizeRegionId = (item) => {
+// 后端样例里部分字段大小写不统一，统一成页面和新入参使用的 regionId / azId。
+const normalizeDimensionField = (item) => {
     const nextItem = {
         ...item,
     };
@@ -29,6 +31,11 @@ const normalizeRegionId = (item) => {
         delete nextItem.regionid;
     }
 
+    if (Object.prototype.hasOwnProperty.call(nextItem, 'azid')) {
+        nextItem.azId = nextItem.azid;
+        delete nextItem.azid;
+    }
+
     return nextItem;
 };
 
@@ -36,7 +43,30 @@ const normalizeRegionId = (item) => {
 const normalizeTrendResponse = (response) => {
     const nextResponse = cloneResponse(response);
     nextResponse.data.trend =
-        nextResponse.data.trend.map((item) => normalizeRegionId(item));
+        nextResponse.data.trend.map((item) => normalizeDimensionField(item));
+
+    return nextResponse;
+};
+
+// detail 接口样例字段已经和页面约定一致，当前只深拷贝，不做字段改名。
+const normalizeDetailResponse = (response) => cloneResponse(response);
+
+// XPU 顶部四个待分配量直接来自 xpu/detail，尤其 A1 不再从表格汇总或趋势数据里反推。
+const normalizeXpuDetailResponse = (response) => {
+    const nextResponse = cloneResponse(response);
+    const detail = nextResponse.data;
+
+    nextResponse.data = {
+        ...detail,
+        totalUnallocatedXpu: detail.totalUnallocatedXpu,
+        a3Unallocated: detail.a3Unallocated,
+        a2Unallocated: detail.a2Unallocated,
+        a1Unallocated: detail.a1Unallocated,
+        totalUnallocatedXpuMom: detail.totalUnallocatedXpuMom,
+        a3UnallocatedMom: detail.a3UnallocatedMom,
+        a2UnallocatedMom: detail.a2UnallocatedMom,
+        a1UnallocatedMom: detail.a1UnallocatedMom,
+    };
 
     return nextResponse;
 };
@@ -47,8 +77,8 @@ const normalizePageResponse = (response) => {
     nextResponse.data.pageInfo = nextResponse.data.pagelnfo;
     delete nextResponse.data.pagelnfo;
     nextResponse.data.pageInfo.records =
-        nextResponse.data.pageInfo.records.map((item) => normalizeRegionId(item));
-    nextResponse.data.summaryVo = normalizeRegionId(nextResponse.data.summaryVo);
+        nextResponse.data.pageInfo.records.map((item) => normalizeDimensionField(item));
+    nextResponse.data.summaryVo = normalizeDimensionField(nextResponse.data.summaryVo);
 
     return nextResponse;
 };
@@ -61,17 +91,27 @@ const mockRequest = (response, normalizeResponse) =>
         }, 200);
     });
 
-export const getSalesDetailByObsAPI = () =>
-    mockRequest(obsTrendResponse, normalizeTrendResponse);
+// mock 函数先接收 _params，页面侧可以按真实接口形态传参，后面替换 request 时不用改调用方。
+export const getSalesDetailByObsAPI = (_params) =>
+    mockRequest(obsDetailResponse, normalizeDetailResponse);
 
-export const getSalesTableByObsAPI = () =>
+export const getSalesTableByObsAPI = (_params) =>
     mockRequest(obsPageResponse, normalizePageResponse);
 
-export const getSalesDetailByXpuAPI = () =>
+export const getSalesTrendByObsAPI = (_params) =>
+    mockRequest(obsTrendResponse, normalizeTrendResponse);
+
+export const getSalesDetailByXpuAPI = (_params) =>
+    mockRequest(xpuDetailResponse, normalizeXpuDetailResponse);
+
+export const getSalesTableByXpuAPI = (_params) =>
+    mockRequest(xpuPageResponse, normalizePageResponse);
+
+export const getSalesTrendByXpuAPI = (_params) =>
     mockRequest(xpuTrendResponse, normalizeTrendResponse);
 
-export const getSalesTableByXpuAPI = () =>
-    mockRequest(xpuPageResponse, normalizePageResponse);
+// XPU 行内趋势图点击后再写入这里，避免页面初始就展示未按行筛选的趋势数据。
+export const xpuTrendData = ref([]);
 
 // 下方这些状态被 saleDetail 多个组件共享：信息卡、图表、表格都从这里取数。
 export const tableDataSummary = ref({});
@@ -134,6 +174,8 @@ export const currentSort = ref({
 });
 
 export const storageMode = ref([]);
+// OBS/XPU 资源详情的范围粒度由表格按钮控制，同时会参与 detail / page / trend 请求参数。
+export const rangeValue = ref('全部');
 
 // ECS 目录树会把代次、族、类型逐级写进 obj，表格请求可以直接拿 obj 作为筛选条件。
 export const
@@ -145,8 +187,67 @@ export const resourceTypeArr =
         filterOtherValue.value.resourceType ?? []); // 资源规格
 const areaList = computed(() => filterValue.value.areaName ?? []); // 大区
 const regionList = computed(() => filterValue.value.regionName ?? []); // region
+const azIdList = computed(() => filterValue.value.azId ?? []); // AZ
 const cardTypeList = computed(() =>
     filterOtherValue.value.cardTypeList ?? []); // 卡类型
+
+const dimensionalEnumMap = {
+    全部: '',
+    大区: 'area',
+    Region: 'region',
+    AZ: 'az',
+};
+
+// 筛选组件和表格行传进来的值可能是数组或单值，统一成接口要求的数组结构。
+const toArrayValue = (value) => {
+    if (Array.isArray(value)) {
+        return value;
+    }
+
+    if (value === undefined ||
+        value === null ||
+        value === '') {
+        return [];
+    }
+
+    return [value];
+};
+
+export const buildDimensionParams = ({
+    areaName,
+    regionId,
+    azId,
+}) => {
+    const params = {
+        dimensionalEnum: dimensionalEnumMap[rangeValue.value],
+        areaName: [],
+        regionId: [],
+        azId: [],
+    };
+
+    // dimensionalEnum 控制后端聚合粒度；下面三个数组必须互斥，只允许当前粒度对应字段有值。
+    if (rangeValue.value === '大区') {
+        params.areaName = toArrayValue(areaName);
+    }
+
+    if (rangeValue.value === 'Region') {
+        params.regionId = toArrayValue(regionId);
+    }
+
+    if (rangeValue.value === 'AZ') {
+        params.azId = toArrayValue(azId);
+    }
+
+    return params;
+};
+
+// 页面公共筛选用于 detail/page 请求；行内趋势图会用当前行数据单独调用 buildDimensionParams。
+const buildCurrentDimensionParams = () =>
+    buildDimensionParams({
+        areaName: areaList.value,
+        regionId: regionList.value,
+        azId: azIdList.value,
+    });
 
 // 目录树递归时记录层级和路径对象，后面展开/选中节点时可以还原完整筛选条件。
 const applyLevel = (arr = [],
@@ -190,9 +291,7 @@ export const useResoureDetailByOBS = (active) => {
         const params = {
             month: currentStore.saleMonth,
             date: currentStore.saleDate,
-            areaName: areaList.value,
-            regionId: [],
-            regionName: regionList.value,
+            ...buildCurrentDimensionParams(),
         };
         leftCardData.obs = {};
         permissionCard.obs = true;
@@ -212,9 +311,7 @@ export const useResoureDetailByOBS = (active) => {
         const params = {
             month: currentStore.saleMonth,
             date: currentStore.saleDate,
-            areaName: areaList.value,
-            regionId: [],
-            regionName: regionList.value,
+            ...buildCurrentDimensionParams(),
         };
         keyInfor.obs = {};
 
@@ -232,10 +329,7 @@ export const useResoureDetailByOBS = (active) => {
                 month:
                     currentStore.saleMonth,
                 date: currentStore.saleDate,
-                areaName: areaList.value,
-                regionId: [],
-                regionName:
-                    regionList.value,
+                ...buildCurrentDimensionParams(),
                 pageNo: pageNo.value,
                 pageSize: pageSize.value,
                 sortField:
@@ -276,8 +370,9 @@ export const useResoureDetailByOBS = (active) => {
 
     watch(
         [() => currentStore.saleDate,
-            filterValue],
+            filterValue, rangeValue],
         ([]) => {
+            // 左侧卡片也要响应范围粒度，否则切换“全部/大区/Region/AZ”后卡片会停留旧口径。
             loadCardData();
         },
         {
@@ -288,11 +383,12 @@ export const useResoureDetailByOBS = (active) => {
     watch(
         [() => currentStore.saleDate,
             filterValue, filterOtherValue,
-            active],
+            rangeValue, active],
         ([]) => {
             if (active.value !== 'OBS') {
                 return;
             }
+            // OBS detail 同时驱动指标卡和 Region Top10，粒度变化时需要重新取 detail mock。
             loadInfoData();
         },
         {
@@ -303,12 +399,13 @@ export const useResoureDetailByOBS = (active) => {
     watch(
         [() => currentStore.saleDate,
             filterValue, filterOtherValue,
-            active, pageNo, pageSize,
+            rangeValue, active, pageNo, pageSize,
             currentSort, storageMode],
         ([]) => {
             if (active.value !== 'OBS') {
                 return;
             }
+            // OBS 表格请求参数也带 dimensionalEnum，和上方 detail 的粒度口径保持一致。
             loadTableData();
         }
     );
@@ -322,9 +419,7 @@ export const useResoureDetailByXPU = (active) => {
         const params = {
             month: currentStore.saleMonth,
             date: currentStore.saleDate,
-            areaName: areaList.value,
-            regionId: [],
-            regionName: regionList.value,
+            ...buildCurrentDimensionParams(),
         };
         leftCardData.xpu = {};
         permissionCard.xpu = true;
@@ -344,9 +439,7 @@ export const useResoureDetailByXPU = (active) => {
         const params = {
             month: currentStore.saleMonth,
             date: currentStore.saleDate,
-            areaName: areaList.value,
-            regionId: [],
-            regionName: regionList.value,
+            ...buildCurrentDimensionParams(),
             cardModel: cardTypeList.value,
         };
         keyInfor.xpu = {};
@@ -361,9 +454,7 @@ export const useResoureDetailByXPU = (active) => {
         const params = {
             month: currentStore.saleMonth,
             date: currentStore.saleDate,
-            areaName: areaList.value,
-            regionId: [],
-            regionName: regionList.value,
+            ...buildCurrentDimensionParams(),
             cardModel: cardTypeList.value,
             pageNo: pageNo.value,
             pageSize: pageSize.value,
@@ -397,8 +488,9 @@ export const useResoureDetailByXPU = (active) => {
 
     watch(
         [() => currentStore.saleDate,
-            filterValue],
+            filterValue, rangeValue],
         ([]) => {
+            // XPU 左侧卡片同样按当前粒度展示，避免和右侧详情口径不一致。
             loadCardData();
         },
         {
@@ -409,11 +501,12 @@ export const useResoureDetailByXPU = (active) => {
     watch(
         [() => currentStore.saleDate,
             filterValue, filterOtherValue,
-            active],
+            rangeValue, active],
         ([]) => {
             if (active.value !== 'XPU') {
                 return;
             }
+            // XPU detail 返回总量/A3/A2/A1 四个指标，粒度和卡类型变化时都需要刷新。
             loadInfoData();
         },
         {
@@ -424,12 +517,13 @@ export const useResoureDetailByXPU = (active) => {
     watch(
         [() => currentStore.saleDate,
             filterValue, filterOtherValue,
-            active, pageNo, pageSize,
+            rangeValue, active, pageNo, pageSize,
             currentSort],
         ([]) => {
             if (active.value !== 'XPU') {
                 return;
             }
+            // 表格数据和行内趋势入口共用这套筛选口径，先刷新表格再由行点击取 trend。
             loadTableData();
         }
     );

@@ -31,7 +31,7 @@
         <button
           type="button"
           class="trend-button"
-          @click="toggleTrend(scope.row.index)"
+          @click="toggleTrend(scope.row)"
         >
           {{ getTrendButtonText(scope.row.index) }}
         </button>
@@ -60,15 +60,19 @@
 import { computed, ref } from 'vue';
 import CommonChart from '@/components/CommonChart.vue';
 import TableList from '@/components/TableList.vue';
+import { useCurrentDate } from '@/views/useCurrentDate';
 import { networkRows } from './staticData';
 import {
-  keyInfor,
+  buildDimensionParams,
+  getSalesTrendByXpuAPI,
   obsTable,
   pageInfo,
   pageSize,
+  rangeValue,
   tableSummary,
   useResoureDetailByOBS,
   useResoureDetailByXPU,
+  xpuTrendData,
   xpuTable,
 } from './useResourceData';
 
@@ -79,7 +83,7 @@ const props = defineProps({
   },
 });
 
-const rangeValue = ref('全部');
+const currentStore = useCurrentDate();
 // OBS 和 XPU 的资源详情都需要范围粒度，network 截图里没有这一行。
 const showRangeToolbar = computed(() => {
   return props.active === 'OBS' || props.active === 'XPU';
@@ -126,6 +130,10 @@ const tableRows = computed(() => {
         type: item.cardModel,
         spec: item.computePower,
         stock: formatNumber(item.unallocatedXpu),
+        // 趋势接口按当前行构造维度参数，保留原始字段避免从展示文案反推。
+        areaName: item.regName,
+        regionId: item.regionId,
+        azId: item.azId,
       };
     });
   }
@@ -183,13 +191,13 @@ const tableConfig = computed(() => {
 
   return config;
 });
-// XPU 趋势图复用关键信息接口的 trend 数据，点击任意行只控制展开区域显示。
+// XPU 趋势图使用独立趋势样例，detail 接口只负责顶部关键信息。
 const xpuTrendList = computed(() => {
-  if (!Array.isArray(keyInfor.xpu.trend)) {
+  if (!Array.isArray(xpuTrendData.value)) {
     return [];
   }
 
-  return keyInfor.xpu.trend;
+  return xpuTrendData.value;
 });
 const xpuTrendOption = computed(() => ({
   grid: {
@@ -266,12 +274,34 @@ function getTrendButtonText(index) {
   return '查看趋势';
 }
 
-function toggleTrend(index) {
+function buildTrendParams(row) {
+  // 行内趋势图要按“当前粒度 + 当前行”查数据；这里复用 useResourceData 的互斥维度规则。
+  return {
+    month: currentStore.saleMonth,
+    date: currentStore.saleDate,
+    ...buildDimensionParams({
+      areaName: row.areaName,
+      regionId: row.regionId,
+      azId: row.azId,
+    }),
+  };
+}
+
+function toggleTrend(row) {
+  const index = row.index;
   // 同一时间只展开一行趋势，保持表格高度和截图一致。
   if (expandedTrendIndex.value === index) {
     expandedTrendIndex.value = null;
     return;
   }
+
+  // 趋势图是行内展开内容，点击时按当前行和当前范围粒度重新请求 mock 数据。
+  getSalesTrendByXpuAPI(buildTrendParams(row)).then((res) => {
+    if (res.status === 200) {
+      // trend 数据单独存放，避免覆盖 xpu/detail 返回的顶部 A1/A2/A3 指标。
+      xpuTrendData.value = res.data.trend;
+    }
+  });
 
   expandedTrendIndex.value = index;
 }

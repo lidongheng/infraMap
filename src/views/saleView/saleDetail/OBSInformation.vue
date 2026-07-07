@@ -26,7 +26,7 @@
 <script setup>
 import { computed } from 'vue';
 import CommonChart from '@/components/CommonChart.vue';
-import { keyInfor, tableSummary } from './useResourceData';
+import { keyInfor } from './useResourceData';
 
 const stackChartStyle = {
   width: 980,
@@ -42,89 +42,45 @@ const formatCapacity = (value) => {
   return (Number(value) / 10000).toFixed(1);
 };
 
-// OBS 关键信息和 Region Top10 都来自趋势接口返回的 trend 数组。
-const obsTrendList = computed(() => {
-  if (!Array.isArray(keyInfor.obs.trend)) {
-    return [];
-  }
-
-  return keyInfor.obs.trend;
-});
-
-// 按存储模式聚合容量，供“单AZ/三AZ可售量”两个卡片复用。
-const getStorageCapacity = (storageMode) => {
-  return obsTrendList.value.reduce((total, item) => {
-    if (item.storageMode !== storageMode) {
-      return total;
-    }
-
-    return total + Number(item.sellableCapacity);
-  }, 0);
-};
-
-// 卡片数据保持截图文案，数值从接口状态中实时计算。
+// OBS detail 接口直接返回三个指标卡数值，不再从 trend 数组二次聚合。
 const obsMetrics = computed(() => {
-  const totalCapacity = obsTrendList.value.reduce((total, item) => {
-    return total + Number(item.sellableCapacity);
-  }, 0);
-  const singleAzCapacity = getStorageCapacity('单AZ');
-  const threeAzCapacity = getStorageCapacity('三AZ');
-
   return [
     {
       title: 'OBS可售量（PB）',
-      value: formatCapacity(totalCapacity),
+      // totalSellableCapacity 是 obs/detail 的总可售量字段，表格 summary 不参与这里的展示。
+      value: formatCapacity(keyInfor.obs.totalSellableCapacity),
       unit: '纳上月',
-      trend: formatCapacity(tableSummary.obs.allocatedRate),
+      trend: formatCapacity(keyInfor.obs.totalSellableCapacityMom),
     },
     {
       title: '单AZ可售量（PB）',
-      value: formatCapacity(singleAzCapacity),
+      value: formatCapacity(keyInfor.obs.azTotalSellableCapacity),
       unit: '纳上月',
-      trend: formatCapacity(tableSummary.obs.targetWaterLine),
+      trend: formatCapacity(keyInfor.obs.azTotalSellableCapacityMom),
     },
     {
       title: '三AZ可售量（PB）',
-      value: formatCapacity(threeAzCapacity),
+      value: formatCapacity(keyInfor.obs.threeAzTotalSellableCapacity),
       unit: '纳上月',
-      trend: formatCapacity(tableSummary.obs.demandQuantity),
+      trend: formatCapacity(keyInfor.obs.threeAzTotalSellableCapacityMom),
     },
   ];
 });
 
-// Region Top10 图表需要把同一个 Region 的单AZ、三AZ容量聚合成堆叠柱。
+// Region Top10 使用 detail 接口的 topTenList，后端已完成排序和聚合。
 const obsStackBars = computed(() => {
-  const regionMap = new Map();
+  if (!Array.isArray(keyInfor.obs.topTenList)) {
+    return [];
+  }
 
-  obsTrendList.value.forEach((item) => {
-    const current = regionMap.get(item.regionName) || {
+  // topTenList 仍按接口原单位返回，进入图表前统一换算成 PB。
+  return keyInfor.obs.topTenList.map((item) => {
+    return {
       name: item.regionName,
-      single: 0,
-      multi: 0,
+      single: Number(formatCapacity(item.azTotalSellableCapacity)),
+      multi: Number(formatCapacity(item.threeAzTotalSellableCapacity)),
     };
-
-    if (item.storageMode === '单AZ') {
-      current.single += Number(item.sellableCapacity);
-    }
-
-    if (item.storageMode === '三AZ') {
-      current.multi += Number(item.sellableCapacity);
-    }
-
-    regionMap.set(item.regionName, current);
   });
-
-  // 先按总容量排序再截 Top10，避免图表被接口返回顺序影响。
-  return Array.from(regionMap.values())
-    .sort((a, b) => b.single + b.multi - a.single - a.multi)
-    .slice(0, 10)
-    .map((item) => {
-      return {
-        ...item,
-        single: Number(formatCapacity(item.single)),
-        multi: Number(formatCapacity(item.multi)),
-      };
-    });
 });
 
 const stackOption = computed(() => ({

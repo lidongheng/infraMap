@@ -6,6 +6,15 @@ require('events').EventEmitter.defaultMaxListeners = 0; // 解除限制
 const resolve = (dir) => path.resolve(__dirname, dir);
 
 const productionGzipExtensions = /\.(js|css|json|txt|html|ico|svg)(\?.*)?$/i;
+const resizeObserverLoopErrors = [
+  'ResizeObserver loop completed with undelivered notifications.',
+  'ResizeObserver loop limit exceeded',
+];
+
+// webpack-dev-server 会把 ResizeObserver 的浏览器通知噪声当成 error overlay，这里只过滤这两类已知消息。
+const isResizeObserverLoopError = (error) =>
+  resizeObserverLoopErrors.includes(error?.message);
+
 module.exports = defineConfig({
   transpileDependencies: true,
   // 放弃baseUrl 一般运维会配置好的
@@ -18,6 +27,14 @@ module.exports = defineConfig({
   lintOnSave: false,
   // 生产禁止显示源代码 默认关闭
   productionSourceMap: false,
+  devServer: {
+    client: {
+      overlay: {
+        // 缩放时浏览器可能抛 ResizeObserver 通知循环提示；这是布局观测噪声，不应盖住页面。
+        runtimeErrors: (error) => !isResizeObserverLoopError(error),
+      },
+    },
+  },
 
   //  Webpack配置
   configureWebpack: {
